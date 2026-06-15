@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Swaggeroo — Independent Status Verification</title>
+<style>
+  @page { size: A4; margin: 18mm 16mm; }
+  :root{
+    --ink:#1a1a1a; --muted:#5b6470; --line:#e2e5ea; --soft:#f5f6f8;
+    --green:#1a7f47; --green-bg:#e6f4ec;
+    --red:#b3261e; --red-bg:#fce8e6;
+    --amber:#9a6700; --amber-bg:#fff4d6;
+    --blue:#1f4e8c; --accent:#2c3e50;
+  }
+  *{ box-sizing:border-box; }
+  html{ -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  body{
+    font-family:"Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    color:var(--ink); font-size:10.5pt; line-height:1.5; margin:0;
+  }
+  .cover{
+    border-bottom:3px solid var(--accent); padding-bottom:14px; margin-bottom:18px;
+  }
+  .eyebrow{ letter-spacing:3px; font-size:8pt; color:var(--muted); text-transform:uppercase; margin:0 0 6px; }
+  h1{ font-size:23pt; margin:0 0 8px; color:var(--accent); letter-spacing:-0.3px; }
+  .meta{ font-size:9pt; color:var(--muted); }
+  .meta b{ color:var(--ink); }
+  h2{
+    font-size:13pt; color:var(--accent); margin:24px 0 8px;
+    border-bottom:1px solid var(--line); padding-bottom:5px;
+  }
+  h3{ font-size:10.5pt; margin:16px 0 6px; color:var(--accent); }
+  p{ margin:7px 0; }
+  ul{ margin:7px 0; padding-left:18px; }
+  li{ margin:3px 0; }
+  code{ font-family:"Consolas","SF Mono",monospace; font-size:8.8pt; background:var(--soft); padding:1px 4px; border-radius:3px; color:#324; }
+  table{ width:100%; border-collapse:collapse; margin:10px 0; font-size:9.2pt; }
+  th{ background:var(--accent); color:#fff; text-align:left; padding:7px 9px; font-weight:600; }
+  td{ border-bottom:1px solid var(--line); padding:7px 9px; vertical-align:top; }
+  tr:nth-child(even) td{ background:var(--soft); }
+  .badge{
+    display:inline-block; font-size:8pt; font-weight:700; letter-spacing:.4px;
+    padding:2px 7px; border-radius:10px; white-space:nowrap;
+  }
+  .b-true{ color:var(--green); background:var(--green-bg); }
+  .b-false{ color:var(--red); background:var(--red-bg); }
+  .b-over{ color:var(--amber); background:var(--amber-bg); }
+  .callout{
+    border-left:4px solid var(--red); background:var(--red-bg);
+    padding:10px 14px; margin:14px 0; border-radius:0 5px 5px 0; font-size:9.5pt;
+  }
+  .callout.good{ border-left-color:var(--green); background:var(--green-bg); }
+  .callout.note{ border-left-color:var(--blue); background:#eaf1fa; }
+  .summary-grid{ display:flex; gap:10px; margin:14px 0; }
+  .stat{
+    flex:1; border:1px solid var(--line); border-radius:6px; padding:10px 12px; text-align:center;
+  }
+  .stat .n{ font-size:20pt; font-weight:700; line-height:1; }
+  .stat .l{ font-size:7.6pt; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; margin-top:5px; }
+  .n.green{ color:var(--green); } .n.red{ color:var(--red); } .n.amber{ color:var(--amber); } .n.blue{ color:var(--blue); }
+  .avoid-break{ break-inside:avoid; }
+  .pb{ break-before:page; }
+  footer{ margin-top:26px; padding-top:10px; border-top:1px solid var(--line); font-size:8pt; color:var(--muted); }
+</style>
+</head>
+<body>
+
+<div class="cover">
+  <p class="eyebrow">Project Status · Independent Code Verification</p>
+  <h1>Swaggeroo — Status Verification</h1>
+  <p class="meta">
+    <b>Prepared:</b> June 15, 2026 &nbsp;·&nbsp;
+    <b>Repo reviewed:</b> Scott-Holding/Swaggeroo (local working copy) &nbsp;·&nbsp;
+    <b>Method:</b> direct source review
+  </p>
+</div>
+
+<p><b>Purpose.</b> Verify the claims in the previous developer's "Project Status Report v1.1"
+against the actual source code, and produce an accurate completed-vs-remaining accounting.</p>
+
+<h2>Bottom line</h2>
+<p>The previous report is <b>mostly accurate</b>, but it overstates a handful of features by
+listing them as <b>"✓ SHIPPED / WORKING"</b> when they <b>do not exist in the code</b>. The
+client's concern is justified: at least one prominently-featured capability (bulk product
+import) is claimed as complete but is entirely missing.</p>
+<p>Every item in the report's own "What's not done" section was checked and is
+<b>genuinely not done</b> — those risks are real. One of them (the production Dockerfile) is
+actually <i>worse</i> than described.</p>
+
+<div class="summary-grid">
+  <div class="stat"><div class="n green">18</div><div class="l">Claims verified TRUE</div></div>
+  <div class="stat"><div class="n amber">4</div><div class="l">Overstated / partial</div></div>
+  <div class="stat"><div class="n red">3</div><div class="l">False (feature absent)</div></div>
+  <div class="stat"><div class="n blue">13</div><div class="l">Risk claims confirmed</div></div>
+</div>
+
+<h2>1 · Claims marked "Working / Shipped"</h2>
+
+<h3>Confirmed real and working</h3>
+<table class="avoid-break">
+  <tr><th style="width:62%">Feature</th><th>Verdict</th><th>Evidence</th></tr>
+  <tr><td>Auth — signup, login, JWT httpOnly cookies, password reset via emailed codes</td><td><span class="badge b-true">TRUE</span></td><td><code>auth.controller.ts</code>, <code>auth.service.ts</code></td></tr>
+  <tr><td>Order lifecycle — 6-stage design workflow</td><td><span class="badge b-true">TRUE</span></td><td><code>CatalogOrderDesignPhase</code> enum (exactly 6)</td></tr>
+  <tr><td>Inventory ledger — append-only (receipts, allocations, releases, adjustments)</td><td><span class="badge b-true">TRUE</span></td><td><code>InventoryLedgerEntry</code> create-only</td></tr>
+  <tr><td>Tiered pricing</td><td><span class="badge b-true">TRUE</span></td><td><code>CatalogPricingOption</code></td></tr>
+  <tr><td>Categories, collections, multi-variant products</td><td><span class="badge b-true">TRUE</span></td><td><code>schema.prisma</code>, catalog module</td></tr>
+  <tr><td>Recipient address book per customer</td><td><span class="badge b-true">TRUE</span></td><td><code>Recipient</code> model + module</td></tr>
+  <tr><td>Contact-form intake with async email</td><td><span class="badge b-true">TRUE</span></td><td><code>contact.service.ts</code></td></tr>
+  <tr><td>S3 presigned-URL uploads</td><td><span class="badge b-true">TRUE</span></td><td><code>storage.service.ts</code></td></tr>
+  <tr><td>BullMQ background job queue</td><td><span class="badge b-true">TRUE</span></td><td><code>email.processor.ts</code> worker</td></tr>
+  <tr><td>Payments — Square, sandbox <b>and</b> production modes</td><td><span class="badge b-true">TRUE</span></td><td><code>env.ts</code> + live Square API calls</td></tr>
+  <tr><td>Custom roles can be created / edited</td><td><span class="badge b-true">TRUE</span></td><td><code>rbac.service.ts</code> full CRUD</td></tr>
+  <tr><td>Admin dashboard — all 7 areas (products, orders, inventory, shipping, users, RBAC, contacts)</td><td><span class="badge b-true">TRUE</span></td><td>Real routes under <code>dashboard/</code></td></tr>
+  <tr><td>Homepage sections (hero, how-it-works, pricing estimator, FAQ, testimonials, newsletter)</td><td><span class="badge b-true">TRUE</span></td><td><code>(public)/page.tsx</code></td></tr>
+  <tr><td>Exactly 4 "Coming Soon" public pages</td><td><span class="badge b-true">TRUE</span></td><td>company, platform, pricing, resources</td></tr>
+  <tr><td>Live public pages (shop, product detail, cart, swag-pack, project submission, contact, auth)</td><td><span class="badge b-true">TRUE</span></td><td>All real, data-driven</td></tr>
+  <tr><td>62 static marketing image assets</td><td><span class="badge b-true">TRUE</span></td><td>Exact count confirmed</td></tr>
+</table>
+
+<h3>Overstated / partially true</h3>
+<table class="avoid-break">
+  <tr><th style="width:38%">Claim</th><th>Reality</th></tr>
+  <tr><td>"RBAC — <b>39</b> permissions"</td><td><span class="badge b-over">OVERSTATED</span> Actually <b>42</b> permissions in the seed (more than claimed).</td></tr>
+  <tr><td>"<b>4</b> system roles"</td><td><span class="badge b-over">OVERSTATED</span> Only <b>2</b> system roles exist: <code>SUPER_ADMIN</code> and <code>USER</code>.</td></tr>
+  <tr><td>Product catalog "<b>SKUs</b>"</td><td><span class="badge b-false">FALSE</span> No SKU field exists anywhere in the schema or code.</td></tr>
+  <tr><td>Shipping "<b>Shippo carrier integration</b>"</td><td><span class="badge b-false">FALSE</span> The <code>shippo</code> package is a dependency but is never imported or called; <code>carrier</code> is free-text only. (Zones, rates, weight estimation <i>are</i> real.)</td></tr>
+</table>
+
+<h3>Claimed "✓ Shipped / Working" but does NOT exist</h3>
+<table class="avoid-break">
+  <tr><th style="width:38%">Claim</th><th>Reality</th></tr>
+  <tr><td><b>Bulk product import</b> — Excel/CSV, multi-variant, SKU auto-gen, async (BullMQ)</td><td><span class="badge b-false">ABSENT</span> No import controller, service, or queue processor. No CSV/Excel parsing code. No parsing dependency.</td></tr>
+  <tr><td><b>Bulk import UI</b> — upload with progress &amp; error reporting</td><td><span class="badge b-false">ABSENT</span> No spreadsheet upload component anywhere. Only single-image presigned uploads exist.</td></tr>
+  <tr><td>Real product images via bulk import (pipe-separated URLs)</td><td><span class="badge b-false">N/A</span> Depends on the importer above, which does not exist.</td></tr>
+</table>
+
+<div class="callout">
+  <b>Most important finding.</b> Bulk import is featured prominently in the report's "What's
+  built &amp; working" section with a "✓ SHIPPED" marker, and again as a dashboard feature.
+  Neither the backend nor the UI for it is present in the code. This is very likely a large
+  part of why the client believes "so many things are remaining."
+</div>
+
+<h2 class="pb">2 · Content claims (marketing site)</h2>
+<table class="avoid-break">
+  <tr><th style="width:55%">Claim</th><th>Verdict</th></tr>
+  <tr><td>"Works Seamlessly" brand logos (Google, Shopify, Deel, Slack, Zapier)</td><td><span class="badge b-true">TRUE</span> &nbsp;(plus Salesforce) — real images</td></tr>
+  <tr><td>Testimonials</td><td><span class="badge b-over">PLACEHOLDER</span> All quotes/names are "Lorem Ipsum" dummy text</td></tr>
+  <tr><td>Homepage video</td><td><span class="badge b-over">PLACEHOLDER</span> Points at a dummy URL (<code>youtube.com/watch?v=XXXX</code>)</td></tr>
+</table>
+<p style="font-size:9pt;color:var(--muted)">The report itself acknowledges testimonials and video as placeholders, so these are consistent with what was disclosed.</p>
+
+<h2>3 · Risk / "What's not done" claims — all confirmed real</h2>
+<table>
+  <tr><th style="width:50%">Claimed gap</th><th>Verified</th></tr>
+  <tr><td>No automated tests of any kind</td><td><span class="badge b-true">TRUE</span> No spec/test files, no jest/vitest config</td></tr>
+  <tr><td>5 silently swallowed errors in the backend</td><td><span class="badge b-true">TRUE</span> Exactly 5 empty <code>catch {}</code> blocks: <code>orders.service.ts:222/386/752</code>, <code>public.service.ts:403</code>, <code>optional-auth.guard.ts:22</code></td></tr>
+  <tr><td>Production Dockerfile uses <code>prisma db push</code></td><td><span class="badge b-true">TRUE — worse</span> Runs <code>db:push &amp;&amp; db:seed &amp;&amp; dev</code> on every start: re-seeds each start, runs <b>dev mode in production</b>, and <b>no migrations folder exists</b> (no safe migration path).</td></tr>
+  <tr><td>No structured logging or request tracing</td><td><span class="badge b-true">TRUE</span> Default Nest logger only</td></tr>
+  <tr><td>No error tracking (Sentry/equivalent)</td><td><span class="badge b-true">TRUE</span> None in code or dependencies</td></tr>
+  <tr><td>No rate limiting on API endpoints</td><td><span class="badge b-true">TRUE</span> No throttler/rate-limit middleware</td></tr>
+  <tr><td>No auto-scaling / no infrastructure-as-code</td><td><span class="badge b-true">TRUE</span> No Terraform/CloudFormation/ECS task defs in repo</td></tr>
+  <tr><td>Hardcoded account ID in CI/CD</td><td><span class="badge b-true">TRUE</span> AWS account <code>866645635058</code>, region, cluster &amp; service names hardcoded in the workflow</td></tr>
+  <tr><td>No uptime / health monitoring</td><td><span class="badge b-true">TRUE</span> <code>/api/health</code> returns static <code>{ ok: true }</code>; does not check DB or Redis</td></tr>
+  <tr><td>Payments live-blocked (sandbox only by default)</td><td><span class="badge b-true">TRUE</span> <code>SQUARE_ENVIRONMENT</code> defaults to sandbox</td></tr>
+  <tr><td>No real product inventory (test data only)</td><td><span class="badge b-true">TRUE</span></td></tr>
+  <tr><td>No real carrier shipping rates configured</td><td><span class="badge b-true">TRUE</span> (and no carrier integration exists — see §1)</td></tr>
+  <tr><td>4 public pages are "Coming Soon" placeholders</td><td><span class="badge b-true">TRUE</span></td></tr>
+</table>
+
+<h3>Additional issues found (not in the original report)</h3>
+<div class="callout note">
+  <ul style="margin:0">
+    <li><b>CI/CD deploys the wrong branch.</b> The workflow triggers on pushes to <code>main</code> and <code>devops</code>, but the checkout step is pinned to <code>ref: devops</code>. A push to <code>main</code> will still build and deploy <b>devops branch code</b>.</li>
+    <li><b>"No mobile responsiveness audit" is overstated as a gap.</b> Responsive Tailwind classes are used broadly (~154 <code>sm:/md:/lg:</code> usages across ~40 files). A formal QA pass may still be wanted, but the implementation is substantially responsive.</li>
+  </ul>
+</div>
+
+<h2 class="pb">4 · Accurate "completed vs remaining" summary</h2>
+
+<div class="callout good">
+  <b>Genuinely complete and working.</b> Auth &amp; RBAC engine (custom roles), product catalog
+  (categories/collections/variants/tiered pricing), the 6-stage design/order workflow,
+  inventory ledger, shipping zones/rates/estimation, recipients, contact intake, S3 image
+  uploads, BullMQ jobs, Square payments (sandbox + production code paths), the full admin
+  dashboard (7 areas), the homepage, and the core storefront (shop, product detail, cart,
+  swag-pack builder, project submission, auth pages).
+</div>
+
+<div class="callout">
+  <b>Claimed complete but actually MISSING</b> (build these before claiming "done"):
+  <ul style="margin:6px 0 0">
+    <li><b>Bulk product import — backend</b> (CSV/Excel parsing, SKU auto-gen, async job). Absent.</li>
+    <li><b>Bulk import UI</b> (spreadsheet upload with progress/errors). Absent.</li>
+    <li><b>SKU support</b> (no SKU field in the data model).</li>
+    <li><b>Shippo / real carrier integration</b> (dependency only; never wired up).</li>
+  </ul>
+</div>
+
+<div class="callout note">
+  <b>Confirmed remaining</b> (production hardening — all real): automated tests; fix the 5
+  swallowed errors; replace <code>db:push</code>/<code>db:seed</code>/<code>dev</code> in the
+  prod Dockerfile with a production build + real migrations; structured logging + request
+  tracing; error tracking; rate limiting; auto-scaling / infrastructure-as-code; real health
+  checks + uptime monitoring; de-hardcode CI/CD values and fix the <code>ref: devops</code>
+  branch bug; finalize a live payment processor; load real catalog/images/shipping rates;
+  build the 4 "Coming Soon" pages; replace placeholder testimonials and the placeholder
+  homepage video.
+</div>
+
+<footer>
+  This verification was performed by reading the source directly — backend <code>apps/api/src</code>,
+  frontend <code>apps/web/src</code>, the Prisma schema, seed, Dockerfiles, and CI workflow.
+  Compiled output (<code>dist</code>) and <code>node_modules</code> were excluded.
+</footer>
+
+</body>
+</html>

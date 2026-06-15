@@ -1,0 +1,819 @@
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum CatalogProductStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+enum CatalogOrderType {
+  BULK
+  SWAG_PACK
+  COMBINED
+}
+
+enum CatalogOrderItemType {
+  BULK
+  SWAG_PACK
+  PACKAGING
+}
+
+enum CatalogOrderStatus {
+  PENDING_REVIEW
+  IN_REVIEW
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum CatalogOrderDesignPhase {
+  MOCKUP_IN_PROGRESS
+  REVIEW_MOCKUP_DESIGN
+  REVISION_REQUESTED
+  FINALIZING_PROOF_DESIGN
+  REVIEW_FINAL_DESIGN
+  READY_TO_ORDER
+}
+
+enum CatalogOrderRevisionStatus {
+  OPEN
+  RESOLVED
+}
+
+enum CatalogPaymentStatus {
+  UNPAID
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum InventoryAvailabilityStatus {
+  PENDING_RECEIPT
+  PARTIALLY_RECEIVED
+  AVAILABLE
+}
+
+enum InventoryLedgerEntryType {
+  WAREHOUSE_RECEIPT
+  SHIPMENT_ALLOCATION
+  SHIPMENT_ALLOCATION_RELEASE
+  MANUAL_ADJUSTMENT
+}
+
+enum ShipmentBillingType {
+  INCLUDED_IN_ORDER
+  SEPARATE_PAYMENT
+}
+
+enum CatalogVariantType {
+  COLOR
+  TEXT
+}
+
+
+enum ShippingScope {
+  DOMESTIC_ONLY
+  DOMESTIC_AND_INTERNATIONAL
+  INTERNATIONAL_REVIEW_REQUIRED
+}
+
+enum ShippingPackageType {
+  BULK_ITEM
+  PACK
+  MAILER_PACK
+}
+
+enum ShippingPricingModel {
+  FLAT_PER_PACKAGE
+  FLAT_PER_SHIPMENT
+  WEIGHT_AND_QUANTITY
+}
+
+enum ShippingServiceLevel {
+  STANDARD
+  EXPRESS
+}
+
+enum ShippingCountryRuleType {
+  ALLOW
+  BLOCK
+}
+
+enum ShippingShipmentStatus {
+  DRAFT
+  ESTIMATED
+  SCHEDULED
+  IN_REVIEW
+  ON_THE_WAY
+  DELIVERED
+  FAILURE
+  RETURN_TO_SENDER
+  AVAILABLE_FOR_PICKUP
+  CANCELLED
+}
+
+model Role {
+  id          String           @id @default(cuid())
+  name        String           @unique
+  description String?
+  users       User[]
+  permissions RolePermission[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@map("roles")
+}
+
+model Permission {
+  id          String           @id @default(cuid())
+  key         String           @unique
+  description String?
+  roles       RolePermission[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  id           String     @id @default(cuid())
+  roleId       String
+  permissionId String
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  createdAt    DateTime   @default(now())
+
+  @@unique([roleId, permissionId])
+  @@index([roleId])
+  @@index([permissionId])
+  @@map("role_permissions")
+}
+
+model User {
+  id                      String                     @id @default(cuid())
+  email                   String                     @unique
+  passwordHash            String
+  firstName               String?
+  lastName                String?
+  phone                   String?
+  roleId                  String
+  role                    Role                       @relation(fields: [roleId], references: [id])
+  projects                Project[]
+  catalogOrders           CatalogOrder[]
+  assignedCatalogOrders   CatalogOrder[]             @relation("AssignedCatalogOrders")
+  submittedDesignRevisions CatalogOrderItemRevision[]
+  recipients              Recipient[]
+  createdShipments        ShippingShipment[]         @relation("ShippingShipmentCreatedBy")
+  inventoryLedgerEntries  InventoryLedgerEntry[]      @relation("InventoryLedgerPerformedBy")
+  passwordResetCodes      PasswordResetCode[]
+  createdAt               DateTime                   @default(now())
+  updatedAt               DateTime                   @updatedAt
+
+  @@map("users")
+}
+
+model ContactMessage {
+  id              String   @id @default(cuid())
+  companyName     String
+  contactName     String
+  email           String
+  phone           String
+  shippingAddress String?
+  city            String?
+  state           String?
+  zip             String?
+  eventName       String?
+  inHandDate      DateTime?
+  budget          String?
+  artworkReady    String?
+  additionalNotes String?
+  createdAt       DateTime @default(now())
+  emailedAt       DateTime?
+  emailError      String?
+  products        FormRequestedProduct[]
+
+  @@map("contact_messages")
+}
+
+model FormRequestedProduct {
+  id                 String         @id @default(uuid())
+  formId             String
+  contactMessage     ContactMessage @relation(fields: [formId], references: [id], onDelete: Cascade)
+  productCategory    String
+  totalQuantity      Int
+  productDescription String?
+  colors             String?
+  targetUnitPrice    Float?
+  decorationMethod   String?
+  decorationNotes    String?
+  createdAt          DateTime       @default(now())
+
+  @@map("form_requested_products")
+}
+
+model PasswordResetCode {
+  id        String   @id @default(cuid())
+  userId    String
+  email     String
+  code      String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([email, code, expiresAt])
+  @@map("password_reset_codes")
+}
+
+model CatalogCategory {
+  id          String           @id @default(cuid())
+  name        String
+  slug        String           @unique
+  description String?
+  imageUrl    String?
+  imageKey    String?
+  products    CatalogProduct[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@index([name])
+  @@map("catalog_categories")
+}
+
+model CatalogCollection {
+  id          String                     @id @default(cuid())
+  name        String
+  slug        String                     @unique
+  description String?
+  imageUrl    String?
+  imageKey    String?
+  products    CatalogProductCollection[]
+  createdAt   DateTime                   @default(now())
+  updatedAt   DateTime                   @updatedAt
+
+  @@index([name])
+  @@map("catalog_collections")
+}
+
+model CatalogProduct {
+  id                     String                     @id @default(cuid())
+  categoryId             String?
+  shippingProfileId      String?
+  category               CatalogCategory?           @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  shippingProfile        ShippingProfile?           @relation(fields: [shippingProfileId], references: [id], onDelete: SetNull)
+  slug                   String                     @unique
+  name                   String
+  shortDescription       String                     @db.Text
+  description            String?                    @db.Text
+  status                 CatalogProductStatus       @default(DRAFT)
+  isPackaging            Boolean                    @default(false)
+  basePrice              Decimal?                   @db.Decimal(10, 2)
+  compareAtPrice         Decimal?                   @db.Decimal(10, 2)
+  minQty                 Int                        @default(1)
+  baseStock              Int                        @default(0)
+  currency               String                     @default("USD")
+  weightOz               Decimal?                   @db.Decimal(10, 2)
+  lengthIn               Decimal?                   @db.Decimal(10, 2)
+  widthIn                Decimal?                   @db.Decimal(10, 2)
+  heightIn               Decimal?                   @db.Decimal(10, 2)
+  images                 CatalogImage[]
+  variants               Variant[]
+  productCatalogVariants CatalogVariant[]
+  pricingOptions         CatalogPricingOption[]
+  collections            CatalogProductCollection[]
+  projectItems           ProjectItem[]
+  orderItems             CatalogOrderItem[]
+  shipmentItems          ShippingShipmentItem[]
+  createdAt              DateTime                   @default(now())
+  updatedAt              DateTime                   @updatedAt
+
+  @@index([categoryId])
+  @@index([shippingProfileId])
+  @@index([status])
+  @@index([name])
+  @@map("catalog_products")
+}
+
+model CatalogProductCollection {
+  id           String            @id @default(cuid())
+  productId    String
+  collectionId String
+  product      CatalogProduct    @relation(fields: [productId], references: [id], onDelete: Cascade)
+  collection   CatalogCollection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  createdAt    DateTime          @default(now())
+
+  @@unique([productId, collectionId])
+  @@index([productId])
+  @@index([collectionId])
+  @@map("catalog_product_collections")
+}
+
+model CatalogImage {
+  id           String               @id @default(cuid())
+  productId     String
+  product       CatalogProduct       @relation(fields: [productId], references: [id], onDelete: Cascade)
+  url           String
+  key           String?
+  alt           String?
+  sortOrder     Int                  @default(0)
+  variantImages CatalogVariantImage[]
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+
+  @@index([productId])
+  @@map("catalog_images")
+}
+
+model Variant {
+  id        String             @id @default(cuid())
+  productId String
+  product   CatalogProduct     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  name      String
+  type      CatalogVariantType
+  sortOrder Int                @default(0)
+  options   VariantOption[]
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+
+  @@index([productId])
+  @@map("variants")
+}
+
+model VariantOption {
+  id                      String                        @id @default(cuid())
+  variantId               String
+  variant                 Variant                       @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  code                    String
+  label                   String
+  colorHex                String?
+  sortOrder               Int                           @default(0)
+  productVariantSelections CatalogVariantSelectedOption[]
+  createdAt               DateTime                      @default(now())
+  updatedAt               DateTime                      @updatedAt
+
+  @@index([variantId])
+  @@map("variant_options")
+}
+
+model CatalogVariant {
+  id               String                        @id @default(cuid())
+  productId        String
+  product          CatalogProduct                @relation(fields: [productId], references: [id], onDelete: Cascade)
+  title            String?
+  price            Decimal                       @db.Decimal(10, 2)
+  stock            Int                           @default(0)
+  minQty           Int                           @default(1)
+  currency         String                        @default("USD")
+  isDefault        Boolean                       @default(false)
+  sortOrder        Int                           @default(0)
+  images           CatalogVariantImage[]
+  pricingOptions   CatalogPricingOption[]
+  selectedOptions  CatalogVariantSelectedOption[]
+  projectItems     ProjectItem[]
+  orderItems       CatalogOrderItem[]
+  shipmentItems    ShippingShipmentItem[]
+  createdAt        DateTime                      @default(now())
+  updatedAt        DateTime                      @updatedAt
+
+  @@index([productId])
+  @@map("product_catalog_variants")
+}
+
+model CatalogVariantSelectedOption {
+  id               String         @id @default(cuid())
+  catalogVariantId String
+  variantOptionId  String
+  sortOrder        Int            @default(0)
+  catalogVariant   CatalogVariant @relation(fields: [catalogVariantId], references: [id], onDelete: Cascade)
+  variantOption    VariantOption  @relation(fields: [variantOptionId], references: [id], onDelete: Cascade)
+  createdAt        DateTime       @default(now())
+
+  @@unique([catalogVariantId, variantOptionId])
+  @@index([catalogVariantId])
+  @@index([variantOptionId])
+  @@map("product_catalog_variant_selected_options")
+}
+
+model CatalogVariantImage {
+  id               String         @id @default(cuid())
+  catalogVariantId String
+  imageId          String
+  catalogVariant   CatalogVariant @relation(fields: [catalogVariantId], references: [id], onDelete: Cascade)
+  image            CatalogImage   @relation(fields: [imageId], references: [id], onDelete: Cascade)
+  createdAt        DateTime       @default(now())
+
+  @@unique([catalogVariantId, imageId])
+  @@index([catalogVariantId])
+  @@index([imageId])
+  @@map("product_catalog_variant_images")
+}
+
+model CatalogPricingOption {
+  id                      String          @id @default(cuid())
+  productId               String?
+  productCatalogVariantId String?
+  product                 CatalogProduct? @relation(fields: [productId], references: [id], onDelete: Cascade)
+  productCatalogVariant   CatalogVariant? @relation(fields: [productCatalogVariantId], references: [id], onDelete: Cascade)
+  qtyFrom                 Int
+  qtyTo                   Int?
+  price                   Decimal         @db.Decimal(10, 2)
+  isOnward                Boolean         @default(false)
+  sortOrder               Int             @default(0)
+  createdAt               DateTime        @default(now())
+  updatedAt               DateTime        @updatedAt
+
+  @@index([productId])
+  @@index([productCatalogVariantId])
+  @@map("catalog_pricing_options")
+}
+
+model Project {
+  id          String           @id @default(cuid())
+  userId      String?
+  user        User?            @relation(fields: [userId], references: [id], onDelete: SetNull)
+  type        CatalogOrderType
+  name        String
+  email       String
+  companyName String?
+  phone       String?
+  notes       String?
+  logoUrl     String?
+  logoKey     String?
+  swagPackName String?
+  budgetPerPerson Decimal?     @db.Decimal(10, 2)
+  neededByDate DateTime?
+  packQuantity Int             @default(1)
+  items       ProjectItem[]
+  orders      CatalogOrder[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@index([userId])
+  @@index([type])
+  @@map("projects")
+}
+
+model ProjectItem {
+  id                     String          @id @default(cuid())
+  projectId              String
+  productId              String
+  productCatalogVariantId String?
+  project                Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  product                CatalogProduct  @relation(fields: [productId], references: [id], onDelete: Restrict)
+  productCatalogVariant  CatalogVariant? @relation(fields: [productCatalogVariantId], references: [id], onDelete: SetNull)
+  productName            String
+  variantName            String?
+  itemType               CatalogOrderItemType @default(BULK)
+  quantity               Int
+  quantityPerPack        Int?
+  unitPrice              Decimal         @db.Decimal(10, 2)
+  totalPrice             Decimal         @db.Decimal(10, 2)
+  imageUrl               String?
+  createdAt              DateTime        @default(now())
+  updatedAt              DateTime        @updatedAt
+
+  @@index([projectId])
+  @@index([productId])
+  @@index([productCatalogVariantId])
+  @@map("project_items")
+}
+
+model CatalogOrder {
+  id                 String                @id @default(cuid())
+  userId             String?
+  projectId          String?
+  assignedEmployeeId String?
+  user               User?                 @relation(fields: [userId], references: [id], onDelete: SetNull)
+  project            Project?              @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  assignedEmployee   User?                 @relation("AssignedCatalogOrders", fields: [assignedEmployeeId], references: [id], onDelete: SetNull)
+  type               CatalogOrderType
+  status             CatalogOrderStatus    @default(PENDING_REVIEW)
+  paymentStatus      CatalogPaymentStatus  @default(UNPAID)
+  email              String
+  name               String
+  companyName        String?
+  phone              String?
+  notes              String?
+  logoUrl            String?
+  logoKey            String?
+  packQuantity       Int                   @default(1)
+  totalPrice         Decimal               @db.Decimal(10, 2)
+  currency           String                @default("USD")
+  squarePaymentId    String?
+  paidAt             DateTime?
+  stockReserved      Boolean               @default(false)
+  items              CatalogOrderItem[]
+  shipments          ShippingShipment[]
+  inventoryLedgerEntries InventoryLedgerEntry[]
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
+
+  @@index([userId])
+  @@index([projectId])
+  @@index([assignedEmployeeId])
+  @@index([type])
+  @@index([status])
+  @@index([paymentStatus])
+  @@map("catalog_orders")
+}
+
+model CatalogOrderItem {
+  id                      String                  @id @default(cuid())
+  orderId                 String
+  productId               String
+  productCatalogVariantId String?
+  order                   CatalogOrder            @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product                 CatalogProduct          @relation(fields: [productId], references: [id], onDelete: Restrict)
+  productCatalogVariant   CatalogVariant?         @relation(fields: [productCatalogVariantId], references: [id], onDelete: SetNull)
+  productName             String
+  variantName             String?
+  itemType                CatalogOrderItemType    @default(BULK)
+  designPhase             CatalogOrderDesignPhase @default(MOCKUP_IN_PROGRESS)
+  quantity                Int
+  quantityPerPack         Int?
+  unitPrice               Decimal                 @db.Decimal(10, 2)
+  totalPrice              Decimal                 @db.Decimal(10, 2)
+  imageUrl                String?
+  mockupImageUrl          String?
+  mockupImageKey          String?
+  proofImageUrl           String?
+  proofImageKey           String?
+  adminNotes              String?                 @db.Text
+  customerApprovedMockupAt DateTime?
+  customerApprovedFinalAt DateTime?
+  inventoryStatus         InventoryAvailabilityStatus @default(PENDING_RECEIPT)
+  inventoryReadyAt        DateTime?
+  sortOrder               Int                     @default(0)
+  revisions               CatalogOrderItemRevision[]
+  shipmentItems           ShippingShipmentItem[]
+  inventoryLedgerEntries  InventoryLedgerEntry[]
+  createdAt               DateTime                @default(now())
+  updatedAt               DateTime                @updatedAt
+
+  @@index([orderId])
+  @@index([productId])
+  @@index([productCatalogVariantId])
+  @@index([designPhase])
+  @@index([inventoryStatus])
+  @@map("catalog_order_items")
+}
+
+model CatalogOrderItemRevision {
+  id                String                     @id @default(cuid())
+  orderItemId       String
+  requestedByUserId String?
+  orderItem         CatalogOrderItem           @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  requestedByUser   User?                      @relation(fields: [requestedByUserId], references: [id], onDelete: SetNull)
+  status            CatalogOrderRevisionStatus @default(OPEN)
+  notes             String                     @db.Text
+  logoUrl           String?
+  logoKey           String?
+  resolvedAt        DateTime?
+  createdAt         DateTime                   @default(now())
+  updatedAt         DateTime                   @updatedAt
+
+  @@index([orderItemId])
+  @@index([requestedByUserId])
+  @@index([status])
+  @@map("catalog_order_item_revisions")
+}
+
+
+model ShippingZone {
+  id          String                @id @default(cuid())
+  code        String                @unique
+  name        String
+  description String?
+  isDomestic  Boolean               @default(false)
+  isActive    Boolean               @default(true)
+  countries   ShippingZoneCountry[]
+  rates       ShippingRate[]
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+
+  @@index([isActive])
+  @@map("shipping_zones")
+}
+
+model ShippingZoneCountry {
+  id          String       @id @default(cuid())
+  zoneId      String
+  countryCode String
+  countryName String
+  zone        ShippingZone @relation(fields: [zoneId], references: [id], onDelete: Cascade)
+  createdAt   DateTime     @default(now())
+
+  @@unique([zoneId, countryCode])
+  @@index([countryCode])
+  @@map("shipping_zone_countries")
+}
+
+model ShippingProfile {
+  id                            String                       @id @default(cuid())
+  name                          String
+  slug                          String                       @unique
+  packageType                   ShippingPackageType
+  shippingScope                 ShippingScope                @default(DOMESTIC_AND_INTERNATIONAL)
+  isHazmat                      Boolean                      @default(false)
+  containsBattery               Boolean                      @default(false)
+  containsFood                  Boolean                      @default(false)
+  containsCosmetic              Boolean                      @default(false)
+  containsLiquid                Boolean                      @default(false)
+  containsWood                  Boolean                      @default(false)
+  isOversized                   Boolean                      @default(false)
+  requiresPhoneForInternational Boolean                      @default(true)
+  requiresEmailForInternational Boolean                      @default(true)
+  maxUnitsPerPackage            Int?
+  countryRules                  ShippingProfileCountryRule[]
+  products                      CatalogProduct[]
+  createdAt                     DateTime                     @default(now())
+  updatedAt                     DateTime                     @updatedAt
+
+  @@index([packageType])
+  @@index([shippingScope])
+  @@map("shipping_profiles")
+}
+
+model ShippingProfileCountryRule {
+  id          String                  @id @default(cuid())
+  profileId   String
+  countryCode String
+  countryName String
+  ruleType    ShippingCountryRuleType
+  profile     ShippingProfile         @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  createdAt   DateTime                @default(now())
+
+  @@unique([profileId, countryCode, ruleType])
+  @@index([countryCode])
+  @@map("shipping_profile_country_rules")
+}
+
+model ShippingRate {
+  id            String               @id @default(cuid())
+  zoneId        String
+  serviceLevel  ShippingServiceLevel
+  packageType   ShippingPackageType
+  pricingModel  ShippingPricingModel
+  weightFromOz  Decimal              @db.Decimal(10, 2)
+  weightToOz    Decimal?             @db.Decimal(10, 2)
+  baseRate      Decimal              @db.Decimal(10, 2)
+  perItemRate   Decimal?             @db.Decimal(10, 2)
+  perPoundRate  Decimal?             @db.Decimal(10, 2)
+  handlingFee   Decimal?             @db.Decimal(10, 2)
+  fuelSurcharge Decimal?             @db.Decimal(10, 2)
+  currency      String               @default("USD")
+  isActive      Boolean              @default(true)
+  zone          ShippingZone         @relation(fields: [zoneId], references: [id], onDelete: Cascade)
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+
+  @@index([zoneId, serviceLevel, packageType, isActive])
+  @@map("shipping_rates")
+}
+
+model ShippingShipment {
+  id                     String                 @id @default(cuid())
+  orderId                String
+  createdById            String
+  recipientId            String?
+  destinationCountryCode String
+  destinationCountryName String
+  recipientName          String?
+  recipientEmail         String?
+  recipientPhone         String?
+  addressLine1           String?
+  addressLine2           String?
+  city                   String?
+  state                  String?
+  postalCode             String?
+  serviceLevel           ShippingServiceLevel
+  status                 ShippingShipmentStatus @default(DRAFT)
+  billingType            ShipmentBillingType    @default(INCLUDED_IN_ORDER)
+  paymentStatus          CatalogPaymentStatus   @default(UNPAID)
+  squarePaymentId        String?
+  paidAt                 DateTime?
+  inventoryCommittedAt   DateTime?
+  carrier                String?
+  trackingNumber         String?
+  trackingUrl            String?
+  statusNotes            String?
+  scheduledFor           DateTime?
+  shippedAt              DateTime?
+  deliveredAt            DateTime?
+  currency               String                 @default("USD")
+  totalWeightOz          Decimal                @db.Decimal(10, 2)
+  subtotal               Decimal                @db.Decimal(10, 2)
+  fuelSurchargeTotal     Decimal                @db.Decimal(10, 2)
+  handlingFeeTotal       Decimal                @db.Decimal(10, 2)
+  totalCost              Decimal                @db.Decimal(10, 2)
+  packageCount           Int                    @default(1)
+  isInternational        Boolean                @default(false)
+  notes                  String?
+  estimateBreakdown      Json?
+  createdBy              User                   @relation("ShippingShipmentCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  recipient              Recipient?             @relation(fields: [recipientId], references: [id], onDelete: SetNull)
+  order                  CatalogOrder           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  items                  ShippingShipmentItem[]
+  inventoryLedgerEntries InventoryLedgerEntry[]
+  createdAt              DateTime               @default(now())
+  updatedAt              DateTime               @updatedAt
+
+  @@index([orderId])
+  @@index([createdById])
+  @@index([recipientId])
+  @@index([destinationCountryCode])
+  @@index([status])
+  @@index([billingType])
+  @@index([paymentStatus])
+  @@map("shipping_shipments")
+}
+
+
+
+model InventoryLedgerEntry {
+  id            String                   @id @default(cuid())
+  orderId       String
+  orderItemId   String
+  shipmentId    String?
+  performedById String?
+  entryType     InventoryLedgerEntryType
+  quantity      Int
+  notes         String?
+  metadata      Json?
+  order         CatalogOrder             @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderItem     CatalogOrderItem         @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  shipment      ShippingShipment?        @relation(fields: [shipmentId], references: [id], onDelete: SetNull)
+  performedBy   User?                    @relation("InventoryLedgerPerformedBy", fields: [performedById], references: [id], onDelete: SetNull)
+  createdAt     DateTime                 @default(now())
+
+  @@index([orderId])
+  @@index([orderItemId])
+  @@index([shipmentId])
+  @@index([performedById])
+  @@index([entryType])
+  @@map("inventory_ledger_entries")
+}
+
+model Recipient {
+  id                String             @id @default(cuid())
+  userId            String
+  firstName         String
+  lastName          String
+  companyName       String?
+  email             String?
+  phone             String?
+  addressLine1      String
+  addressLine2      String?
+  city              String
+  state             String?
+  postalCode        String
+  countryCode       String
+  countryName       String
+  notes             String?
+  isDefault         Boolean            @default(false)
+  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  shipments         ShippingShipment[]
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  @@index([userId])
+  @@index([countryCode])
+  @@map("recipients")
+}
+
+model ShippingShipmentItem {
+  id                     String              @id @default(cuid())
+  shipmentId             String
+  orderItemId            String
+  productId              String
+  productCatalogVariantId String?
+  productName            String
+  variantName            String?
+  quantity               Int
+  unitWeightOz           Decimal             @db.Decimal(10, 2)
+  lineWeightOz           Decimal             @db.Decimal(10, 2)
+  packageType            ShippingPackageType
+  shippingProfileName    String?
+  shipment               ShippingShipment    @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  orderItem              CatalogOrderItem    @relation(fields: [orderItemId], references: [id], onDelete: Restrict)
+  product                CatalogProduct      @relation(fields: [productId], references: [id], onDelete: Restrict)
+  productCatalogVariant  CatalogVariant?     @relation(fields: [productCatalogVariantId], references: [id], onDelete: SetNull)
+  createdAt              DateTime            @default(now())
+  updatedAt              DateTime            @updatedAt
+
+  @@index([shipmentId])
+  @@index([orderItemId])
+  @@index([productId])
+  @@map("shipping_shipment_items")
+}
+

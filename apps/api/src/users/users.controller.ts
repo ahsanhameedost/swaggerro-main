@@ -1,0 +1,76 @@
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+  UseGuards
+} from "@nestjs/common";
+import { RequirePermissions } from "../common/decorators/permissions.decorator";
+import { AuthGuard } from "../common/guards/auth.guard";
+import { PermissionsGuard } from "../common/guards/permissions.guard";
+import { parseOrThrow } from "../catalog/common/parse-or-throw";
+import {
+  createEmployeeSchema,
+  listUsersQuerySchema,
+  updateEmployeeSchema
+} from "./user.dto";
+import { UsersService } from "./users.service";
+
+@Controller("users")
+@UseGuards(AuthGuard, PermissionsGuard)
+export class UsersController {
+  constructor(private readonly users: UsersService) {}
+
+  @Get()
+  @RequirePermissions("admin.users.read")
+  async list(@Query() query: unknown) {
+    return {
+      users: await this.users.listUsers(
+        parseOrThrow(listUsersQuerySchema.safeParse(query), "Invalid user query")
+      )
+    };
+  }
+
+  @Get("employee-roles")
+  @RequirePermissions("admin.users.read")
+  async employeeRoles() {
+    return { roles: await this.users.listAssignableRoles() };
+  }
+
+  @Get("employees")
+  @RequirePermissions("admin.users.read")
+  async listEmployees(@Query("search") search?: string) {
+    return { users: await this.users.listEmployees(search) };
+  }
+
+  @Post("employees")
+  @RequirePermissions("admin.users.write")
+  async createEmployee(@Body() body: unknown) {
+    return {
+      user: await this.users.createEmployee(
+        parseOrThrow(createEmployeeSchema.safeParse(body), "Invalid employee payload")
+      )
+    };
+  }
+
+  @Patch("employees/:id")
+  @RequirePermissions("admin.users.write")
+  async updateEmployee(@Param("id") id: string, @Body() body: unknown) {
+    return {
+      user: await this.users.updateEmployee(
+        id,
+        parseOrThrow(updateEmployeeSchema.safeParse(body), "Invalid employee payload")
+      )
+    };
+  }
+
+  @Delete("employees/:id")
+  @RequirePermissions("admin.users.write")
+  async deleteEmployee(@Param("id") id: string) {
+    return await this.users.deleteEmployee(id);
+  }
+}

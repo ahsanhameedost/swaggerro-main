@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Swaggeroo — Client Requirements & Build Scope</title>
+<style>
+  @page { size: A4; margin: 18mm 16mm; }
+  :root{
+    --ink:#1a1a1a; --muted:#5b6470; --line:#e2e5ea; --soft:#f5f6f8; --accent:#2c3e50;
+    --p1:#b3261e; --p2:#c2620a; --p3:#9a7d00; --p4:#1a7f47; --blue:#1f4e8c;
+  }
+  *{ box-sizing:border-box; }
+  html{ -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  body{ font-family:"Segoe UI","Helvetica Neue",Arial,sans-serif; color:var(--ink); font-size:10.5pt; line-height:1.5; margin:0; }
+  .cover{ border-bottom:3px solid var(--accent); padding-bottom:14px; margin-bottom:16px; }
+  .eyebrow{ letter-spacing:3px; font-size:8pt; color:var(--muted); text-transform:uppercase; margin:0 0 6px; }
+  h1{ font-size:22pt; margin:0 0 8px; color:var(--accent); letter-spacing:-0.3px; }
+  .meta{ font-size:9pt; color:var(--muted); }
+  .meta b{ color:var(--ink); }
+  .deadline{ display:inline-block; margin-top:8px; background:#fce8e6; color:var(--p1); font-weight:700; font-size:9.5pt; padding:4px 10px; border-radius:5px; }
+  h2{ font-size:13pt; color:var(--accent); margin:22px 0 8px; border-bottom:1px solid var(--line); padding-bottom:5px; }
+  h3{ font-size:10.8pt; margin:14px 0 5px; color:var(--accent); }
+  p{ margin:7px 0; }
+  ul{ margin:6px 0; padding-left:18px; }
+  li{ margin:3px 0; }
+  code{ font-family:"Consolas","SF Mono",monospace; font-size:8.8pt; background:var(--soft); padding:1px 4px; border-radius:3px; color:#324; }
+  table{ width:100%; border-collapse:collapse; margin:9px 0; font-size:9.2pt; }
+  th{ background:var(--accent); color:#fff; text-align:left; padding:7px 9px; font-weight:600; }
+  td{ border-bottom:1px solid var(--line); padding:7px 9px; vertical-align:top; }
+  tr:nth-child(even) td{ background:var(--soft); }
+  .callout{ border-left:4px solid var(--blue); background:#eaf1fa; padding:10px 14px; margin:12px 0; border-radius:0 5px 5px 0; font-size:9.5pt; }
+  .callout.warn{ border-left-color:var(--p1); background:#fce8e6; }
+  .vert{ border:1px solid var(--line); border-radius:7px; padding:12px 16px; margin:10px 0; break-inside:avoid; }
+  .vert h3{ margin-top:0; }
+  .tag{ display:inline-block; font-size:7.5pt; font-weight:700; letter-spacing:.5px; padding:2px 8px; border-radius:10px; color:#fff; }
+  .t-b2b{ background:#6d28a3; } .t-b2c{ background:#0a6c74; }
+  .todo{ list-style:none; padding-left:0; }
+  .todo li{ padding-left:22px; position:relative; margin:4px 0; }
+  .todo li:before{ content:"\2610"; position:absolute; left:0; font-size:11pt; color:var(--muted); top:-1px; }
+  .todo li.sub{ padding-left:40px; font-size:9.6pt; color:#333; }
+  .todo li.sub:before{ left:18px; font-size:9.5pt; }
+  .phase{ border-radius:6px; padding:3px 10px; color:#fff; font-weight:700; font-size:9.5pt; display:inline-block; margin:14px 0 4px; }
+  .ph1{ background:var(--p1); } .ph2{ background:var(--p2); } .ph3{ background:var(--p3); } .ph4{ background:var(--p4); }
+  .owner{ font-weight:700; color:var(--accent); }
+  .pb{ break-before:page; }
+  footer{ margin-top:24px; padding-top:10px; border-top:1px solid var(--line); font-size:8pt; color:var(--muted); }
+</style>
+</head>
+<body>
+
+<div class="cover">
+  <p class="eyebrow">Client Requirements · Build Scope · To-Do</p>
+  <h1>Swaggeroo — Scope &amp; Action Plan</h1>
+  <p class="meta"><b>Source:</b> "Zak &amp; Saad Swaggeroo Sync" — Fri, Jun 12, 2026 &nbsp;·&nbsp; <b>Prepared:</b> June 15, 2026</p>
+  <div class="deadline">MVP deadline (agreed with Scott): July 1, 2026 — demoable by end of June</div>
+</div>
+
+<h2>Participants &amp; roles</h2>
+<table>
+  <tr><th style="width:32%">Person</th><th>Role</th></tr>
+  <tr><td><b>Saad</b></td><td>Project / business lead (client side). Owns scope, decisions, pricing model.</td></tr>
+  <tr><td><b>Scott</b></td><td>Business owner / final decision-maker for Swaggeroo.</td></tr>
+  <tr><td><b>Abdirizak "Zak" Bashir</b></td><td>Current developer / maintainer. Holds repo, infra, prior-dev context.</td></tr>
+  <tr><td><b>Ahsan Hameed</b> ("Essen"/"Hessen")</td><td>Tech lead — web &amp; design (ninoastech). Filling in for Amar. Leads testing + build going forward.</td></tr>
+  <tr><td><b>Amar</b></td><td>Usual tech lead (on annual leave).</td></tr>
+  <tr><td><i>Previous dev/team</i></td><td>Built current Swaggeroo; <b>disengaged ~1–2 weeks ago</b>. Project moving to Ahsan's team.</td></tr>
+</table>
+
+<h2>1 · Background &amp; direction</h2>
+<ul>
+  <li>Project is being <b>handed to a new team</b> (Ahsan/ninoastech) and effectively <b>re-scoped/rebuilt</b>. The prior status report overstated completion — working assumption is <b>most "working" features are front-end UI only</b>, with little functional backend. Testing this week will confirm.</li>
+  <li>The previous developer <b>copied significant portions from swagup.com</b>. Direction: move toward <b>spygup.com</b>, remove the copied nuance, and <b>identify/remove anything that creates legal/IP risk</b>.</li>
+  <li>Rebrand: apply the new <b>Swaggeroo kangaroo logo</b> (Scott has it) to whatever is kept.</li>
+</ul>
+
+<h2>2 · The two product verticals</h2>
+
+<div class="vert">
+  <h3><span class="tag t-b2b">VERTICAL A · B2B</span>&nbsp; White-label branded merch stores (like SwagUp / SpyGup)</h3>
+  <ul>
+    <li>Swaggeroo gives business clients their <b>own white-labeled store</b> showing the <b>client's branding only</b> (e.g. "EHR's" logo) — <b>not</b> Swaggeroo's.</li>
+    <li>The client's employees / customers visit the page (linked from the client's own website) and place orders.</li>
+    <li>Swaggeroo curates a <b>design library (~100–5,000 designs)</b>; clients pick + customize with their logo / phrases / culture.</li>
+    <li><b>Revenue share</b> (e.g. $50 shirt → Swaggeroo ~$30, client ~$20) — passive income for the client.</li>
+    <li>Fulfillment = <b>drop-ship</b> for these clients.</li>
+  </ul>
+</div>
+
+<div class="vert">
+  <h3><span class="tag t-b2c">VERTICAL B · B2C</span>&nbsp; Swaggeroo's own e-commerce store</h3>
+  <ul>
+    <li>Anyone (consumer, business owner, procurement specialist) can order apparel / merch / swag directly.</li>
+    <li><b>Retail orders (≤ 5 units):</b> fixed published price.</li>
+    <li><b>Bulk / wholesale:</b> <b>custom quote</b> in <b>24–48 hours</b>; bulk pricing kept <b>custom &amp; hidden</b> initially.</li>
+    <li><b>Recurring large accounts</b> (e.g. "Key" ≈ 5,000 Ts/yr): share an <b>annual calendar</b> → pick events + personal items → Swaggeroo builds <b>samples/mockups</b> and fulfills.</li>
+    <li>Must accept <b>both retail and bulk/wholesale</b> orders.</li>
+  </ul>
+</div>
+
+<h2>3 · Swag / package builder (specific demo feedback)</h2>
+<p>Current builder is a <b>front-end placeholder with no backend logic</b> — to be <b>rebuilt custom</b>. Required:</p>
+<ul>
+  <li><b>Upload a custom logo</b> and <b>preview it on the merch</b> (t-shirt, mug, etc.).</li>
+  <li><b>Select multiple products at once</b> (t-shirts, goodies, bags) — current build allows only <b>one item at a time</b>.</li>
+  <li>Set <b>quantities</b> (multiple/bulk).</li>
+  <li>Working <b>"Calculate" / package pricing</b> (currently does nothing).</li>
+  <li>Team must first <b>learn the exact intended flow</b> (confirm with Saad/Scott) before building.</li>
+</ul>
+
+<h2 class="pb">4 · Key decisions &amp; constraints</h2>
+<table>
+  <tr><th style="width:26%">Topic</th><th>Decision / direction</th></tr>
+  <tr><td><b>MVP deadline</b></td><td>July 1, 2026; demoable by end of June.</td></tr>
+  <tr><td><b>Scope</b></td><td>Build <b>both</b> B2B (white-label) and B2C (Swaggeroo store) for MVP.</td></tr>
+  <tr><td><b>Shopping solution</b></td><td><b>Shopify</b> (team has used it before) for the store side.</td></tr>
+  <tr><td><b>Payment gateway</b></td><td><b>TBD.</b> Prior dev used <b>Square</b> (sandbox / possibly trial) — questionable, likely <b>needs rebuild</b>. Decide gateway + set up real merchant account.</td></tr>
+  <tr><td><b>Fulfillment</b></td><td><b>Initially</b> outsource to <b>Abraham's "SOA Marketing Agency"</b>. <b>Long-term:</b> own supply chain / warehouse.</td></tr>
+  <tr><td><b>Pricing model</b></td><td>Bulk = custom/hidden initially. Publish price only for orders of <b>≤ 5 units</b>.</td></tr>
+  <tr><td><b>Branding</b></td><td>Apply new <b>kangaroo logo</b>; remove SwagUp-copied content.</td></tr>
+  <tr><td><b>Project mgmt</b></td><td><b>Google Workspace</b> (only domain/email set up so far — no project tooling yet).</td></tr>
+  <tr><td><b>Tech stack</b></td><td>Inherited stack acceptable; Ahsan to confirm comfort or propose alternatives.</td></tr>
+  <tr><td><b>Hosting</b></td><td>Currently <b>local only</b>. Zak to set up a <b>public preview</b> (Vercel / Sail / Railway).</td></tr>
+  <tr><td><b>Repo access</b></td><td>GitHub invite sent to <b>Ahsan (ninoastech.com)</b>; admin credentials to be emailed to Ahsan + Essen.</td></tr>
+</table>
+
+<h2>5 · Demo findings (observed vs. prior report)</h2>
+<ul>
+  <li><b>Homepage / storefront:</b> exists but UI is "out of sorts" — sizing &amp; responsiveness issues.</li>
+  <li><b>Admin dashboard:</b> exists; CSV import reportedly works (basic check only — re-verify); most other workflows untested.</li>
+  <li><b>Orders / shipping / payments / inventory:</b> not tested / not believed functional. Payments "definitely not."</li>
+  <li><b>Public pages:</b> several are "Coming Soon" placeholders (resources, pricing, company). Contact is built.</li>
+  <li><b>Swag builder:</b> placeholder only, no logic.</li>
+  <li><b>Testing caution:</b> verify nothing is live before placing test orders — must NOT print a real shipping label or trigger charges.</li>
+</ul>
+<div class="callout warn">
+  <b>Conflict to resolve:</b> A direct code review found the <b>bulk import feature is absent</b> in the codebase (both backend importer and dashboard UI), yet Zak stated in the call that import "works." This <b>must be confirmed during testing.</b>
+</div>
+
+<h2>6 · Open questions to resolve</h2>
+<ul>
+  <li><b>Payments:</b> Whose Square account / what plan? Real or dummy? Get config from Scott / prior dev.</li>
+  <li><b>Shipping:</b> Get carrier/config setup details from Scott / prior dev.</li>
+  <li><b>Prior-dev demo:</b> Any recording of a working demo? Possibly request one final demo (Saad's call).</li>
+  <li><b>Swag builder:</b> Confirm the precise intended flow before building.</li>
+  <li><b>Tech stack:</b> Ahsan to confirm keep vs. change.</li>
+  <li><b>Scope doc:</b> Saad drafts before Monday; finalized Tuesday.</li>
+</ul>
+
+<h2 class="pb">7 · To-Do list</h2>
+
+<div class="phase ph1">🔴 This week — Access, testing &amp; info-gathering (due Mon EOB · reconvene Tue)</div>
+<ul class="todo">
+  <li><span class="owner">Zak:</span> Confirm GitHub invite for Ahsan (@ninoastech.com); email <b>admin credentials</b> to Ahsan + Essen.</li>
+  <li><span class="owner">Zak:</span> Stand up a <b>public preview deployment</b> (Vercel / Sail / Railway).</li>
+  <li><span class="owner">Ahsan + team:</span> <b>Full end-to-end testing</b> of every feature in the prior report — log working vs. not.</li>
+  <li class="sub">Admin workflows: products, orders, inventory, shipping settings, users, RBAC, contact messages.</li>
+  <li class="sub"><b>Verify CSV/spreadsheet import really works</b> (conflicts with code review).</li>
+  <li class="sub">Order submission → does it appear in admin "Orders"?</li>
+  <li class="sub">Shipping zones/rates/estimation — <b>without triggering real labels/charges</b>.</li>
+  <li class="sub">Payments (Square sandbox) — does anything function?</li>
+  <li class="sub">Swag pack builder + bulk flow; customer flows (shop, product, cart, project submission, auth).</li>
+  <li><span class="owner">Zak:</span> Run testing in parallel so both sides reach consensus.</li>
+  <li><span class="owner">Zak:</span> Get from Scott / prior dev: <b>Square/payment</b> config (owner, plan, sandbox vs live) + <b>shipping</b> setup.</li>
+  <li><span class="owner">Zak/Saad:</span> Decide whether to request a final demo/recording from the previous dev.</li>
+  <li><span class="owner">Saad:</span> Get the new <b>kangaroo logo</b> from Scott and share with the team.</li>
+</ul>
+
+<div class="phase ph2">🟠 Monday — Scope of work</div>
+<ul class="todo">
+  <li><span class="owner">Saad:</span> Prepare a <b>draft Scope of Work</b> (targeting July 1) — B2B + B2C, payments, Shopify, fulfillment.</li>
+  <li><span class="owner">All:</span> Monday meeting (late morning / early afternoon <b>Eastern</b>) — review draft, give feedback.</li>
+  <li><span class="owner">Ahsan:</span> Confirm tech-stack decision (keep vs. change).</li>
+</ul>
+
+<div class="phase ph3">🟡 Tuesday — Finalize</div>
+<ul class="todo">
+  <li><span class="owner">All:</span> Review consolidated <b>testing results</b>; mark prior-report claims confirmed/false.</li>
+  <li><span class="owner">All:</span> <b>Finalize Scope of Work</b> and divide tasks.</li>
+</ul>
+
+<div class="phase ph4">🟢 MVP build scope (toward July 1)</div>
+
+<h3>Branding &amp; cleanup</h3>
+<ul class="todo">
+  <li>Apply new <b>kangaroo logo</b> &amp; branding throughout.</li>
+  <li><b>Remove SwagUp-copied content</b>; audit for IP/legal risk and replace flagged pieces.</li>
+  <li>Fix homepage/storefront <b>UI sizing &amp; responsiveness</b>.</li>
+  <li>Build out <b>placeholder pages</b>: resources, pricing, company (contact already built).</li>
+</ul>
+
+<h3>B2B — White-label stores</h3>
+<ul class="todo">
+  <li><b>Pitch/landing experience</b> marketing the white-label offering to businesses.</li>
+  <li><b>White-label store</b> with the <b>client's branding only</b>.</li>
+  <li><b>Design library</b> with client customization (logo, phrases).</li>
+  <li>Link/embed model so clients surface their store from their own site.</li>
+  <li><b>Revenue-share</b> accounting + <b>drop-ship</b> fulfillment wiring.</li>
+</ul>
+
+<h3>B2C — Swaggeroo store</h3>
+<ul class="todo">
+  <li><b>E-commerce store (Shopify)</b> supporting <b>retail (≤5, fixed)</b> and <b>bulk/wholesale</b>.</li>
+  <li><b>Custom quote request</b> flow (24–48h); bulk pricing hidden initially.</li>
+  <li><b>Recurring-account / calendar</b> ordering (calendar → events → mockups → fulfill).</li>
+  <li><b>Sample / mockup generation</b> workflow.</li>
+</ul>
+
+<h3>Swag / package builder (rebuild)</h3>
+<ul class="todo">
+  <li>Custom <b>logo upload + live preview on merch</b>.</li>
+  <li><b>Multi-product selection</b> + quantities in one flow.</li>
+  <li>Working <b>price calculation</b>.</li>
+  <li>Confirm exact flow with Saad/Scott before building.</li>
+</ul>
+
+<h3>Payments &amp; fulfillment</h3>
+<ul class="todo">
+  <li>Decide gateway (Square vs. alternative); set up <b>real merchant account</b>; integrate.</li>
+  <li>Integrate <b>SOA Marketing Agency</b> for initial fulfillment; plan in-house supply chain.</li>
+</ul>
+
+<h3>Infrastructure</h3>
+<ul class="todo">
+  <li>Replace local-only setup with a real hosting/deploy path; production-harden as scope allows.</li>
+</ul>
+
+<footer>
+  Prepared from the Jun 12 sync transcript, cross-referenced against a direct review of the Swaggeroo source.
+  Status notes (§5) reflect both the meeting discussion and the code as it currently stands.
+</footer>
+
+</body>
+</html>

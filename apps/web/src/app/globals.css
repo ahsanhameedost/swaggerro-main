@@ -1,0 +1,305 @@
+@import "tailwindcss";
+@plugin "./hero.ts";
+/* scan your app */
+@source './**/*.{js,ts,jsx,tsx,mdx}';
+@source '../**/*.{js,ts,jsx,tsx,mdx}';
+
+/* scan HeroUI (add BOTH hoisted + non-hoisted node_modules paths) */
+@source '../../node_modules/@heroui/theme/dist/**/*.{js,ts,jsx,tsx}';
+@source '../../node_modules/@heroui/react/dist/**/*.{js,ts,jsx,tsx}';
+@source '../../../../node_modules/@heroui/theme/dist/**/*.{js,ts,jsx,tsx}';
+@source '../../../../node_modules/@heroui/react/dist/**/*.{js,ts,jsx,tsx}';
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --primary: #1c83ff;
+  --secondary: #000000;
+  --primary-gradient: linear-gradient(90deg, #1c83ff 0%, #1c83ff 100%);
+  --container-max: 90rem;
+  --container-pad: clamp(1rem, 4vw, 2rem);
+
+}
+
+@theme inline {
+  --primary: var(--primary);
+  --secondary: var(--secondary);
+}
+
+html,
+body {
+  height: 100%;
+}
+
+@layer base {
+  body {
+    background: #ffffff;
+  }
+
+  /* typography */
+  h1,
+  h2,
+  h3,
+  h4,
+  h5 {
+    font-family: var(--font-poppins);
+  }
+
+  h1 {
+    font-weight: 700;
+    font-size: clamp(2.25rem, 5.5vw, 3rem);
+    line-height: 1.1;
+  }
+
+  h2 {
+    font-family: var(--font-poppins);
+    font-weight: 700;
+    font-size: clamp(2rem, 5.5vw, 3rem);
+    line-height: 1.2;
+  }
+
+  h3 {
+    font-family: var(--font-poppins);
+    font-weight: 600;
+    font-size: clamp(1.75rem, 5vw, 2.5rem);
+    line-height: 1.2;
+  }
+
+  h4 {
+    font-family: var(--font-poppins);
+    font-weight: 600;
+    font-size: clamp(1.25rem, 4vw, 2rem);
+    line-height: 1.3;
+  }
+
+  h5 {
+    font-family: var(--font-poppins);
+    font-weight: 500;
+    font-size: clamp(1rem, 3.5vw, 1.5rem);
+    line-height: 1.3;
+  }
+
+  .text1 {
+    font-family: var(--font-inter);
+    font-size: clamp(0.875rem, 2.2vw, 1.125rem);
+    font-weight: 400;
+    line-height: 1.5;
+    color: rgba(0, 0, 0, 0.6);
+  }
+
+  .text2 {
+    font-family: var(--font-inter);
+    font-size: clamp(0.875rem, 2vw, 1rem);
+    font-weight: 400;
+    line-height: 1.5;
+    color: rgba(0, 0, 0, 0.6);
+  }
+
+  .text3 {
+    font-family: var(--font-inter);
+    font-size: clamp(0.75rem, 1.6vw, 0.875rem);
+    font-weight: 400;
+    line-height: 1.4;
+    color: rgba(0, 0, 0, 0.6);
+  }
+}
+
+.font-gemunu-libre {
+  font-family: var(--gemunu-libre);
+}
+
+.font-geist {
+  font-family: var(--font-geist);
+}
+
+.container {
+  width: 100%;
+  max-width: var(--container-max);
+  margin-inline: auto;
+  padding-inline: max(var(--container-pad), env(safe-area-inset-left, 0px));
+  padding-right: max(var(--container-pad), env(safe-area-inset-right, 0px));
+}
+
+.padding-section-xs {
+  padding-top: 1rem;
+  padding-bottom: 1rem;
+}
+
+.padding-section-md {
+  padding-top: 3rem;
+  padding-bottom: 3rem;
+}
+
+.btn-primary {
+  background-image: var(--primary-gradient);
+  color: #fff;
+  border-radius: 9999px;
+  font-family: var(--font-inter);
+}
+
+.text-primary-gradient {
+  background-image: var(--primary-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+}
+
+@layer utilities {
+  @keyframes playPulse {
+    0% {
+      transform: scale(1);
+      opacity: 0.35;
+    }
+
+    70% {
+      transform: scale(1.9);
+      opacity: 0;
+    }
+
+    100% {
+      transform: scale(1.9);
+      opacity: 0;
+    }
+  }
+
+  .animate-playPulse {
+    animation: playPulse 2.2s ease-out infinite;
+  }
+}
+
+@keyframes soaswag-orbit-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes soaswag-orbit-upright {
+  to {
+    transform: rotate(-360deg);
+  }
+}
+
+.soaswag-orbit-spin {
+  animation: soaswag-orbit-spin var(--orbit-duration) linear infinite;
+}
+
+.soaswag-orbit-upright {
+  animation: soaswag-orbit-upright var(--orbit-duration) linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+  .soaswag-orbit-spin,
+  .soaswag-orbit-upright {
+    animation: none !important;
+  }
+}
+
+@keyframes soaswag-marquee {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+
+  to {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+@layer utilities {
+  .soaswag-marquee {
+    --duration: 110s;
+    overflow: hidden;
+  }
+
+  .soaswag-marquee-track {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 0.5rem;
+    width: max-content;
+    will-change: transform;
+    animation: soaswag-marquee var(--duration) linear infinite;
+  }
+
+  .soaswag-tile {
+    margin-left: -1px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .soaswag-marquee-track {
+      animation: none;
+      transform: translate3d(0, 0, 0);
+    }
+  }
+}
+
+@layer utilities {
+  .soaswag-expand-row {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+
+  @media (min-width: 768px) {
+    .soaswag-expand-row {
+      grid-template-columns: var(--c1, 1fr) var(--c2, 1fr) var(--c3, 1fr);
+      transition: grid-template-columns 550ms cubic-bezier(0.2, 0.8, 0.2, 1);
+      align-items: stretch;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .soaswag-expand-row {
+      transition: none;
+    }
+  }
+}
+
+.cc-scroll {
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: var(--primary) transparent;
+}
+
+.cc-scroll::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+.cc-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.cc-scroll::-webkit-scrollbar-thumb {
+  background-image: var(--primary-gradient, linear-gradient(90deg, #c41e3a 0%, #fd0000 100%));
+  border-radius: 999px;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.ql-editor h1 {
+  @apply text-4xl;
+}
+.ql-editor h2 {
+  @apply text-3xl;
+}
+.ql-editor h3 {
+  @apply text-2xl;
+}
+.ql-editor blockquote {
+  @apply border-l-4 pl-4 italic text-gray-600 my-4;
+}
+.ql-editor a {
+  @apply text-blue-600 underline;
+}
+
+.ql-container {
+  min-height: 200px;
+}
+
+.ql-editor {
+  min-height: 160px;
+}

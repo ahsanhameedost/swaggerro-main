@@ -1,0 +1,65 @@
+name: Build and Push Docker Image to AWS ECR
+
+on:
+  push:
+    branches:
+      - devops
+      - main
+
+permissions:
+  id-token: write  # Required for OIDC token
+  contents: write
+  packages: write
+  actions: write
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          ref: devops 
+
+        
+      - name: Configure AWS credentials using OIDC
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          role-to-assume: arn:aws:iam::${{ secrets.ACCOUNT_ID }}:role/${{ secrets.OIDC_ROLE_NAME }}
+          aws-region: us-east-2
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+
+      - name: Build Docker web image
+        run: |
+          docker build -f apps/web/Dockerfile -t 866645635058.dkr.ecr.us-east-2.amazonaws.com/soaswag/web:latest .
+
+      - name: Build Docker api image
+        run: |
+          docker build -f apps/api/Dockerfile -t 866645635058.dkr.ecr.us-east-2.amazonaws.com/soaswag/api:latest .
+          
+      - name: Push Docker web image to ECR
+        run: |
+          docker push 866645635058.dkr.ecr.us-east-2.amazonaws.com/soaswag/web:latest
+
+      - name: Push Docker backend image to ECR
+        run: |
+          docker push 866645635058.dkr.ecr.us-east-2.amazonaws.com/soaswag/api:latest
+
+      - name: Force ECS deployment api
+        run: |
+          aws ecs update-service \
+          --cluster soaswag-cluster \
+          --service soaswag-api \
+          --force-new-deployment
+          
+      - name: Force ECS deployment
+        run: |
+          aws ecs update-service \
+          --cluster soaswag-cluster \
+          --service soaswag-web \
+          --force-new-deployment

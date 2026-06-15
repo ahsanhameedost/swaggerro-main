@@ -1,0 +1,23 @@
+{
+  "name": "soaswag",
+  "private": true,
+  "packageManager": "pnpm@9.0.0",
+  "engines": {
+    "node": ">=20.9.0"
+  },
+  "scripts": {
+    "dev": "concurrently -n web,api -c auto \"pnpm --filter @soaswag/web dev\" \"pnpm --filter @soaswag/api dev\"",
+    "build": "pnpm -r build",
+    "lint": "pnpm -r lint",
+    "format": "prettier -w .",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down -v",
+    "db:push": "pnpm --filter @soaswag/api db:push",
+    "db:seed": "pnpm --filter @soaswag/api db:seed",
+    "db:studio": "pnpm --filter @soaswag/api db:studio"
+  },
+  "devDependencies": {
+    "concurrently": "9.2.1",
+    "prettier": "3.8.1"
+  }
+}

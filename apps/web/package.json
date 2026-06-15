@@ -1,0 +1,43 @@
+{
+  "name": "@soaswag/web",
+  "private": true,
+  "type": "module",
+  "version": "0.1.0",
+  "scripts": {
+    "dev": "next dev -p 3000",
+    "build": "next build",
+    "start": "next start -p 3000",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@heroicons/react": "2.2.0",
+    "@heroui/react": "2.8.9",
+    "@heroui/toast": "2.0.20",
+    "@hookform/resolvers": "5.2.2",
+    "@tanstack/react-query": "^5.90.21",
+    "framer-motion": "^12.34.3",
+    "lucide-react": "0.575.0",
+    "dayjs": "^1.11.20",
+    "next": "16.1.6",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "react-hook-form": "7.71.2",
+    "zod": "4.3.6",
+    "zustand": "^5.0.11",
+    "react-quill-new": "^3.6.0",
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "4.2.0",
+    "@types/node": "^20.0.0",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "eslint": "10.0.1",
+    "eslint-config-next": "16.1.6",
+    "postcss": "^8.4.38",
+    "tailwindcss": "4.2.0",
+    "typescript": "5.9.3"
+  }
+}

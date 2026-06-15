@@ -1,0 +1,26 @@
+import { z } from "zod";
+
+export const listUsersQuerySchema = z.object({
+  search: z.string().trim().max(100).optional(),
+  role: z.string().trim().min(1).max(80).optional()
+});
+
+const employeeBaseSchema = z.object({
+  email: z.string().trim().email().max(160),
+  firstName: z.string().trim().min(1, "First name is required").max(80),
+  lastName: z.string().trim().min(1, "Last name is required").max(80),
+  phone: z.string().trim().max(40).optional().nullable(),
+  roleId: z.string().trim().min(1, "Role is required")
+});
+
+export const createEmployeeSchema = employeeBaseSchema.extend({
+  password: z.string().min(8).max(100)
+});
+
+export const updateEmployeeSchema = employeeBaseSchema.extend({
+  password: z.string().min(8).max(100).optional().nullable()
+});
+
+export type ListUsersQueryDto = z.infer<typeof listUsersQuerySchema>;
+export type CreateEmployeeDto = z.infer<typeof createEmployeeSchema>;
+export type UpdateEmployeeDto = z.infer<typeof updateEmployeeSchema>;
