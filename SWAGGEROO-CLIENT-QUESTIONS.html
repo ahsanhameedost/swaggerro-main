@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Swaggeroo — Questions for the Client</title>
+<style>
+  @page { size: A4; margin: 18mm 16mm; }
+  :root{
+    --ink:#1a1a1a; --muted:#5b6470; --line:#e2e5ea; --soft:#f5f6f8; --accent:#2c3e50;
+    --p1:#b3261e; --blue:#1f4e8c;
+  }
+  *{ box-sizing:border-box; }
+  html{ -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  body{ font-family:"Segoe UI","Helvetica Neue",Arial,sans-serif; color:var(--ink); font-size:10.5pt; line-height:1.5; margin:0; }
+  .cover{ border-bottom:3px solid var(--accent); padding-bottom:14px; margin-bottom:16px; }
+  .eyebrow{ letter-spacing:3px; font-size:8pt; color:var(--muted); text-transform:uppercase; margin:0 0 6px; }
+  h1{ font-size:22pt; margin:0 0 8px; color:var(--accent); letter-spacing:-0.3px; }
+  .meta{ font-size:9pt; color:var(--muted); }
+  .meta b{ color:var(--ink); }
+  .deadline{ display:inline-block; margin-top:8px; background:#fce8e6; color:var(--p1); font-weight:700; font-size:9.5pt; padding:4px 10px; border-radius:5px; }
+  h2{ font-size:13pt; color:var(--accent); margin:22px 0 8px; border-bottom:1px solid var(--line); padding-bottom:5px; break-after:avoid; }
+  .sec{ break-inside:avoid; }
+  p{ margin:7px 0; }
+  ol{ margin:6px 0; padding-left:22px; }
+  li{ margin:6px 0; }
+  li b{ color:var(--accent); }
+  .callout{ border-left:4px solid var(--blue); background:#eaf1fa; padding:10px 14px; margin:12px 0; border-radius:0 5px 5px 0; font-size:9.6pt; }
+  .callout.warn{ border-left-color:var(--p1); background:#fce8e6; }
+  .note{ font-size:9pt; color:var(--muted); font-style:italic; }
+  footer{ margin-top:24px; padding-top:10px; border-top:1px solid var(--line); font-size:8pt; color:var(--muted); }
+</style>
+</head>
+<body>
+
+<div class="cover">
+  <p class="eyebrow">Meeting Checklist · Questions Only</p>
+  <h1>Swaggeroo — Questions for the Client</h1>
+  <p class="meta"><b>Prepared:</b> June 15, 2026 &nbsp;·&nbsp; <b>Purpose:</b> Questions to ask Saad / Scott to lock scope and unblock the remaining work.</p>
+  <div class="deadline">Target: July 1, 2026 MVP — demoable by end of June</div>
+</div>
+
+<p>This is a <b>questions-only</b> list for the meeting. See the Scope &amp; TODO and Verified-Status documents for the detailed findings behind each point.</p>
+
+<div class="sec">
+<h2>1. Checkout &amp; Payments <span style="font-size:9pt;color:var(--p1)">(highest priority — currently blocked)</span></h2>
+<div class="callout warn">Product add now works on local (S3 removed, switched to local storage). The one thing still failing is the <b>checkout page</b> — the order does not go through. Before we fix it properly we need these answers:</div>
+<ol>
+  <li><b>Which payment gateway should we finalize for the MVP?</b> Square (already half-integrated, sandbox only), or switch to Stripe / something else?</li>
+  <li><b>Whose merchant account do we use?</b> We need real (live) credentials — account owner, plan, and whether it's a real account or a trial/dummy.</li>
+  <li>Should checkout go <b>live (real charges)</b> for the MVP demo, or stay in <b>sandbox / test mode</b> until launch?</li>
+  <li>For <b>bulk / wholesale</b> orders — should checkout collect payment at all, or just submit a <b>quote request</b> (no payment, 24–48h follow-up)?</li>
+  <li>What exactly should happen <b>after a successful checkout</b> — order confirmation email? Order appears in the admin dashboard? Anything else?</li>
+  <li>Do you want <b>guest checkout</b>, or must the customer have an account to place an order?</li>
+</ol>
+</div>
+
+<div class="sec">
+<h2>2. Storage &amp; Hosting</h2>
+<ol start="7">
+  <li>We removed the <b>S3</b> dependency and moved uploads to <b>local storage</b> to unblock product creation. For production, do you want us to (a) keep local, (b) re-enable S3 with your AWS account, or (c) use a different provider?</li>
+  <li><b>Where should the app be hosted/deployed?</b> (Vercel / Railway / your own AWS, etc.) It only runs locally now — we need a target before we can stand up a public preview.</li>
+  <li>Do you own the <b>AWS account</b> referenced in the existing CI/CD pipeline, or should we set up fresh infrastructure?</li>
+</ol>
+</div>
+
+<div class="sec">
+<h2>3. Shopify vs. the current custom build</h2>
+<ol start="10">
+  <li>The notes say the e-commerce side should use <b>Shopify</b>. Do you want us to <b>migrate the store to Shopify</b>, or <b>keep and finish the existing custom build</b> we already have working? <span class="note">(Major direction decision — it changes most of the remaining plan.)</span></li>
+  <li>If Shopify: is that for the <b>whole store</b>, or only the B2C retail piece (keep custom for B2B white-label + swag builder)?</li>
+</ol>
+</div>
+
+<div class="sec">
+<h2>4. Swag / Package Builder <span style="font-size:9pt;color:var(--muted)">(needs rebuild — exact flow unknown)</span></h2>
+<ol start="12">
+  <li>Walk us through the <b>exact intended flow</b> of the swag/package builder, step by step.</li>
+  <li>Should a customer <b>upload their logo and see it previewed</b> on each product (shirt, mug, bag)?</li>
+  <li>Should they <b>select multiple products in one package</b> (current build allows only one at a time)? With per-product quantities?</li>
+  <li>How should <b>package pricing be calculated</b> — what's the formula / rules? (The current "Calculate" button does nothing.)</li>
+</ol>
+</div>
+
+<div class="sec">
+<h2>5. B2B — White-label branded stores</h2>
+<ol start="16">
+  <li>For the <b>white-label stores</b>, what's the exact setup — does each client get their <b>own branded page/subdomain</b>? How is it created (self-serve, or we set it up)?</li>
+  <li>The <b>design library</b> — roughly how many designs at launch, and who supplies them? How does a client customize a design (logo, phrases, colours)?</li>
+  <li><b>Revenue-share</b> — confirm the model and split (e.g. $50 shirt → Swaggeroo $30 / client $20). How is the client's share tracked and paid out?</li>
+  <li>How does a client <b>embed/link</b> their store from their own website?</li>
+</ol>
+</div>
+
+<div class="sec">
+<h2>6. B2C — Swaggeroo's own store</h2>
+<ol start="20">
+  <li>Confirm the rule: <b>retail = 5 units or fewer at a fixed published price</b>; anything larger = <b>custom hidden quote</b>. Still correct?</li>
+  <li>For the <b>custom quote</b> flow — what info do we collect, and what's the 24–48h turnaround process on your side?</li>
+  <li><b>Recurring large accounts</b> (e.g. "Key" ~5,000 shirts/year, annual calendar → events → mockups): <b>in scope for July 1</b>, or a later phase?</li>
+</ol>
+</div>
+
+<div class="sec">
+<h2>7. Fulfillment &amp; Shipping</h2>
+<ol start="23">
+  <li><b>SOA Marketing Agency</b> (Abraham) for initial apparel fulfillment — how do orders reach them? Manual hand-off, email, or a real integration for the MVP?</li>
+  <li>Do you want <b>real carrier shipping rates</b> (live rates via Shippo/carrier API), or are <b>manual flat/zone rates</b> fine for now?</li>
+  <li>Are there <b>products that ship from different places</b> (drop-ship vs. warehouse) we need to account for?</li>
+</ol>
+</div>
+
+<div class="sec">
+<h2>8. Branding, Content &amp; Pages</h2>
+<ol start="26">
+  <li>Can you send the <b>new kangaroo logo</b> and brand guidelines (colours, fonts) to apply across the site?</li>
+  <li>The previous build <b>copied content/design from swagup.com</b>. Any pages/sections flagged as <b>legal/IP risk</b> that must be removed or rewritten first?</li>
+  <li>The <b>4 "Coming Soon" pages</b> (Company, Platform, Pricing, Resources) — <b>in scope for July 1</b>? Who provides the copy?</li>
+  <li><b>Testimonials and the homepage video</b> are placeholder/dummy. Do you have real ones, or keep placeholders for the demo?</li>
+</ol>
+</div>
+
+<div class="sec">
+<h2>9. Scope &amp; Priorities for July 1</h2>
+<ol start="30">
+  <li>Of everything above, what are your <b>top 3 must-haves</b> for the July 1 demo vs. what can wait for a later phase?</li>
+  <li>Is <b>bulk product import (CSV/Excel upload)</b> needed for the MVP? <span class="note">(The previous report claimed it was done, but it does not exist in the code — it would need to be built.)</span></li>
+  <li>Do you need <b>SKU codes</b> on products? <span class="note">(Not currently in the system at all.)</span></li>
+  <li>Who is the <b>single point of contact</b> for sign-off on scope and for answering questions during the build?</li>
+</ol>
+</div>
+
+<footer>
+  Prepared as a meeting checklist. Pair with the Scope &amp; TODO and the Verified-Status documents for the full technical detail behind each question.
+</footer>
+
+</body>
+</html>
