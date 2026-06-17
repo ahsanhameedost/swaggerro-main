@@ -72,7 +72,7 @@ function LoginContent() {
         <>
           Don&apos;t have an account?{" "}
           <Link
-            href={`/signup?next=${encodeURIComponent(next)}`}
+            href={next && next !== "/dashboard" ? `/signup?next=${encodeURIComponent(next)}` : "/signup"}
             className="font-medium text-danger transition hover:opacity-80"
           >
             Create one

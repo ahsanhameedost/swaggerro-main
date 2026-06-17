@@ -8,8 +8,11 @@ import { useCatalogOrder } from "@/lib/queries.catalog";
 import { formatMoney } from "@/lib/money";
 import { useMe } from "@/queries/auth";
 import { SquareCardPaymentForm } from "@/app/components/dashboard/orders/SquareCardPaymentForm";
+import { TestPaymentForm } from "@/app/components/dashboard/orders/TestPaymentForm";
 import { formatItemTypeLabel, formatOrderTypeLabel } from "@/lib/order-flow";
 import { hasPermission } from "@/lib/permissions";
+
+const PAYMENTS_TEST_MODE = process.env.NEXT_PUBLIC_PAYMENTS_TEST_MODE === "true";
 
 const CHECKOUT_STEPS = [
   { key: "review", label: "Review Order" },
@@ -189,7 +192,7 @@ export default function OrderCheckoutPage() {
 
         <div className="flex items-center gap-2 rounded-full bg-content1 px-4 py-2 text-sm text-foreground/65">
           <LockKeyhole className="size-4" />
-          Secure checkout powered by Square
+          {PAYMENTS_TEST_MODE ? "Test checkout (no real charge)" : "Secure checkout powered by Square"}
         </div>
       </div>
 
@@ -275,15 +278,24 @@ export default function OrderCheckoutPage() {
                 </div>
               </div>
 
-              <SquareCardPaymentForm
-                orderId={order.id}
-                amount={order.totalDue}
-                currency={order.currency}
-                customerName={order.name}
-                email={order.email}
-                phone={order.phone}
-                onSuccess={() => router.refresh()}
-              />
+              {PAYMENTS_TEST_MODE ? (
+                <TestPaymentForm
+                  orderId={order.id}
+                  amount={order.totalDue}
+                  currency={order.currency}
+                  onSuccess={() => router.refresh()}
+                />
+              ) : (
+                <SquareCardPaymentForm
+                  orderId={order.id}
+                  amount={order.totalDue}
+                  currency={order.currency}
+                  customerName={order.name}
+                  email={order.email}
+                  phone={order.phone}
+                  onSuccess={() => router.refresh()}
+                />
+              )}
             </CardBody>
           </Card>
         </div>

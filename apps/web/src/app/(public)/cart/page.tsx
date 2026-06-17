@@ -13,11 +13,10 @@ import { useMe } from "@/queries/auth";
 
 export default function CartPage() {
   const router = useRouter();
+  const { data: user } = useMe();
 
   const [hydrated, setHydrated] = useState(false);
   useEffect(() => setHydrated(true), []);
-
-  const { data: user } = useMe();
 
   const bulkItems = useCatalogCartStore((state) => state.bulkItems);
   const swagPackItems = useCatalogCartStore((state) => state.swagPackItems);
@@ -78,10 +77,14 @@ export default function CartPage() {
       return;
     }
 
-    // Require an account before checkout. Guests are sent to sign in/up first,
-    // then returned to the project details page (cart persists in localStorage).
+    // Project details + design approval require a customer account, so sign-in is mandatory.
     if (!user) {
-      router.push("/login?next=/project-submittion");
+      addToast({
+        title: "Sign in to continue",
+        description: "Create an account or log in to submit your project request.",
+        color: "primary"
+      });
+      router.push(`/login?next=${encodeURIComponent("/project-submittion")}`);
       return;
     }
 

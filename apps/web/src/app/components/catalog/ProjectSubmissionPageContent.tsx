@@ -20,9 +20,24 @@ import { createCatalogImageUpload, uploadFileToPresignedUrl } from "@/lib/catalo
 import { formatMoney } from "@/lib/money";
 
 const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"] as const;
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function buildFullName(firstName?: string | null, lastName?: string | null) {
   return [firstName, lastName].filter(Boolean).join(" ").trim();
+}
+
+function isValidEmail(value: string) {
+  return EMAIL_REGEX.test(value.trim());
+}
+
+function formatRequirementList(items: string[]) {
+  if (items.length <= 1) {
+    return items.join("");
+  }
+  if (items.length === 2) {
+    return `${items[0]} and ${items[1]}`;
+  }
+  return `${items.slice(0, -1).join(", ")}, and ${items[items.length - 1]}`;
 }
 
 export function ProjectSubmissionPageContent() {
@@ -72,6 +87,7 @@ export function ProjectSubmissionPageContent() {
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [logoKey, setLogoKey] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [touched, setTouched] = useState<{ name?: boolean; email?: boolean; budget?: boolean }>({});
 
   useEffect(() => {
     if (!user) {
@@ -94,16 +110,35 @@ export function ProjectSubmissionPageContent() {
     setLogoKey((current) => current ?? swagPackLogoKey);
   }, [swagPackLogoUrl, swagPackLogoKey]);
 
+  const trimmedName = name.trim();
+  const emailIsValid = isValidEmail(email);
+  const budgetValue = Number(budgetPerPerson);
+  const budgetIsValid = Number.isFinite(budgetValue) && budgetValue > 0;
+
+  const missingRequirements: string[] = [];
+  if (!trimmedName) {
+    missingRequirements.push("your full name");
+  }
+  if (!emailIsValid) {
+    missingRequirements.push("a valid business email");
+  }
+  if (!budgetIsValid) {
+    missingRequirements.push("a budget per swag pack/person");
+  }
+
+  const isBusy = submitMutation.isPending || uploading;
+
   const canSubmit =
     summary.hasItems &&
     !summary.hasMissingPackaging &&
     !summary.hasInvalidBulkQuantities &&
     !summary.hasInvalidSwagPackQuantities &&
-    !!name.trim() &&
-    !!email.trim() &&
-    Number(budgetPerPerson) > 0 &&
-    !submitMutation.isPending &&
-    !uploading;
+    missingRequirements.length === 0 &&
+    !isBusy;
+
+  const disabledReason = missingRequirements.length
+    ? `To submit, please provide ${formatRequirementList(missingRequirements)}.`
+    : null;
 
   const uploadLogo = async (file: File) => {
     if (!ACCEPTED_IMAGE_TYPES.includes(file.type as (typeof ACCEPTED_IMAGE_TYPES)[number])) {
@@ -174,18 +209,21 @@ export function ProjectSubmissionPageContent() {
       return;
     }
 
-    if (!name.trim() || !email.trim()) {
+    // Surface inline field errors if anything required is missing.
+    setTouched({ name: true, email: true, budget: true });
+
+    if (!trimmedName || !emailIsValid) {
       addToast({
         title: "Missing contact details",
-        description: "Please provide your name and email.",
+        description: "Please provide your name and a valid business email.",
         color: "warning"
       });
       return;
     }
 
-    const parsedBudget = Number(budgetPerPerson);
+    const parsedBudget = budgetValue;
 
-    if (!Number.isFinite(parsedBudget) || parsedBudget <= 0) {
+    if (!budgetIsValid) {
       addToast({
         title: "Budget required",
         description: "Please enter your estimated budget per swag pack or person.",
@@ -233,8 +271,8 @@ export function ProjectSubmissionPageContent() {
       clearCart();
 
       addToast({
-        title: "Request submitted",
-        description: "We received your project. Our team will follow up shortly.",
+        title: "Project request submitted",
+        description: "Your order is now available from your dashboard.",
         color: "success"
       });
 
@@ -325,8 +363,33 @@ export function ProjectSubmissionPageContent() {
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-2">
-                  <Input label="Full name" value={name} onValueChange={setName} />
-                  <Input label="Business email" type="email" value={email} onValueChange={setEmail} />
+                  <Input
+                    label="Full name"
+                    value={name}
+                    onValueChange={setName}
+                    isRequired
+                    onBlur={() => setTouched((current) => ({ ...current, name: true }))}
+                    isInvalid={Boolean(touched.name) && !trimmedName}
+                    errorMessage={
+                      touched.name && !trimmedName ? "Please enter your full name." : undefined
+                    }
+                  />
+                  <Input
+                    label="Business email"
+                    type="email"
+                    value={email}
+                    onValueChange={setEmail}
+                    isRequired
+                    onBlur={() => setTouched((current) => ({ ...current, email: true }))}
+                    isInvalid={Boolean(touched.email) && !emailIsValid}
+                    errorMessage={
+                      touched.email && !emailIsValid
+                        ? email.trim()
+                          ? "Please enter a valid email address."
+                          : "Please enter your business email."
+                        : undefined
+                    }
+                  />
                   <Input label="Company name" value={companyName} onValueChange={setCompanyName} />
                   <Input label="Phone" value={phone} onValueChange={setPhone} />
                 </div>
@@ -344,6 +407,13 @@ export function ProjectSubmissionPageContent() {
                   onValueChange={setBudgetPerPerson}
                   placeholder="126.48"
                   isRequired
+                  onBlur={() => setTouched((current) => ({ ...current, budget: true }))}
+                  isInvalid={Boolean(touched.budget) && !budgetIsValid}
+                  errorMessage={
+                    touched.budget && !budgetIsValid
+                      ? "Please enter a budget greater than 0."
+                      : undefined
+                  }
                 />
 
                 <Input
@@ -409,23 +479,31 @@ export function ProjectSubmissionPageContent() {
                 </div>
               </div>
 
-              <div className="flex flex-wrap gap-3 border-t border-black/10 pt-6">
-                <Button
-                  color="primary"
-                  className="h-12 min-w-[220px] text-white"
-                  style={{ backgroundImage: "var(--primary-gradient)" }}
-                  onPress={handleSubmit}
-                  isDisabled={!canSubmit}
-                  isLoading={submitMutation.isPending || uploading}
-                >
-                  Request mockups
-                </Button>
-
-                <Link href="/cart">
-                  <Button variant="bordered" className="h-12">
-                    Back to cart
+              <div className="space-y-3 border-t border-black/10 pt-6">
+                <div className="flex flex-wrap gap-3">
+                  <Button
+                    color="primary"
+                    className="h-12 min-w-[220px] text-white"
+                    style={{ backgroundImage: "var(--primary-gradient)" }}
+                    onPress={handleSubmit}
+                    isDisabled={!canSubmit}
+                    isLoading={isBusy}
+                  >
+                    Submit Project Request
                   </Button>
-                </Link>
+
+                  <Link href="/cart">
+                    <Button variant="bordered" className="h-12">
+                      Back to cart
+                    </Button>
+                  </Link>
+                </div>
+
+                {disabledReason ? (
+                  <p className="text-sm text-warning-600" role="status">
+                    {disabledReason}
+                  </p>
+                ) : null}
               </div>
             </CardBody>
           </Card>
@@ -449,10 +527,16 @@ export function ProjectSubmissionPageContent() {
                   style={{ backgroundImage: "var(--primary-gradient)" }}
                   onPress={handleSubmit}
                   isDisabled={!canSubmit}
-                  isLoading={submitMutation.isPending || uploading}
+                  isLoading={isBusy}
                 >
-                  Request mockups
+                  Submit Project Request
                 </Button>
+
+                {disabledReason ? (
+                  <p className="text-sm text-warning-600" role="status">
+                    {disabledReason}
+                  </p>
+                ) : null}
               </div>
 
               <div className="border-t border-black/10 pt-6">

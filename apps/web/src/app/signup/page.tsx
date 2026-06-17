@@ -113,7 +113,7 @@ function SignupContent() {
         <>
           Already have an account?{" "}
           <Link
-            href={`/login?next=${encodeURIComponent(next)}`}
+            href={next && next !== "/dashboard" ? `/login?next=${encodeURIComponent(next)}` : "/login"}
             className="font-medium text-danger transition hover:opacity-80"
           >
             Sign in

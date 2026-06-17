@@ -53,8 +53,13 @@ const schema = z.object({
   SQUARE_ACCESS_TOKEN: z.string().optional(),
   SQUARE_LOCATION_ID: z.string().optional(),
   SQUARE_API_VERSION: z.string().default("2026-01-22"),
+
+  // When true, order payments are mocked as successful instead of calling Square.
+  // For local/testing only — never enable in production.
+  PAYMENTS_TEST_MODE: boolFromEnv(false),
 });
 
 const parsed = schema.parse(process.env);
 
+// env loaded via dotenv at process start
 export const env = parsed;

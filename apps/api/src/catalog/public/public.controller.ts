@@ -1,7 +1,6 @@
 import { Body, Controller, Get, Param, Post, Query, Req, UseGuards } from "@nestjs/common";
 import type { FastifyRequest } from "fastify";
-import type { AuthUser } from "../../common/guards/auth.guard";
-import { OptionalAuthGuard } from "../../common/guards/optional-auth.guard";
+import { AuthGuard, type AuthUser } from "../../common/guards/auth.guard";
 import { parseOrThrow } from "../common/parse-or-throw";
 import {
   createPublicOrderSchema,
@@ -44,7 +43,9 @@ export class CatalogPublicController {
     );
   }
 
-  @UseGuards(OptionalAuthGuard)
+  // Checkout requires a customer account: the design-approval workflow is dashboard-only,
+  // so every order must be owned by a signed-in user.
+  @UseGuards(AuthGuard)
   @Post("public/orders")
   async createPublicOrder(
     @Body() body: unknown,
@@ -53,7 +54,7 @@ export class CatalogPublicController {
     return {
       order: await this.publicService.createPublicOrder(
         parseOrThrow(createPublicOrderSchema.safeParse(body), "Invalid order payload"),
-        req.user?.sub ?? null
+        req.user!.sub
       )
     };
   }

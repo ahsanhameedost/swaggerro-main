@@ -28,6 +28,7 @@ import { PrismaService } from "../../prisma/prisma.service";
 import { StorageService } from "../../storage/storage.service";
 import { CatalogSharedService } from "../common/catalog-shared.service";
 import { hasPermission } from "../../common/utils/permissions";
+import { env } from "../../env";
 
 type OrderWithRelations = Prisma.CatalogOrderGetPayload<{
   include: {
@@ -474,7 +475,9 @@ async createOrderPayment(id: string, input: CreateOrderPaymentDto, authUser: Aut
     throw new BadRequestException("This order has already been paid");
   }
 
-  const payment = await this.createSquarePayment(order, totals, input.sourceId);
+  const payment = env.PAYMENTS_TEST_MODE
+    ? this.createTestPayment(order, totals)
+    : await this.createSquarePayment(order, totals, input.sourceId);
   const paymentStatus = this.mapSquarePaymentStatus(payment?.status);
   const paidAt = paymentStatus === "PAID" ? new Date() : null;
 
@@ -907,6 +910,28 @@ private mapSquarePaymentStatus(status?: string | null) {
     default:
       return "FAILED" as const;
   }
+}
+
+// Test-mode payment: mocks a completed Square charge without any network call.
+// Gated by PAYMENTS_TEST_MODE — never enabled in production.
+private createTestPayment(
+  order: Pick<OrderWithRelations, "id" | "currency">,
+  totals: OrderTotals
+) {
+  return {
+    id: `TEST-${randomUUID()}`,
+    status: "COMPLETED",
+    receipt_url: null,
+    amount_money: {
+      amount: totals.totalDueCents,
+      currency: order.currency
+    },
+    card_details: {
+      status: "CAPTURED",
+      card: { card_brand: "TEST", last_4: "4242" }
+    },
+    created_at: new Date().toISOString()
+  };
 }
 
 private getSquareApiBaseUrl() {
