@@ -1,5 +1,6 @@
 "use client";
 
+import { addToast } from "@heroui/toast";
 import bottle from "@/assets/hero/bottle.png";
 import shoes from "@/assets/hero/shoes.png";
 import set from "@/assets/hero/set.png";
@@ -74,7 +75,7 @@ export default function Home() {
             </p>
 
             <div className="mt-8 flex items-center justify-center">
-              <PrimaryButton className="h-12 px-10" text="Get Started" />
+              <PrimaryButton href="/shop" className="h-12 px-10" text="Get Started" />
             </div>
           </div>
         </div>
@@ -90,10 +91,7 @@ export default function Home() {
 
       <UltimateSolutionSection imageSrc={UltimateSolutionImg} />
 
-      <VideoShowcaseSection
-        imageSrc={PreviewImg}
-        videoUrl="https://www.youtube.com/watch?v=XXXX"
-      />
+      <VideoShowcaseSection imageSrc={PreviewImg} />
 
       <StrategicAssetSection />
       <ShippingOrbitSection mapSrc={WorldMapImg} />
@@ -119,11 +117,27 @@ export default function Home() {
       <NewsletterSubscribeBanner
         leftDecor={img1}
         rightDecor={img2}
+        onSubmit={(value) => {
+          const email = (value ?? "").trim();
+          if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            addToast({
+              title: "Enter a valid email",
+              description: "Please provide a valid email address.",
+              color: "warning",
+            });
+            return;
+          }
+          addToast({
+            title: "Subscribed",
+            description: "Thanks for subscribing — we'll be in touch.",
+            color: "success",
+          });
+        }}
       />
       <FaqSection imageSrc={faq} />
 
       <EditorialStyleSection
-        shopHref="#"
+        shopHref="/shop"
         images={{
           heroLeft: gridImg1,
           capTop: gridImg2,

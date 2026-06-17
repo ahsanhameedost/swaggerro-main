@@ -39,6 +39,8 @@ export type CatalogCartSnapshot = {
   swagPackPackaging: SwagPackPackagingItem | null;
   swagPackQuantity: number;
   swagPackName: string;
+  swagPackLogoUrl: string | null;
+  swagPackLogoKey: string | null;
 };
 
 type CatalogCartStore = CatalogCartSnapshot & {
@@ -51,6 +53,7 @@ type CatalogCartStore = CatalogCartSnapshot & {
   setSwagPackPackaging: (item: SwagPackPackagingItem | null) => void;
   setSwagPackQuantity: (quantity: number) => void;
   setSwagPackName: (name: string) => void;
+  setSwagPackLogo: (logo: { url: string; key: string | null } | null) => void;
   clearBulkItems: () => void;
   clearSwagPackItems: () => void;
   clearSwagPack: () => void;
@@ -111,6 +114,8 @@ export const useCatalogCartStore = create<CatalogCartStore>()(
       swagPackPackaging: null,
       swagPackQuantity: 25,
       swagPackName: createDefaultSwagPackName(),
+      swagPackLogoUrl: null,
+      swagPackLogoKey: null,
       addBulkItem: (item) =>
         set((state) => ({
           bulkItems: upsertBulk(state.bulkItems, item)
@@ -151,20 +156,29 @@ export const useCatalogCartStore = create<CatalogCartStore>()(
         set({
           swagPackName: name.trim() || createDefaultSwagPackName()
         }),
+      setSwagPackLogo: (logo) =>
+        set({
+          swagPackLogoUrl: logo?.url ?? null,
+          swagPackLogoKey: logo?.key ?? null
+        }),
       clearBulkItems: () => set({ bulkItems: [] }),
       clearSwagPackItems: () =>
         set((state) => ({
           swagPackItems: [],
           swagPackPackaging: null,
           swagPackQuantity: 25,
-          swagPackName: state.swagPackName || createDefaultSwagPackName()
+          swagPackName: state.swagPackName || createDefaultSwagPackName(),
+          swagPackLogoUrl: null,
+          swagPackLogoKey: null
         })),
       clearSwagPack: () =>
         set({
           swagPackItems: [],
           swagPackPackaging: null,
           swagPackQuantity: 25,
-          swagPackName: createDefaultSwagPackName()
+          swagPackName: createDefaultSwagPackName(),
+          swagPackLogoUrl: null,
+          swagPackLogoKey: null
         }),
       clearCart: () =>
         set({
@@ -172,12 +186,14 @@ export const useCatalogCartStore = create<CatalogCartStore>()(
           swagPackItems: [],
           swagPackPackaging: null,
           swagPackQuantity: 25,
-          swagPackName: createDefaultSwagPackName()
+          swagPackName: createDefaultSwagPackName(),
+          swagPackLogoUrl: null,
+          swagPackLogoKey: null
         })
     }),
     {
       name: "soaswag-catalog-cart",
-      version: 2
+      version: 3
     }
   )
 );

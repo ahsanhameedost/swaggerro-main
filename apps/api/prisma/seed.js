@@ -59,11 +59,44 @@ const PERMISSIONS = [
   { key: "rbac.manage", description: "Manage RBAC" }
 ];
 
-const SYSTEM_ROLE_NAMES = ["SUPER_ADMIN", "USER"];
+const SYSTEM_ROLE_NAMES = ["SUPER_ADMIN", "Customer"];
+
+// Default assignable (custom) roles so the "Create employee" role dropdown is
+// never empty on a fresh install. These are NOT system roles, so admins can
+// edit or delete them from the RBAC dashboard.
+const ALL_PERMISSION_KEYS = PERMISSIONS.map((permission) => permission.key);
+const DEFAULT_CUSTOM_ROLES = [
+  {
+    name: "Manager",
+    description: "Operations manager — broad catalog, orders, inventory & shipping access",
+    permissionKeys: ALL_PERMISSION_KEYS.filter(
+      (key) => !key.startsWith("rbac") && key !== "admin.users.write"
+    )
+  },
+  {
+    name: "Designer",
+    description: "Design team — mockups, proofs & catalog read",
+    permissionKeys: ALL_PERMISSION_KEYS.filter(
+      (key) =>
+        key.startsWith("design") ||
+        (key.startsWith("catalog.") && key.endsWith(".read")) ||
+        key.startsWith("orders") ||
+        key === "profile.read" ||
+        key === "profile.update"
+    )
+  },
+  {
+    name: "Support",
+    description: "Support — read access & contact messages",
+    permissionKeys: ALL_PERMISSION_KEYS.filter(
+      (key) => key.endsWith(".read") || key.startsWith("contact")
+    )
+  }
+];
 
 const ROLE_PERMISSIONS = {
   SUPER_ADMIN: PERMISSIONS.map((permission) => permission.key),
-  USER: [
+  Customer: [
     "profile.read",
     "profile.update",
     "orders.self.read",
@@ -117,6 +150,28 @@ async function seedPermissionsAndRoles() {
           roleId: role.id,
           permissionId
         })),
+        skipDuplicates: true
+      });
+    }
+  }
+
+  // Seed default assignable (custom) roles. Create-only: if the role already
+  // exists we leave its name/permissions untouched so admin edits are preserved.
+  for (const customRole of DEFAULT_CUSTOM_ROLES) {
+    const existing = await prisma.role.findUnique({ where: { name: customRole.name } });
+    if (existing) continue;
+
+    const role = await prisma.role.create({
+      data: { name: customRole.name, description: customRole.description }
+    });
+
+    const permissionIds = customRole.permissionKeys
+      .map((key) => permissionByKey.get(key))
+      .filter(Boolean);
+
+    if (permissionIds.length) {
+      await prisma.rolePermission.createMany({
+        data: permissionIds.map((permissionId) => ({ roleId: role.id, permissionId })),
         skipDuplicates: true
       });
     }

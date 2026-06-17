@@ -18,7 +18,14 @@ import {
 import { addToast } from "@heroui/toast";
 import { Boxes, ContactRound, Download, Truck, UploadCloud } from "lucide-react";
 import { useMe } from "@/queries/auth";
-import { useCreateCatalogOrderDesignUpload, useCatalogOrder, useUpdateCatalogOrderItemDesign } from "@/lib/queries.catalog";
+import {
+  useCreateCatalogOrderDesignUpload,
+  useCatalogOrder,
+  useUpdateCatalogOrderItemDesign,
+  useUpdateCatalogOrderStatus,
+  useAssignCatalogOrderEmployee,
+  useEmployees
+} from "@/lib/queries.catalog";
 import { uploadFileToPresignedUrl } from "@/modules/catalog/public/api";
 import { downloadApiFile } from "@/lib/download";
 import { formatMoney } from "@/lib/money";
@@ -31,7 +38,23 @@ import {
   formatOrderTypeLabel,
   getPreferredDesignImage
 } from "@/lib/order-flow";
-import type { CatalogOrderItem, CatalogOrderDesignPhase } from "@/modules/catalog/orders/types";
+import type { CatalogOrderItem, CatalogOrderDesignPhase, CatalogOrderStatus } from "@/modules/catalog/orders/types";
+
+const ORDER_STATUSES: CatalogOrderStatus[] = [
+  "PENDING_REVIEW",
+  "IN_REVIEW",
+  "APPROVED",
+  "REJECTED",
+  "CANCELLED"
+];
+
+function formatOrderStatusLabel(status: string) {
+  return status
+    .toLowerCase()
+    .split("_")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
 
 function TeamItemCard({
   orderId,
@@ -303,8 +326,23 @@ export default function OrderDetailsPage() {
   const params = useParams<{ id: string }>();
   const orderId = Array.isArray(params?.id) ? params.id[0] : params?.id;
   const { data: user } = useMe();
-  const isCustomer = hasPermission(user, "orders.self.read");
+  // Staff (admin / manager / designer) see the management view. A customer is a
+  // user who can ONLY read their own orders — note SUPER_ADMIN also holds
+  // orders.self.read, so staff must be detected via team/design permissions.
+  const isStaffView = hasAnyPermission(user, [
+    "catalog.orders.read",
+    "catalog.orders.update",
+    "orders.assigned.read",
+    "design.write"
+  ]);
+  const isCustomer = !isStaffView;
+  const canManageStatus = hasPermission(user, "catalog.orders.update");
+  const canAssign = hasPermission(user, "admin.users.write");
   const canRead = hasAnyPermission(user, ["catalog.orders.read", "orders.assigned.read", "orders.self.read"]);
+
+  const statusMutation = useUpdateCatalogOrderStatus();
+  const assignMutation = useAssignCatalogOrderEmployee();
+  const { data: employees = [] } = useEmployees("", canAssign);
   const canPlanShipping = hasAnyPermission(user, [
     "shipping.shipments.write",
     "shipping.shipments.assigned.write",
@@ -408,6 +446,91 @@ export default function OrderDetailsPage() {
           </div>
         </CardBody>
       </Card>
+
+      {!isCustomer && (canManageStatus || canAssign) ? (
+        <Card className="border border-divider shadow-sm">
+          <CardBody className="flex flex-col gap-4 p-6 lg:flex-row lg:items-end lg:justify-between">
+            <div className="flex flex-wrap gap-4">
+              {canManageStatus ? (
+                <Select
+                  label="Order status"
+                  aria-label="Order status"
+                  selectedKeys={[order.status]}
+                  className="min-w-[220px]"
+                  isDisabled={statusMutation.isPending}
+                  onSelectionChange={async (keys) => {
+                    const next = Array.from(keys as Set<string>)[0] as CatalogOrderStatus;
+                    if (!next || next === order.status) return;
+                    try {
+                      await statusMutation.mutateAsync({ id: order.id, status: next });
+                      addToast({
+                        title: "Order status updated",
+                        description: `Status is now ${formatOrderStatusLabel(next)}.`,
+                        color: "success"
+                      });
+                    } catch (e: any) {
+                      addToast({
+                        title: "Update failed",
+                        description: e?.message ?? "Unable to update status.",
+                        color: "danger"
+                      });
+                    }
+                  }}
+                >
+                  {ORDER_STATUSES.map((s) => (
+                    <SelectItem key={s}>{formatOrderStatusLabel(s)}</SelectItem>
+                  ))}
+                </Select>
+              ) : null}
+
+              {canAssign ? (
+                <Select
+                  label="Assign designer / staff"
+                  aria-label="Assign designer or staff"
+                  selectedKeys={[order.assignedEmployee?.id ?? "__unassigned__"]}
+                  className="min-w-[260px]"
+                  isDisabled={assignMutation.isPending}
+                  onSelectionChange={async (keys) => {
+                    const value = Array.from(keys as Set<string>)[0] as string;
+                    const assignedEmployeeId = value === "__unassigned__" ? null : value;
+                    try {
+                      await assignMutation.mutateAsync({ id: order.id, assignedEmployeeId });
+                      addToast({
+                        title: "Assignment updated",
+                        description: assignedEmployeeId
+                          ? "The assignee was notified by email."
+                          : "Order is now unassigned.",
+                        color: "success"
+                      });
+                    } catch (e: any) {
+                      addToast({
+                        title: "Assign failed",
+                        description: e?.message ?? "Unable to assign.",
+                        color: "danger"
+                      });
+                    }
+                  }}
+                >
+                  {[
+                    { key: "__unassigned__", label: "Unassigned" },
+                    ...employees.map((employee) => ({
+                      key: employee.id,
+                      label: `${buildUserDisplayName(employee)} · ${employee.role.name}`
+                    }))
+                  ].map((option) => (
+                    <SelectItem key={option.key}>{option.label}</SelectItem>
+                  ))}
+                </Select>
+              ) : null}
+            </div>
+
+            <div className="max-w-sm text-sm text-foreground/60">
+              Approve the order, then assign it to a designer to start the mockup workflow. The
+              designer works the design phases below and the customer sees each update.
+            </div>
+          </CardBody>
+        </Card>
+      ) : null}
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.5fr)_420px]">
         <div className="space-y-6">

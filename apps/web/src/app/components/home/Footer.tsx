@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { Facebook, Twitter, Mail, Youtube, Send } from "lucide-react";
+import { addToast } from "@heroui/toast";
 import { cx } from "@/lib/helpers";
 import Image from "next/image";
 import LogoWhite from "@/assets/logo_white.png";
@@ -12,36 +14,35 @@ const COLS: Array<{ title: string; links: FooterLink[] }> = [
   {
     title: "Order",
     links: [
-      { label: "Membership", href: "#" },
-      { label: "Build a Pack", href: "#" },
-      { label: "Bulk", href: "#" },
+      { label: "Shop", href: "/shop" },
+      { label: "Build a Pack", href: "/swag-pack" },
+      { label: "Bulk Orders", href: "/shop" },
     ],
   },
   {
     title: "Explore",
     links: [
-      { label: "Fulfillment Time", href: "#" },
-      { label: "Services", href: "#" },
-      { label: "Pricing", href: "#" },
-      { label: "Support", href: "#" },
+      { label: "Platform", href: "/platform" },
+      { label: "Resources", href: "/resources" },
+      { label: "Pricing", href: "/pricing" },
+      { label: "Support", href: "/contact" },
     ],
   },
   {
     title: "Connect",
     links: [
-      { label: "Chat with us", href: "#" },
-      { label: "Book a Demo", href: "#" },
-      { label: "Vendors & Suppliers", href: "#" },
-      { label: "Book a Demo", href: "#" },
+      { label: "Contact Us", href: "/contact" },
+      { label: "Book a Demo", href: "/contact" },
+      { label: "Vendors & Suppliers", href: "/contact" },
+      { label: "Company", href: "/company" },
     ],
   },
   {
     title: "Legal",
     links: [
-      { label: "Chat with us", href: "#" },
-      { label: "Book a Demo", href: "#" },
-      { label: "Careers", href: "#" },
-      { label: "Careers", href: "#" },
+      { label: "Privacy Policy", href: "/company" },
+      { label: "Terms of Service", href: "/company" },
+      { label: "Careers", href: "/company" },
     ],
   },
 ];
@@ -121,7 +122,7 @@ function LocationBlock({
         <div className="space-y-1">
           <div>
             <a
-              href={`tel:3213524125`}
+              href={`tel:${phone.replace(/[^0-9+]/g, "")}`}
               className="hover:text-white/80 underline decoration-white/20 underline-offset-4"
             >
               {phone}
@@ -142,6 +143,26 @@ function LocationBlock({
 }
 
 function SubscribeBlock() {
+  const [email, setEmail] = useState("");
+
+  const handleSubscribe = () => {
+    const value = email.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+      addToast({
+        title: "Enter a valid email",
+        description: "Please provide a valid email address to subscribe.",
+        color: "warning",
+      });
+      return;
+    }
+    addToast({
+      title: "Subscribed",
+      description: "Thanks! We'll keep you posted.",
+      color: "success",
+    });
+    setEmail("");
+  };
+
   return (
     <div className={cx("w-full min-w-0", "sm:min-w-[180px] sm:max-w-[420px]")}>
       <h5 className="text-white">Subscribe</h5>
@@ -166,10 +187,16 @@ function SubscribeBlock() {
             type="email"
             name="email"
             autoComplete="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleSubscribe();
+            }}
           />
           <button
             type="button"
             aria-label="Submit email"
+            onClick={handleSubscribe}
             className="inline-flex h-10 w-11 shrink-0 items-center justify-center rounded-full hover:bg-white/10"
           >
             <Send className="h-5 w-5" style={{ color: "var(--primary)" }} />
@@ -205,7 +232,7 @@ export default function Footer() {
               <SocialIcon href="#" label="Twitter">
                 <Twitter className="h-5 w-5" />
               </SocialIcon>
-              <SocialIcon href="#" label="Email">
+              <SocialIcon href="mailto:sales@swaggeroo.com" label="Email">
                 <Mail className="h-5 w-5" />
               </SocialIcon>
               <SocialIcon href="#" label="YouTube">
@@ -224,7 +251,7 @@ export default function Footer() {
             <div className="mt-16 grid gap-12 xl:grid-cols-[240px_240px_1fr]">
               <LocationBlock
                 title="Address"
-                addressLines={["100 E Pine St #110, Orlando, FL 32801,"]}
+                addressLines={["100 E Pine St #110, Orlando, FL 32801"]}
                 phone="321-352-4125"
                 email="sales@swaggeroo.com"
               />

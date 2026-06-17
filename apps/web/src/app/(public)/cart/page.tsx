@@ -1,17 +1,23 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Button, Card, CardBody, Image } from "@heroui/react";
+import { Button, Card, CardBody, Image, Spinner } from "@heroui/react";
 import { addToast } from "@heroui/toast";
 import { QuantityStepper } from "@/app/components/catalog/QuantityStepper";
 import { getCartItemKey, useCatalogCartStore } from "@/lib/cart-store";
 import { calculateCatalogCartSummary } from "@/lib/catalog-cart";
 import { formatMoney } from "@/lib/money";
+import { useMe } from "@/queries/auth";
 
 export default function CartPage() {
   const router = useRouter();
+
+  const [hydrated, setHydrated] = useState(false);
+  useEffect(() => setHydrated(true), []);
+
+  const { data: user } = useMe();
 
   const bulkItems = useCatalogCartStore((state) => state.bulkItems);
   const swagPackItems = useCatalogCartStore((state) => state.swagPackItems);
@@ -72,8 +78,23 @@ export default function CartPage() {
       return;
     }
 
+    // Require an account before checkout. Guests are sent to sign in/up first,
+    // then returned to the project details page (cart persists in localStorage).
+    if (!user) {
+      router.push("/login?next=/project-submittion");
+      return;
+    }
+
     router.push("/project-submittion");
   };
+
+  if (!hydrated) {
+    return (
+      <div className="container flex min-h-[40vh] items-center justify-center">
+        <Spinner />
+      </div>
+    );
+  }
 
   return (
     <div className="container">

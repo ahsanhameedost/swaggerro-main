@@ -45,7 +45,7 @@ export default function UltimateSolutionSection({
             </p>
 
             <div className="mt-6">
-                <PrimaryButton className="h-12 px-7" text="Take Our Free Quiz" />
+                <PrimaryButton href="/contact" className="h-12 px-7" text="Take Our Free Quiz" />
             </div>
           </div>
 

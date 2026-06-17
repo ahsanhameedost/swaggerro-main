@@ -30,21 +30,21 @@ const DEFAULT_FAQS: FaqItem[] = [
   },
   {
     key: "q3",
-    question: "Do you offer custom solutions for my specific brand needs?",
+    question: "What are your minimum order quantities?",
     answer:
-      "Yes. We tailor packs, product mixes, and distribution workflows to your goals, audience, and budget—without compromising quality.",
+      "Retail orders of 5 units or fewer ship at our published price. For larger runs we build a custom Swag Pack quote (minimum 25 packs) and return pricing within 24–48 hours.",
   },
   {
     key: "q4",
-    question: "Do you offer custom solutions for my specific brand needs?",
+    question: "How long does production and shipping take?",
     answer:
-      "Yes. We tailor packs, product mixes, and distribution workflows to your goals, audience, and budget—without compromising quality.",
+      "Once your design is approved, most orders are produced and ready to ship within 2–3 weeks. Timelines vary by product mix, quantity, and destination—your account team confirms exact dates on every quote.",
   },
   {
     key: "q5",
-    question: "Do you offer custom solutions for my specific brand needs?",
+    question: "Can you store inventory and ship on demand?",
     answer:
-      "Yes. We tailor packs, product mixes, and distribution workflows to your goals, audience, and budget—without compromising quality.",
+      "Yes. We warehouse your branded items and fulfill to individual recipients or in bulk whenever you need them, with inventory tracked in your dashboard.",
   },
 ];
 
@@ -52,7 +52,7 @@ export default function FaqSection({
   faqs = DEFAULT_FAQS,
   imageSrc,
   imageAlt = "Support agent",
-  badgeText = "Any Qustion",
+  badgeText = "Any Questions",
 }: {
   faqs?: FaqItem[];
   imageSrc: ImgSrc;
@@ -136,7 +136,7 @@ export default function FaqSection({
                   "absolute right-4 top-4 h-9 px-4"
                 )}
               >
-                <PrimaryButton className="h-9 px-4" text={badgeText} />
+                <PrimaryButton href="/contact" className="h-9 px-4" text={badgeText} />
               </div>
             </div>
           </div>

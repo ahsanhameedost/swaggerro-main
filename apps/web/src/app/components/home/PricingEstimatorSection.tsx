@@ -11,7 +11,6 @@ import {
   SelectItem,
 } from "@heroui/react";
 import { Check, ChevronDown } from "lucide-react";
-import PrimaryButton from "../PrimaryButton";
 import { cx } from "@/lib/helpers";
 
 type ScaleMode = "pack" | "bulk";
@@ -284,6 +283,7 @@ export default function PricingEstimatorSection() {
   const [logoColor, setLogoColor] = React.useState<LogoColor>("single");
   const [region, setRegion] = React.useState<Region>("USA");
   const [activePlan, setActivePlan] = React.useState<PlanKey>("basic");
+  const estimateRef = React.useRef<HTMLDivElement | null>(null);
 
   const plans = React.useMemo(
     () => buildPricing({ scale, quantity, category, logoColor, region }),
@@ -416,12 +416,20 @@ export default function PricingEstimatorSection() {
               </div>
 
               <div className="mt-8">
-                <PrimaryButton className="h-12 w-full" text="Calculate" />
+                <Button
+                  onPress={() =>
+                    estimateRef.current?.scrollIntoView({ behavior: "smooth", block: "center" })
+                  }
+                  className="h-12 w-full rounded-full text-base font-semibold text-white"
+                  style={{ backgroundImage: "var(--primary-gradient)" }}
+                >
+                  Calculate
+                </Button>
               </div>
             </div>
 
             {/* Right */}
-            <div className="border-t border-black/5 bg-[#eff6ff] px-6 py-10 lg:border-l lg:border-t-0">
+            <div ref={estimateRef} className="border-t border-black/5 bg-[#eff6ff] px-6 py-10 lg:border-l lg:border-t-0">
               <div className="flex h-full items-center justify-center">
                 <Card className="w-full max-w-[520px] rounded-[18px] border border-black/5 bg-white shadow-none">
                   <CardBody className="p-8">

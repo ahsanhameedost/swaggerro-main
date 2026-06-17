@@ -7,10 +7,12 @@ import {
   Patch,
   Post,
   Query,
+  Req,
   UseGuards
 } from "@nestjs/common";
+import type { FastifyRequest } from "fastify";
 import { RequirePermissions } from "../common/decorators/permissions.decorator";
-import { AuthGuard } from "../common/guards/auth.guard";
+import { AuthGuard, type AuthUser } from "../common/guards/auth.guard";
 import { PermissionsGuard } from "../common/guards/permissions.guard";
 import { parseOrThrow } from "../catalog/common/parse-or-throw";
 import {
@@ -37,8 +39,8 @@ export class UsersController {
 
   @Get("employee-roles")
   @RequirePermissions("admin.users.read")
-  async employeeRoles() {
-    return { roles: await this.users.listAssignableRoles() };
+  async employeeRoles(@Req() req: FastifyRequest & { user?: AuthUser }) {
+    return { roles: await this.users.listAssignableRoles(req.user!) };
   }
 
   @Get("employees")
@@ -49,21 +51,30 @@ export class UsersController {
 
   @Post("employees")
   @RequirePermissions("admin.users.write")
-  async createEmployee(@Body() body: unknown) {
+  async createEmployee(
+    @Body() body: unknown,
+    @Req() req: FastifyRequest & { user?: AuthUser }
+  ) {
     return {
       user: await this.users.createEmployee(
-        parseOrThrow(createEmployeeSchema.safeParse(body), "Invalid employee payload")
+        parseOrThrow(createEmployeeSchema.safeParse(body), "Invalid employee payload"),
+        req.user!
       )
     };
   }
 
   @Patch("employees/:id")
   @RequirePermissions("admin.users.write")
-  async updateEmployee(@Param("id") id: string, @Body() body: unknown) {
+  async updateEmployee(
+    @Param("id") id: string,
+    @Body() body: unknown,
+    @Req() req: FastifyRequest & { user?: AuthUser }
+  ) {
     return {
       user: await this.users.updateEmployee(
         id,
-        parseOrThrow(updateEmployeeSchema.safeParse(body), "Invalid employee payload")
+        parseOrThrow(updateEmployeeSchema.safeParse(body), "Invalid employee payload"),
+        req.user!
       )
     };
   }

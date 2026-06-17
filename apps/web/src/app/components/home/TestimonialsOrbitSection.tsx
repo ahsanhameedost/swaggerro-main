@@ -358,9 +358,10 @@ function hexToRgba(hex: string, alpha: number) {
 const DEFAULT_SLIDES: TestimonialSlide[] = [
   {
     key: "whatsapp",
-    quote: "Lorem Ipsum is simply dummy text of the printing and typesetting industry Lorem is.",
-    name: "Lorem Ipsum",
-    role: "Director of marketing",
+    quote:
+      "Swaggeroo turned our onboarding kits around in record time. The quality blew our new hires away and the whole process was effortless.",
+    name: "Sarah Mitchell",
+    role: "Head of People Operations",
     company: "WhatsApp",
     accent: "#25D366",
     orbitIcon: WhatsappLogo,
@@ -369,9 +370,10 @@ const DEFAULT_SLIDES: TestimonialSlide[] = [
   },
   {
     key: "zoom",
-    quote: "Lorem Ipsum is simply dummy text of the printing and typesetting industry Lorem is.",
-    name: "Lorem Ipsum",
-    role: "Director of marketing",
+    quote:
+      "From design mockups to delivery, the team handled everything. Our branded merch finally looks as premium as our product.",
+    name: "David Chen",
+    role: "Employer Brand Lead",
     company: "Zoom",
     accent: "#2D8CFF",
     orbitIcon: ZoomLogo,
@@ -380,9 +382,10 @@ const DEFAULT_SLIDES: TestimonialSlide[] = [
   },
   {
     key: "reddit",
-    quote: "Lorem Ipsum is simply dummy text of the printing and typesetting industry Lorem is.",
-    name: "Lorem Ipsum",
-    role: "Director of marketing",
+    quote:
+      "We ordered event swag for 2,000 attendees and not a single detail slipped. Reliable, fast, and genuinely great to work with.",
+    name: "Priya Sharma",
+    role: "Events Marketing Manager",
     company: "Reddit",
     accent: "#FF4500",
     orbitIcon: RedditLogo,
@@ -391,9 +394,10 @@ const DEFAULT_SLIDES: TestimonialSlide[] = [
   },
   {
     key: "telegram",
-    quote: "Lorem Ipsum is simply dummy text of the printing and typesetting industry Lorem is.",
-    name: "Lorem Ipsum",
-    role: "Director of marketing",
+    quote:
+      "Shipping to our remote team across 14 countries used to be a nightmare. Swaggeroo made it a single, simple workflow.",
+    name: "Marcus Lee",
+    role: "Operations Director",
     company: "Telegram",
     accent: "#229ED9",
     orbitIcon: TelegramLogo,
@@ -402,9 +406,10 @@ const DEFAULT_SLIDES: TestimonialSlide[] = [
   },
   {
     key: "asana",
-    quote: "Lorem Ipsum is simply dummy text of the printing and typesetting industry Lorem is.",
-    name: "Lorem Ipsum",
-    role: "Director of marketing",
+    quote:
+      "Managing inventory and reorders from one dashboard saves us hours every month. It's become an essential part of our brand toolkit.",
+    name: "Elena Rossi",
+    role: "Brand Manager",
     company: "Asana",
     accent: "#F06A6A",
     orbitIcon: AsanaLogo,

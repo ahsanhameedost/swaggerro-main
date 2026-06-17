@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   Button,
@@ -10,8 +10,7 @@ import {
   Input
 } from "@heroui/react";
 import { addToast } from "@heroui/toast";
-import HomeNavbar from "@/app/components/home/HomeNavbar";
-import Footer from "@/app/components/home/Footer";
+import { createCatalogImageUpload, uploadFileToPresignedUrl } from "@/lib/catalog";
 import { QuantityStepper } from "@/app/components/catalog/QuantityStepper";
 import { PackagingProductDrawer } from "@/app/components/catalog/PackagingProductDrawer";
 import { SwagPackPriceBreaksDrawer } from "@/app/components/catalog/SwagPackPriceBreaksDrawer";
@@ -23,6 +22,7 @@ import type { CatalogProductListItem, CatalogProductDetail, ProductCatalogVarian
 import { getPublicProduct } from "@/modules/catalog/public/api";
 
 const PRICE_BREAK_QUANTITIES = [25, 50, 100, 150, 250, 500, 1000, 5000] as const;
+const ACCEPTED_LOGO_TYPES = ["image/jpeg", "image/png", "image/webp"] as const;
 
 function resolvePackagingVariant(product: CatalogProductDetail) {
   return (
@@ -77,15 +77,57 @@ export default function SwagPackPage() {
   const swagPackQuantity = useCatalogCartStore((state) => state.swagPackQuantity);
   const swagPackName = useCatalogCartStore((state) => state.swagPackName);
 
+  const swagPackLogoUrl = useCatalogCartStore((state) => state.swagPackLogoUrl);
+
   const setSwagPackQuantity = useCatalogCartStore((state) => state.setSwagPackQuantity);
   const setSwagPackName = useCatalogCartStore((state) => state.setSwagPackName);
   const updateQuantityPerPack = useCatalogCartStore((state) => state.updateSwagPackQuantityPerPack);
   const removeSwagPackItem = useCatalogCartStore((state) => state.removeSwagPackItem);
   const setSwagPackPackaging = useCatalogCartStore((state) => state.setSwagPackPackaging);
+  const setSwagPackLogo = useCatalogCartStore((state) => state.setSwagPackLogo);
 
   const [packagingDrawerOpen, setPackagingDrawerOpen] = useState(false);
   const [priceBreaksOpen, setPriceBreaksOpen] = useState(false);
   const [selectingPackaging, setSelectingPackaging] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const logoInputRef = useRef<HTMLInputElement | null>(null);
+
+  const handleLogoUpload = async (file: File) => {
+    if (!ACCEPTED_LOGO_TYPES.includes(file.type as (typeof ACCEPTED_LOGO_TYPES)[number])) {
+      addToast({
+        title: "Unsupported file",
+        description: "Please upload a JPG, PNG, or WEBP logo.",
+        color: "warning"
+      });
+      return;
+    }
+
+    setUploadingLogo(true);
+
+    try {
+      const upload = await createCatalogImageUpload("projects", {
+        filename: file.name,
+        contentType: file.type as "image/jpeg" | "image/png" | "image/webp"
+      });
+
+      await uploadFileToPresignedUrl(upload.uploadUrl, file);
+      setSwagPackLogo({ url: upload.publicUrl, key: upload.key });
+
+      addToast({
+        title: "Logo added",
+        description: "Your logo now previews on each product.",
+        color: "success"
+      });
+    } catch (error: any) {
+      addToast({
+        title: "Upload failed",
+        description: error?.message ?? "Logo upload failed.",
+        color: "danger"
+      });
+    } finally {
+      setUploadingLogo(false);
+    }
+  };
 
   const summary = useMemo(
     () =>
@@ -252,24 +294,48 @@ export default function SwagPackPage() {
         </Card>
 
         <Card className="border border-black/10 bg-white shadow-sm">
-          <CardBody className="flex min-h-[760px] items-center justify-center p-6">
+          <CardBody className="flex min-h-[760px] flex-col p-6">
             {summary.swagPackItems.length ? (
-              <div className="grid w-full gap-6 sm:grid-cols-2">
-                {summary.swagPackItems.slice(0, 4).map((item) => (
-                  <div
-                    key={`${getCartItemKey(item)}-preview`}
-                    className="flex min-h-[280px] items-center justify-center rounded-[28px] bg-[#f5f0e7] p-6"
-                  >
-                    {item.imageUrl ? (
-                      <Image removeWrapper src={item.imageUrl} alt={item.name} className="max-h-[240px] w-full object-contain" />
-                    ) : (
-                      <div className="text-lg font-semibold text-black/35">{item.name}</div>
-                    )}
+              <>
+                <div className="mb-4 flex items-center justify-between">
+                  <div className="text-sm font-semibold text-black/70">
+                    {swagPackLogoUrl ? "Your logo preview" : "Pack preview"}
                   </div>
-                ))}
-              </div>
+                  {swagPackLogoUrl ? (
+                    <span className="rounded-full bg-success-100 px-3 py-1 text-xs font-semibold text-success-700">
+                      Logo applied
+                    </span>
+                  ) : (
+                    <span className="text-xs text-black/45">Upload a logo to see it on your merch</span>
+                  )}
+                </div>
+                <div className="grid w-full flex-1 content-center gap-6 sm:grid-cols-2">
+                  {summary.swagPackItems.slice(0, 4).map((item) => (
+                    <div
+                      key={`${getCartItemKey(item)}-preview`}
+                      className="relative flex min-h-[280px] items-center justify-center overflow-hidden rounded-[28px] bg-[#f5f0e7] p-6"
+                    >
+                      {item.imageUrl ? (
+                        <Image removeWrapper src={item.imageUrl} alt={item.name} className="max-h-[240px] w-full object-contain" />
+                      ) : (
+                        <div className="text-lg font-semibold text-black/35">{item.name}</div>
+                      )}
+
+                      {swagPackLogoUrl ? (
+                        <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                          <img
+                            src={swagPackLogoUrl}
+                            alt="Your logo"
+                            className="max-h-[34%] max-w-[34%] object-contain opacity-95 drop-shadow-[0_2px_6px_rgba(0,0,0,0.25)]"
+                          />
+                        </div>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+              </>
             ) : (
-              <div className="space-y-4 text-center text-black/55">
+              <div className="m-auto space-y-4 text-center text-black/55">
                 <p>Add products to preview your swag pack composition.</p>
                 <Link href="/shop">
                   <Button
@@ -293,6 +359,60 @@ export default function SwagPackPage() {
               onValueChange={setSwagPackName}
               placeholder="My Swag Pack"
             />
+
+            <div className="rounded-[28px] border border-black/10 p-4">
+              <div className="text-base font-semibold text-black">Your logo</div>
+              <div className="mb-3 text-sm text-black/55">
+                Upload a logo to preview it on every product in your pack.
+              </div>
+
+              <input
+                ref={logoInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                className="hidden"
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  if (file) void handleLogoUpload(file);
+                  event.target.value = "";
+                }}
+              />
+
+              {swagPackLogoUrl ? (
+                <div className="flex items-center gap-3 rounded-[22px] bg-zinc-50 p-3">
+                  <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl bg-white">
+                    <Image removeWrapper src={swagPackLogoUrl} alt="Your logo" className="h-full w-full object-contain" />
+                  </div>
+                  <div className="flex flex-1 flex-wrap gap-2">
+                    <Button
+                      variant="bordered"
+                      size="sm"
+                      onPress={() => logoInputRef.current?.click()}
+                      isLoading={uploadingLogo}
+                    >
+                      Replace
+                    </Button>
+                    <Button
+                      variant="light"
+                      color="danger"
+                      size="sm"
+                      onPress={() => setSwagPackLogo(null)}
+                    >
+                      Remove
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <Button
+                  variant="bordered"
+                  className="w-full"
+                  onPress={() => logoInputRef.current?.click()}
+                  isLoading={uploadingLogo}
+                >
+                  Upload your logo
+                </Button>
+              )}
+            </div>
 
             <QuantityStepper
               label="Number of Swag Packs"

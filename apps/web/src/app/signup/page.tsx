@@ -8,6 +8,7 @@ import { addToast } from "@heroui/toast";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
+import { useQueryClient } from "@tanstack/react-query";
 import { AuthShell } from "@/app/components/auth/AuthShell";
 import { signup } from "@/lib/auth";
 import { isBusinessEmail } from "@/lib/business-email";
@@ -39,6 +40,7 @@ type FormValues = z.infer<typeof schema>;
 
 function SignupContent() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const searchParams = useSearchParams();
   const next = searchParams.get("next") ?? "/dashboard";
   const [loading, setLoading] = useState(false);
@@ -77,9 +79,10 @@ function SignupContent() {
         confirmPassword: values.confirmPassword
       });
 
+      await queryClient.invalidateQueries({ queryKey: ["me"] });
       addToast({
         title: "Account created",
-        description: "Welcome to SOASWAG",
+        description: "Welcome to Swaggeroo",
         color: "success"
       });
       router.push(next);
@@ -103,13 +106,16 @@ function SignupContent() {
     <AuthShell
       eyebrow="Create your account"
       title="Sign up"
-      description="Create your SOASWAG account with a valid business email address and start working from your dashboard."
+      description="Create your Swaggeroo account with a valid business email address and start working from your dashboard."
       sideTitle="Start building a modern swag workflow."
       sideDescription="Launch with the same branded experience you already established on the contact page: bold, clean, and conversion focused."
       footer={
         <>
           Already have an account?{" "}
-          <Link href="/login" className="font-medium text-danger transition hover:opacity-80">
+          <Link
+            href={`/login?next=${encodeURIComponent(next)}`}
+            className="font-medium text-danger transition hover:opacity-80"
+          >
             Sign in
           </Link>
         </>

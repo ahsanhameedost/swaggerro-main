@@ -1,12 +1,14 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException
 } from "@nestjs/common";
 import * as bcrypt from "bcryptjs";
 import { isBusinessEmail } from "../common/utils/business-email";
 import { PrismaService } from "../prisma/prisma.service";
+import type { AuthUser } from "../common/guards/auth.guard";
 import type {
   CreateEmployeeDto,
   ListUsersQueryDto,
@@ -21,7 +23,11 @@ type CreateUserInput = {
   phone?: string;
 };
 
-const SYSTEM_ROLE_NAMES = new Set(["SUPER_ADMIN", "USER"]);
+// The role assigned to self-registering customers (was "USER"). It is the only
+// role NOT manually assignable to staff in the employee-creation flow.
+const CUSTOMER_ROLE_NAME = "Customer";
+const SUPER_ADMIN_ROLE_NAME = "SUPER_ADMIN";
+const SYSTEM_ROLE_NAMES = new Set(["SUPER_ADMIN", CUSTOMER_ROLE_NAME]);
 
 @Injectable()
 export class UsersService {
@@ -36,10 +42,10 @@ export class UsersService {
   }
 
   async createUser(input: CreateUserInput) {
-    const role = await this.prisma.role.findUnique({ where: { name: "USER" } });
+    const role = await this.prisma.role.findUnique({ where: { name: CUSTOMER_ROLE_NAME } });
 
     if (!role) {
-      throw new Error("Missing USER role. Run db:seed.");
+      throw new Error("Missing Customer role. Run db:seed.");
     }
 
     return this.prisma.user.create({
@@ -54,9 +60,17 @@ export class UsersService {
     });
   }
 
-  async listAssignableRoles() {
+  async listAssignableRoles(authUser: AuthUser) {
+    // The self-signup Customer role is never manually assignable. SUPER_ADMIN is
+    // only assignable by an existing SUPER_ADMIN — lower admins (e.g. ADMIN /
+    // MANAGER) can create staff but cannot mint super admins.
+    const excluded = [CUSTOMER_ROLE_NAME];
+    if (authUser.role !== SUPER_ADMIN_ROLE_NAME) {
+      excluded.push(SUPER_ADMIN_ROLE_NAME);
+    }
+
     return this.prisma.role.findMany({
-      where: { name: { notIn: Array.from(SYSTEM_ROLE_NAMES) } },
+      where: { name: { notIn: excluded } },
       orderBy: { name: "asc" },
       select: {
         id: true,
@@ -66,7 +80,7 @@ export class UsersService {
     });
   }
 
-  async createEmployee(input: CreateEmployeeDto) {
+  async createEmployee(input: CreateEmployeeDto, authUser: AuthUser) {
     const email = input.email.trim().toLowerCase();
 
     if (!isBusinessEmail(email)) {
@@ -78,7 +92,7 @@ export class UsersService {
       throw new ConflictException("Email already in use");
     }
 
-    const role = await this.assertAssignableRole(input.roleId);
+    const role = await this.assertAssignableRole(input.roleId, authUser);
     const passwordHash = bcrypt.hashSync(input.password, 12);
 
     return this.prisma.user.create({
@@ -93,7 +107,7 @@ export class UsersService {
     });
   }
 
-  async updateEmployee(id: string, input: UpdateEmployeeDto) {
+  async updateEmployee(id: string, input: UpdateEmployeeDto, authUser: AuthUser) {
     const employee = await this.prisma.user.findUnique({
       where: { id },
       select: { id: true, email: true, role: { select: { name: true } } }
@@ -114,7 +128,7 @@ export class UsersService {
       throw new ConflictException("Email already in use");
     }
 
-    const role = await this.assertAssignableRole(input.roleId);
+    const role = await this.assertAssignableRole(input.roleId, authUser);
 
     return this.prisma.user.update({
       where: { id },
@@ -253,14 +267,19 @@ export class UsersService {
     });
   }
 
-  private async assertAssignableRole(roleId: string) {
+  private async assertAssignableRole(roleId: string, authUser: AuthUser) {
     const role = await this.prisma.role.findUnique({
       where: { id: roleId },
       select: { id: true, name: true }
     });
 
-    if (!role || SYSTEM_ROLE_NAMES.has(role.name)) {
+    if (!role || role.name === CUSTOMER_ROLE_NAME) {
       throw new BadRequestException("Select a valid internal role");
+    }
+
+    // Only an existing super admin may create/assign the SUPER_ADMIN role.
+    if (role.name === SUPER_ADMIN_ROLE_NAME && authUser.role !== SUPER_ADMIN_ROLE_NAME) {
+      throw new ForbiddenException("Only a super admin can assign the super admin role");
     }
 
     return role;

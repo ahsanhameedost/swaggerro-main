@@ -178,7 +178,7 @@ export default function InventoryPage() {
               placeholder="All customers"
             >
               {users
-                .filter((entry) => entry.role.name === "USER")
+                .filter((entry) => entry.role.name === "Customer")
                 .map((entry) => (
                   <SelectItem key={entry.id}>
                     {entry.firstName || entry.lastName

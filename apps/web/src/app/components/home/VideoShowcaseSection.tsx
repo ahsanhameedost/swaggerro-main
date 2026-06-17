@@ -179,15 +179,17 @@ export default function VideoShowcaseSection({
                 sizes="(max-width: 1024px) 100vw, 1200px"
               />
 
-              <div className="absolute inset-0 grid place-items-center">
-                <PlayButton onClick={videoUrl ? () => setOpen(true) : undefined} />
-              </div>
+              {videoUrl ? (
+                <div className="absolute inset-0 grid place-items-center">
+                  <PlayButton onClick={() => setOpen(true)} />
+                </div>
+              ) : null}
             </div>
           </div>
 
           {/* CTA */}
           <div className="mt-12 flex justify-center">
-           <PrimaryButton className="h-10 px-12" text="Get Started" />
+           <PrimaryButton href="/shop" className="h-10 px-12" text="Get Started" />
           </div>
         </div>
       </div>

@@ -14,7 +14,12 @@ import {
 import LogoMark from "@/assets/logo_new.png";
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import PrimaryButton from "../PrimaryButton";
+import { useMe } from "@/queries/auth";
+import { logout as logoutRequest } from "@/modules/auth/api";
+import { useCatalogCartStore } from "@/lib/cart-store";
 
 type NavItem = {
   label: string;
@@ -32,9 +37,35 @@ const NAV_ITEMS: NavItem[] = [
 
 export default function HomeNavbar() {
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
+  const router = useRouter();
+  const queryClient = useQueryClient();
+
+  const { data: user, isLoading } = useMe();
+
+  const bulkItems = useCatalogCartStore((state) => state.bulkItems);
+  const swagPackItems = useCatalogCartStore((state) => state.swagPackItems);
+  const cartCount = bulkItems.length + (swagPackItems.length > 0 ? 1 : 0);
 
   const navLinkClass =
     "text2 font-medium text-black/80 transition-colors hover:text-[var(--primary)]";
+
+  const handleLogout = async () => {
+    try {
+      await logoutRequest();
+    } catch {
+      // ignore network errors; clear local state regardless
+    }
+    await queryClient.invalidateQueries({ queryKey: ["me"] });
+    setIsMenuOpen(false);
+    router.push("/");
+    router.refresh();
+  };
+
+  const CartLink = ({ onClick }: { onClick?: () => void }) => (
+    <Link href="/cart" onClick={onClick} className={navLinkClass}>
+      Cart{cartCount > 0 ? ` (${cartCount})` : ""}
+    </Link>
+  );
 
   return (
     <div className="padding-section-xs px-4 md:px-10">
@@ -68,11 +99,6 @@ export default function HomeNavbar() {
                 draggable={false}
                 priority
               />
-
-              {/* <span className="font-gemunu-libre mt-2 text-[18px] font-extrabold tracking-[0.08em]">
-                <span className="text-(--primary)">SOAS</span>
-                <span className="text-black">WAG</span>
-              </span> */}
             </div>
           </Link>
         </NavbarBrand>
@@ -93,17 +119,42 @@ export default function HomeNavbar() {
         {/* ✅ Right actions only on lg+ */}
         <NavbarContent className="hidden lg:flex" justify="end">
           <NavbarItem>
-            <Link
-              href="/login"
-              className="text2 font-medium text-black/70 transition-colors hover:text-(--primary)"
-            >
-              Sign In
-            </Link>
+            <CartLink />
           </NavbarItem>
 
-          <NavbarItem>
-            <PrimaryButton className="h-10 px-5" text="Get Started" />
-          </NavbarItem>
+          {isLoading ? null : user ? (
+            <>
+              <NavbarItem>
+                <Link href="/dashboard" className={navLinkClass}>
+                  Dashboard
+                </Link>
+              </NavbarItem>
+              <NavbarItem>
+                <Button
+                  variant="flat"
+                  radius="full"
+                  className="h-10 bg-black/5 px-5 font-semibold text-black/70 hover:bg-black/10"
+                  onPress={handleLogout}
+                >
+                  Log out
+                </Button>
+              </NavbarItem>
+            </>
+          ) : (
+            <>
+              <NavbarItem>
+                <Link
+                  href="/login"
+                  className="text2 font-medium text-black/70 transition-colors hover:text-(--primary)"
+                >
+                  Sign In
+                </Link>
+              </NavbarItem>
+              <NavbarItem>
+                <PrimaryButton href="/signup" className="h-10 px-5" text="Get Started" />
+              </NavbarItem>
+            </>
+          )}
         </NavbarContent>
 
         <NavbarMenu className="bg-white">
@@ -120,23 +171,57 @@ export default function HomeNavbar() {
                   </Link>
                 </NavbarMenuItem>
               ))}
+              <NavbarMenuItem>
+                <Link
+                  href="/cart"
+                  onClick={() => setIsMenuOpen(false)}
+                  className="block rounded-xl px-3 py-3 text-base font-semibold text-black/80 transition-colors hover:bg-black/5 hover:text-[var(--primary)]"
+                >
+                  Cart{cartCount > 0 ? ` (${cartCount})` : ""}
+                </Link>
+              </NavbarMenuItem>
             </div>
 
             <div className="mt-6 grid gap-3">
-              <Button
-                as={Link}
-                href="/login"
-                variant="flat"
-                radius="full"
-                className="h-12 w-full bg-black/5 font-semibold text-black/70 hover:bg-black/10"
-                onPress={() => setIsMenuOpen(false)}
-              >
-                Sign In
-              </Button>
+              {isLoading ? null : user ? (
+                <>
+                  <Button
+                    as={Link}
+                    href="/dashboard"
+                    variant="flat"
+                    radius="full"
+                    className="h-12 w-full bg-black/5 font-semibold text-black/70 hover:bg-black/10"
+                    onPress={() => setIsMenuOpen(false)}
+                  >
+                    Dashboard
+                  </Button>
+                  <Button
+                    variant="flat"
+                    radius="full"
+                    className="h-12 w-full bg-black/5 font-semibold text-black/70 hover:bg-black/10"
+                    onPress={handleLogout}
+                  >
+                    Log out
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button
+                    as={Link}
+                    href="/login"
+                    variant="flat"
+                    radius="full"
+                    className="h-12 w-full bg-black/5 font-semibold text-black/70 hover:bg-black/10"
+                    onPress={() => setIsMenuOpen(false)}
+                  >
+                    Sign In
+                  </Button>
 
-              <div onClick={() => setIsMenuOpen(false)}>
-                <PrimaryButton className="h-12 w-full" text="Get Started" />
-              </div>
+                  <div onClick={() => setIsMenuOpen(false)}>
+                    <PrimaryButton href="/signup" className="h-12 w-full" text="Get Started" />
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </NavbarMenu>

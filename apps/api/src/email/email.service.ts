@@ -295,31 +295,31 @@ SOA Team`,
     const info = await this.transporter.sendMail({
       from: env.EMAIL_FROM,
       to,
-      subject: "Thanks for joining SOASWAG",
+      subject: "Thanks for joining Swaggeroo",
       text: `Hi ${name},
 
-Thanks for joining SOASWAG.
+Thanks for joining Swaggeroo.
 
 Your account has been created successfully and you can now continue from your dashboard.
 
-SOASWAG Team`,
+Swaggeroo Team`,
       html: `
         <div style="margin:0;padding:24px;background:#f4f4f5;font-family:Arial,Helvetica,sans-serif;color:#111827;">
           <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="max-width:640px;margin:0 auto;background:#ffffff;border-radius:18px;overflow:hidden;border:1px solid #e5e7eb;">
             <tr>
               <td>
                 <div style="background:linear-gradient(90deg,#C41E3A 0%,#FD0000 100%);padding:28px 32px;color:#ffffff;">
-                  <div style="font-size:13px;letter-spacing:.08em;text-transform:uppercase;opacity:.85;">SOASWAG</div>
-                  <h1 style="margin:10px 0 0;font-size:26px;line-height:1.2;font-weight:700;">Thanks for joining SOASWAG</h1>
+                  <div style="font-size:13px;letter-spacing:.08em;text-transform:uppercase;opacity:.85;">Swaggeroo</div>
+                  <h1 style="margin:10px 0 0;font-size:26px;line-height:1.2;font-weight:700;">Thanks for joining Swaggeroo</h1>
                 </div>
               </td>
             </tr>
             <tr>
               <td style="padding:28px 32px;color:#374151;line-height:1.7;">
                 <p style="margin:0 0 14px;">Hi ${escapeHtml(name)},</p>
-                <p style="margin:0 0 14px;">Thanks for joining SOASWAG. Your account has been created successfully.</p>
+                <p style="margin:0 0 14px;">Thanks for joining Swaggeroo. Your account has been created successfully.</p>
                 <p style="margin:0 0 14px;">You can now continue from your dashboard and start building your swag catalog.</p>
-                <p style="margin:24px 0 0;font-weight:600;color:#111827;">SOASWAG Team</p>
+                <p style="margin:24px 0 0;font-weight:600;color:#111827;">Swaggeroo Team</p>
               </td>
             </tr>
           </table>
@@ -372,7 +372,7 @@ SOASWAG Team`,
             <tr>
               <td>
                 <div style="background:linear-gradient(90deg,#C41E3A 0%,#FD0000 100%);padding:28px 32px;color:#ffffff;">
-                  <div style="font-size:13px;letter-spacing:.08em;text-transform:uppercase;opacity:.85;">SOASWAG</div>
+                  <div style="font-size:13px;letter-spacing:.08em;text-transform:uppercase;opacity:.85;">Swaggeroo</div>
                   <h1 style="margin:10px 0 0;font-size:26px;line-height:1.2;font-weight:700;">New catalog order</h1>
                 </div>
               </td>
@@ -427,21 +427,21 @@ SOASWAG Team`,
     const info = await this.transporter.sendMail({
       from: env.EMAIL_FROM,
       to,
-      subject: "We received your SOASWAG order request",
+      subject: "We received your Swaggeroo order request",
       text: `Hi ${name},
 
-Thanks for submitting your SOASWAG order request.
+Thanks for submitting your Swaggeroo order request.
 
 Our team received it successfully and will review your project details shortly.
 
-SOASWAG Team`,
+Swaggeroo Team`,
       html: `
         <div style="margin:0;padding:24px;background:#f4f4f5;font-family:Arial,Helvetica,sans-serif;color:#111827;">
           <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="max-width:640px;margin:0 auto;background:#ffffff;border-radius:18px;overflow:hidden;border:1px solid #e5e7eb;">
             <tr>
               <td>
                 <div style="background:linear-gradient(90deg,#C41E3A 0%,#FD0000 100%);padding:28px 32px;color:#ffffff;">
-                  <div style="font-size:13px;letter-spacing:.08em;text-transform:uppercase;opacity:.85;">SOASWAG</div>
+                  <div style="font-size:13px;letter-spacing:.08em;text-transform:uppercase;opacity:.85;">Swaggeroo</div>
                   <h1 style="margin:10px 0 0;font-size:26px;line-height:1.2;font-weight:700;">We received your order request</h1>
                 </div>
               </td>
@@ -449,9 +449,9 @@ SOASWAG Team`,
             <tr>
               <td style="padding:28px 32px;color:#374151;line-height:1.7;">
                 <p style="margin:0 0 14px;">Hi ${escapeHtml(name)},</p>
-                <p style="margin:0 0 14px;">Thanks for submitting your SOASWAG order request.</p>
+                <p style="margin:0 0 14px;">Thanks for submitting your Swaggeroo order request.</p>
                 <p style="margin:0 0 14px;">Our team received it successfully and will review your project details shortly.</p>
-                <p style="margin:24px 0 0;font-weight:600;color:#111827;">SOASWAG Team</p>
+                <p style="margin:24px 0 0;font-weight:600;color:#111827;">Swaggeroo Team</p>
               </td>
             </tr>
           </table>
@@ -470,10 +470,10 @@ SOASWAG Team`,
     const info = await this.transporter.sendMail({
       from: env.EMAIL_FROM,
       to,
-      subject: "Your SOASWAG password reset code",
+      subject: "Your Swaggeroo password reset code",
       text: `Hi ${name},
 
-We received a request to reset your SOASWAG password.
+We received a request to reset your Swaggeroo password.
 
 Your verification code is: ${safeCode}
 
@@ -481,14 +481,14 @@ This code expires in 10 minutes.
 
 If you did not request this, you can ignore this email.
 
-SOASWAG Team`,
+Swaggeroo Team`,
       html: `
         <div style="margin:0;padding:24px;background:#f4f4f5;font-family:Arial,Helvetica,sans-serif;color:#111827;">
           <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="max-width:640px;margin:0 auto;background:#ffffff;border-radius:18px;overflow:hidden;border:1px solid #e5e7eb;">
             <tr>
               <td>
                 <div style="background:linear-gradient(90deg,#C41E3A 0%,#FD0000 100%);padding:28px 32px;color:#ffffff;">
-                  <div style="font-size:13px;letter-spacing:.08em;text-transform:uppercase;opacity:.85;">SOASWAG</div>
+                  <div style="font-size:13px;letter-spacing:.08em;text-transform:uppercase;opacity:.85;">Swaggeroo</div>
                   <h1 style="margin:10px 0 0;font-size:26px;line-height:1.2;font-weight:700;">Password reset code</h1>
                 </div>
               </td>
@@ -496,7 +496,7 @@ SOASWAG Team`,
             <tr>
               <td style="padding:28px 32px;color:#374151;line-height:1.7;">
                 <p style="margin:0 0 14px;">Hi ${escapeHtml(name)},</p>
-                <p style="margin:0 0 14px;">We received a request to reset your SOASWAG password.</p>
+                <p style="margin:0 0 14px;">We received a request to reset your Swaggeroo password.</p>
                 <p style="margin:0 0 18px;">Use the verification code below to continue:</p>
 
                 <div style="margin:0 0 18px;padding:18px 20px;border:1px solid #e5e7eb;border-radius:16px;background:#fafafa;text-align:center;">
@@ -506,7 +506,7 @@ SOASWAG Team`,
                 <p style="margin:0 0 14px;">This code expires in <strong>10 minutes</strong>.</p>
                 <p style="margin:0;">If you did not request this, you can ignore this email.</p>
 
-                <p style="margin:24px 0 0;font-weight:600;color:#111827;">SOASWAG Team</p>
+                <p style="margin:24px 0 0;font-weight:600;color:#111827;">Swaggeroo Team</p>
               </td>
             </tr>
           </table>
@@ -524,23 +524,23 @@ SOASWAG Team`,
     const info = await this.transporter.sendMail({
       from: env.EMAIL_FROM,
       to,
-      subject: "Your SOASWAG password was updated",
+      subject: "Your Swaggeroo password was updated",
       text: `Hi ${name},
 
-Your SOASWAG password has been updated successfully.
+Your Swaggeroo password has been updated successfully.
 
 You can now sign in with your new password.
 
 If you did not make this change, please contact support immediately.
 
-SOASWAG Team`,
+Swaggeroo Team`,
       html: `
         <div style="margin:0;padding:24px;background:#f4f4f5;font-family:Arial,Helvetica,sans-serif;color:#111827;">
           <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="max-width:640px;margin:0 auto;background:#ffffff;border-radius:18px;overflow:hidden;border:1px solid #e5e7eb;">
             <tr>
               <td>
                 <div style="background:linear-gradient(90deg,#C41E3A 0%,#FD0000 100%);padding:28px 32px;color:#ffffff;">
-                  <div style="font-size:13px;letter-spacing:.08em;text-transform:uppercase;opacity:.85;">SOASWAG</div>
+                  <div style="font-size:13px;letter-spacing:.08em;text-transform:uppercase;opacity:.85;">Swaggeroo</div>
                   <h1 style="margin:10px 0 0;font-size:26px;line-height:1.2;font-weight:700;">Password updated</h1>
                 </div>
               </td>
@@ -548,10 +548,10 @@ SOASWAG Team`,
             <tr>
               <td style="padding:28px 32px;color:#374151;line-height:1.7;">
                 <p style="margin:0 0 14px;">Hi ${escapeHtml(name)},</p>
-                <p style="margin:0 0 14px;">Your SOASWAG password has been updated successfully.</p>
+                <p style="margin:0 0 14px;">Your Swaggeroo password has been updated successfully.</p>
                 <p style="margin:0 0 14px;">You can now sign in with your new password.</p>
                 <p style="margin:0;">If you did not make this change, please contact support immediately.</p>
-                <p style="margin:24px 0 0;font-weight:600;color:#111827;">SOASWAG Team</p>
+                <p style="margin:24px 0 0;font-weight:600;color:#111827;">Swaggeroo Team</p>
               </td>
             </tr>
           </table>
@@ -580,14 +580,14 @@ Customer: ${payload.customerName}
 
 Please sign in to your dashboard to review the request and start the design process.
 
-SOASWAG Team`,
+Swaggeroo Team`,
       html: `
         <div style="margin:0;padding:24px;background:#f4f4f5;font-family:Arial,Helvetica,sans-serif;color:#111827;">
           <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="max-width:640px;margin:0 auto;background:#ffffff;border-radius:18px;overflow:hidden;border:1px solid #e5e7eb;">
             <tr>
               <td>
                 <div style="background:linear-gradient(90deg,#C41E3A 0%,#FD0000 100%);padding:28px 32px;color:#ffffff;">
-                  <div style="font-size:13px;letter-spacing:.08em;text-transform:uppercase;opacity:.85;">SOASWAG</div>
+                  <div style="font-size:13px;letter-spacing:.08em;text-transform:uppercase;opacity:.85;">Swaggeroo</div>
                   <h1 style="margin:10px 0 0;font-size:26px;line-height:1.2;font-weight:700;">New order assigned</h1>
                 </div>
               </td>
@@ -633,14 +633,14 @@ ${payload.notes}
 
 Please review the revision request in the dashboard.
 
-SOASWAG Team`,
+Swaggeroo Team`,
       html: `
         <div style="margin:0;padding:24px;background:#f4f4f5;font-family:Arial,Helvetica,sans-serif;color:#111827;">
           <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="max-width:640px;margin:0 auto;background:#ffffff;border-radius:18px;overflow:hidden;border:1px solid #e5e7eb;">
             <tr>
               <td>
                 <div style="background:linear-gradient(90deg,#C41E3A 0%,#FD0000 100%);padding:28px 32px;color:#ffffff;">
-                  <div style="font-size:13px;letter-spacing:.08em;text-transform:uppercase;opacity:.85;">SOASWAG</div>
+                  <div style="font-size:13px;letter-spacing:.08em;text-transform:uppercase;opacity:.85;">Swaggeroo</div>
                   <h1 style="margin:10px 0 0;font-size:26px;line-height:1.2;font-weight:700;">Revision requested</h1>
                 </div>
               </td>

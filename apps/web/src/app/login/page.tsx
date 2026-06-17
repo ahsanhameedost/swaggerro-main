@@ -8,6 +8,7 @@ import { addToast } from "@heroui/toast";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
+import { useQueryClient } from "@tanstack/react-query";
 import { login } from "@/lib/auth";
 import { AuthShell } from "@/app/components/auth/AuthShell";
 import { Lock, Mail, ShieldCheck } from "lucide-react";
@@ -21,6 +22,7 @@ type FormValues = z.infer<typeof schema>;
 
 function LoginContent() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const searchParams = useSearchParams();
   const next = searchParams.get("next") ?? "/dashboard";
   const [loading, setLoading] = useState(false);
@@ -41,6 +43,7 @@ function LoginContent() {
 
     try {
       await login(values.email.trim(), values.password);
+      await queryClient.invalidateQueries({ queryKey: ["me"] });
       addToast({
         title: "Welcome back",
         description: "Logged in successfully",
@@ -60,15 +63,18 @@ function LoginContent() {
 
   return (
     <AuthShell
-      eyebrow="SOASWAG access"
+      eyebrow="Swaggeroo access"
       title="Sign in"
-      description="Access your SOASWAG dashboard, manage catalog operations, review orders, and continue project work from one place."
+      description="Access your Swaggeroo dashboard, manage catalog operations, review orders, and continue project work from one place."
       sideTitle="Run swag operations with a faster admin experience."
       sideDescription="A cleaner entry point for the same platform you are building: admin control, catalog workflow, order review, and project handoff."
       footer={
         <>
           Don&apos;t have an account?{" "}
-          <Link href="/signup" className="font-medium text-danger transition hover:opacity-80">
+          <Link
+            href={`/signup?next=${encodeURIComponent(next)}`}
+            className="font-medium text-danger transition hover:opacity-80"
+          >
             Create one
           </Link>
         </>

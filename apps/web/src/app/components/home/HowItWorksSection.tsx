@@ -130,7 +130,7 @@ export default function HowItWorksSection({
                         </div>
 
                         <div className="mt-10">
-                            <PrimaryButton className="h-12 px-8" text="Book Demo" />
+                            <PrimaryButton href="/contact" className="h-12 px-8" text="Book Demo" />
                         </div>
                     </div>
 

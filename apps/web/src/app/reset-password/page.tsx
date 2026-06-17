@@ -147,7 +147,7 @@ export default function ResetPasswordPage() {
       title="Reset password"
       description="Verify your email, confirm the 6-digit code, then create a new password."
       sideTitle="Recover access without losing momentum."
-      sideDescription="A clean recovery flow with a short-lived verification code, clear steps, and the same SOASWAG visual language."
+      sideDescription="A clean recovery flow with a short-lived verification code, clear steps, and the same Swaggeroo visual language."
       footer={
         <>
           Remembered your password?{" "}

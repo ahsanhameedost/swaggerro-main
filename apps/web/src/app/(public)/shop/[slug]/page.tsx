@@ -16,8 +16,6 @@ import {
 } from "@heroui/react";
 import { addToast } from "@heroui/toast";
 import { ArrowLeft, Check, ChevronLeft, ChevronRight, Info } from "lucide-react";
-import HomeNavbar from "@/app/components/home/HomeNavbar";
-import Footer from "@/app/components/home/Footer";
 import { PricingOptionsDrawer } from "@/app/components/catalog/PricingOptionsDrawer";
 import { QuantityStepper } from "@/app/components/catalog/QuantityStepper";
 import { usePublicProduct } from "@/lib/queries.catalog";

@@ -7,7 +7,10 @@ import {
 } from "@nestjs/common";
 import { Prisma, type CatalogOrderDesignPhase, type CatalogOrderRevisionStatus } from "@prisma/client";
 import { PDFDocument, StandardFonts } from "pdf-lib";
-import archiver from "archiver";
+// archiver is a CommonJS module whose export IS the factory function. The plain
+// default import resolved to `.default` (undefined) under this tsconfig and threw
+// "archiver_1.default is not a function". import-require binds the callable export.
+import archiver = require("archiver");
 import { randomUUID } from "crypto";
 import type { AuthUser } from "../../common/guards/auth.guard";
 import type {
@@ -205,7 +208,7 @@ export class CatalogOrdersService extends CatalogSharedService {
         }
       });
 
-      if (!employee || ["SUPER_ADMIN", "USER"].includes(employee.role.name)) {
+      if (!employee || ["SUPER_ADMIN", "Customer"].includes(employee.role.name)) {
         throw new NotFoundException("Employee not found");
       }
 

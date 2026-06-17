@@ -6,7 +6,7 @@ import {
 } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 
-const SYSTEM_ROLE_NAMES = new Set(["SUPER_ADMIN", "USER"]);
+const SYSTEM_ROLE_NAMES = new Set(["SUPER_ADMIN", "Customer"]);
 
 function normalizeRoleName(input: string) {
   return input

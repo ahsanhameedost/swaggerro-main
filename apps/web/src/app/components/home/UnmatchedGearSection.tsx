@@ -304,7 +304,7 @@ export default function UnmatchedGearSection({
 
         {/* CTA buttons */}
         <div className="mt-12 flex flex-wrap items-center justify-center gap-4">
-          <PrimaryButton className="h-12 px-7" text="Get Free Sample Pack" />
+          <PrimaryButton href="/contact" className="h-12 px-7" text="Get Free Sample Pack" />
 
           <Link
             href="#"

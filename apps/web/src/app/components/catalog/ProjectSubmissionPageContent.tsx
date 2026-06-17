@@ -34,6 +34,8 @@ export function ProjectSubmissionPageContent() {
   const swagPackPackaging = useCatalogCartStore((state) => state.swagPackPackaging);
   const swagPackQuantity = useCatalogCartStore((state) => state.swagPackQuantity);
   const swagPackName = useCatalogCartStore((state) => state.swagPackName);
+  const swagPackLogoUrl = useCatalogCartStore((state) => state.swagPackLogoUrl);
+  const swagPackLogoKey = useCatalogCartStore((state) => state.swagPackLogoKey);
   const clearCart = useCatalogCartStore((state) => state.clearCart);
 
   const summary = useMemo(
@@ -48,8 +50,17 @@ export function ProjectSubmissionPageContent() {
     [bulkItems, swagPackItems, swagPackPackaging, swagPackQuantity, swagPackName]
   );
 
-  const { data: user } = useMe();
+  const { data: user, isLoading: authLoading } = useMe();
   const submitMutation = useSubmitPublicOrder();
+
+  // Checkout requires an account: a guest must sign in / sign up before adding
+  // project details and placing an order. Cart is kept in localStorage, so it
+  // survives the round-trip back here after login.
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.replace("/login?next=/project-submittion");
+    }
+  }, [authLoading, user, router]);
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -73,6 +84,15 @@ export function ProjectSubmissionPageContent() {
     setEmail((current) => current || user.email || "");
     setPhone((current) => current || user.phone || "");
   }, [user]);
+
+  // Carry the logo designed in the Swag Pack builder into this submission.
+  useEffect(() => {
+    if (!swagPackLogoUrl) {
+      return;
+    }
+    setLogoUrl((current) => current ?? swagPackLogoUrl);
+    setLogoKey((current) => current ?? swagPackLogoKey);
+  }, [swagPackLogoUrl, swagPackLogoKey]);
 
   const canSubmit =
     summary.hasItems &&
@@ -213,12 +233,13 @@ export function ProjectSubmissionPageContent() {
       clearCart();
 
       addToast({
-        title: "Order submitted",
-        description: "Your order is now available from your dashboard.",
+        title: "Request submitted",
+        description: "We received your project. Our team will follow up shortly.",
         color: "success"
       });
 
-      router.push(`/dashboard/orders/${result.order.id}`);
+      const confirmEmail = encodeURIComponent(email.trim());
+      router.push(`/order-confirmation?id=${result.order.id}&email=${confirmEmail}`);
     } catch (error: any) {
       addToast({
         title: "Submission failed",
@@ -227,6 +248,14 @@ export function ProjectSubmissionPageContent() {
       });
     }
   };
+
+  if (authLoading || !user) {
+    return (
+      <div className="container flex min-h-[50vh] items-center justify-center text-black/50">
+        Redirecting to sign in…
+      </div>
+    );
+  }
 
   return (
     <div className="container">
