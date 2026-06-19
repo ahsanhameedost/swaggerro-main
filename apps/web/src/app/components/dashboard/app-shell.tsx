@@ -21,9 +21,9 @@ import React from "react";
 import LogoMark from "@/assets/logo_new.png";
 import Image from "next/image";
 
-const TOPBAR_H = 56;
+const TOPBAR_H = 72;
 const SIDEBAR_EXPANDED = 288;
-const SIDEBAR_COLLAPSED = 80;
+const SIDEBAR_COLLAPSED = 84;
 
 function Icon({ name, className }: { name?: string; className?: string }) {
   const Cmp = name ? (Icons as any)[name] : null;
@@ -61,11 +61,11 @@ function hasActiveChild(pathname: string, item: NavItem) {
 
 function Brand({ collapsed }: { collapsed: boolean }) {
   return (
-    <div className="flex min-w-0 items-center gap-3">
+    <div className="flex min-w-0 items-center">
       <Image
         src={LogoMark}
         alt="Soaswag logo"
-        className={`w-auto ${collapsed ? "h-8" : "h-14"}`}
+        className={`w-auto object-contain ${collapsed ? "h-8" : "h-12"}`}
         draggable={false}
         priority
       />
@@ -267,6 +267,10 @@ function NavGroup({
   );
 }
 
+function getDisplayName(user: User) {
+  return user.firstName?.trim() || user.email.split("@")[0] || "there";
+}
+
 function ProfileMenu({ user, onLogout }: { user: User; onLogout: () => void }) {
   const initial = getInitial(user.email);
 
@@ -287,7 +291,7 @@ function ProfileMenu({ user, onLogout }: { user: User; onLogout: () => void }) {
             }
           />
           <div className="hidden items-center gap-2 sm:flex">
-            <span className="text-sm font-medium">{user.email}</span>
+            <span className="text-sm font-medium">Hello, {getDisplayName(user)}</span>
             <Icons.ChevronDown className="size-4 text-foreground/60" />
           </div>
         </Button>
@@ -319,7 +323,7 @@ function ProfileMenu({ user, onLogout }: { user: User; onLogout: () => void }) {
             key="settings"
             startContent={<Icons.User className="size-4" />}
             as={Link}
-            href="/dashboard"
+            href="/dashboard/account"
           >
             Account Settings
           </DropdownItem>
@@ -335,6 +339,73 @@ function ProfileMenu({ user, onLogout }: { user: User; onLogout: () => void }) {
         </DropdownSection>
       </DropdownMenu>
     </Dropdown>
+  );
+}
+
+const BREADCRUMB_LABELS: Record<string, string> = {
+  dashboard: "Dashboard",
+  catalog: "Catalog",
+  products: "Products",
+  categories: "Categories",
+  collections: "Collections",
+  orders: "Orders",
+  designs: "Designs",
+  recipients: "Recipients",
+  inventory: "Inventory",
+  shipments: "Shipments",
+  shipping: "Shipping Settings",
+  stores: "Stores",
+  users: "Users",
+  employees: "Employees",
+  permissions: "Permissions",
+  "contact-messages": "Contact Messages",
+  account: "Account Settings",
+  new: "New",
+  checkout: "Checkout",
+};
+
+function prettySegment(seg: string) {
+  if (BREADCRUMB_LABELS[seg]) return BREADCRUMB_LABELS[seg];
+  if (seg.length > 14 || /\d/.test(seg)) return "Details";
+  return seg.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function Breadcrumb() {
+  const pathname = usePathname();
+  const parts = normalizePath(pathname).split("/").filter(Boolean);
+  if (!parts.length) return null;
+
+  const crumbs = parts.map((seg, i) => ({
+    key: parts.slice(0, i + 1).join("/"),
+    label: prettySegment(seg),
+    href: "/" + parts.slice(0, i + 1).join("/"),
+    last: i === parts.length - 1,
+  }));
+
+  return (
+    <nav aria-label="Breadcrumb" className="mb-5">
+      <div className="inline-flex items-center gap-1.5 rounded-full border border-divider bg-default-50 px-3 py-1.5 text-xs font-medium">
+        <Link
+          href="/dashboard"
+          className="flex items-center text-foreground/50 transition-colors hover:text-foreground"
+          aria-label="Dashboard home"
+        >
+          <Icons.Home className="size-3.5" />
+        </Link>
+        {crumbs.map((c) => (
+          <span key={c.key} className="flex items-center gap-1.5">
+            <Icons.ChevronRight className="size-3.5 text-foreground/25" />
+            {c.last ? (
+              <span className="font-semibold text-foreground">{c.label}</span>
+            ) : (
+              <Link href={c.href} className="text-foreground/55 transition-colors hover:text-foreground">
+                {c.label}
+              </Link>
+            )}
+          </span>
+        ))}
+      </div>
+    </nav>
   );
 }
 
@@ -366,85 +437,120 @@ export function AppShell({
     }
   };
 
+  const pathname = usePathname();
+  const [mobileOpen, setMobileOpen] = React.useState(false);
+
+  // Close the mobile drawer whenever the route changes.
+  React.useEffect(() => {
+    setMobileOpen(false);
+  }, [pathname]);
+
   const shellStyle = {
     ["--topbar-h" as string]: `${TOPBAR_H}px`,
     ["--sidebar-w" as string]: `${sidebarCollapsed ? SIDEBAR_COLLAPSED : SIDEBAR_EXPANDED}px`,
   } as React.CSSProperties;
+
+  const sidebarNav = (
+    <nav className="cc-scroll min-w-0 flex-1 overflow-y-auto px-3 py-4">
+      <div className="flex min-w-0 flex-col gap-2">
+        {nav.map((item) => (
+          <NavGroup
+            key={item.key}
+            item={item}
+            collapsed={sidebarCollapsed && !mobileOpen}
+            onExpandSidebar={() => {
+              if (sidebarCollapsed) toggleSidebar();
+            }}
+          />
+        ))}
+      </div>
+    </nav>
+  );
 
   return (
     <div
       className="h-[100dvh] overflow-hidden overflow-x-hidden bg-background"
       style={shellStyle}
     >
-      <header className="h-[var(--topbar-h)] border-b border-foreground/10 bg-background/80 backdrop-blur">
-        <div className="flex h-full items-center justify-between">
-          <div className="flex min-w-0 items-center">
-            <div
-              className="flex h-full items-center border-r border-foreground/10 px-4"
-              style={{ width: "var(--sidebar-w)" }}
+      {/* Near-full-width frame with ~50px gutters on laptops, tighter on mobile */}
+      <div className="mx-3 flex h-full flex-col overflow-hidden bg-background sm:mx-6 lg:mx-[50px]">
+        <header className="h-[var(--topbar-h)] shrink-0 border-b border-foreground/10 bg-background">
+          <div className="flex h-full items-center">
+            <Link
+              href="/dashboard"
+              className={[
+                "flex h-full w-auto shrink-0 items-center border-r border-foreground/10 px-4",
+                sidebarCollapsed ? "lg:w-[var(--sidebar-w)] lg:justify-center lg:px-2" : "lg:w-[var(--sidebar-w)] lg:justify-start lg:px-5",
+              ].join(" ")}
             >
-              <Link href="/dashboard" className="block min-w-0">
-                <Brand collapsed={sidebarCollapsed} />
-              </Link>
-            </div>
+              <Brand collapsed={sidebarCollapsed} />
+            </Link>
 
-            <div className="flex min-w-0 items-center gap-3 px-4">
+            <div className="flex flex-1 items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
+              {/* Mobile: open drawer */}
               <Button
                 isIconOnly
                 size="sm"
                 variant="light"
-                className="rounded-2xl"
+                className="rounded-xl text-foreground/70 data-[hover=true]:bg-foreground/5 lg:hidden"
+                onPress={() => setMobileOpen(true)}
+                aria-label="Open menu"
+              >
+                <Icons.Menu className="size-5" />
+              </Button>
+
+              {/* Desktop: collapse toggle */}
+              <Button
+                isIconOnly
+                size="sm"
+                variant="light"
+                className="hidden rounded-xl text-foreground/70 data-[hover=true]:bg-foreground/5 lg:flex"
                 onPress={toggleSidebar}
                 aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
               >
                 {sidebarCollapsed ? (
-                  <Icons.ChevronsRight className="size-4" />
+                  <Icons.PanelLeftOpen className="size-5" />
                 ) : (
-                  <Icons.ChevronsLeft className="size-4" />
+                  <Icons.PanelLeftClose className="size-5" />
                 )}
               </Button>
 
-              <h1 className="whitespace-nowrap text-3xl font-semibold leading-none tracking-tight">
-                Dashboard
-              </h1>
+              <ProfileMenu user={user} onLogout={onLogout} />
             </div>
           </div>
+        </header>
 
-          <div className="px-4">
-            <ProfileMenu user={user} onLogout={onLogout} />
-          </div>
+        <div className="relative flex min-h-0 flex-1 min-w-0">
+          {/* Mobile backdrop */}
+          {mobileOpen && (
+            <button
+              type="button"
+              aria-label="Close menu"
+              className="fixed inset-x-0 bottom-0 top-[var(--topbar-h)] z-40 bg-black/40 lg:hidden"
+              onClick={() => setMobileOpen(false)}
+            />
+          )}
+
+          <aside
+            className={[
+              "z-50 border-r border-foreground/10 bg-background",
+              // Mobile: slide-over drawer under the header
+              "fixed bottom-0 left-0 top-[var(--topbar-h)] w-72 transition-transform duration-300 ease-in-out",
+              mobileOpen ? "translate-x-0" : "-translate-x-full",
+              // Desktop: in-flow column that animates its width
+              "lg:static lg:top-auto lg:h-full lg:w-[var(--sidebar-w)] lg:translate-x-0 lg:transition-[width]",
+            ].join(" ")}
+          >
+            <div className="flex h-full flex-col min-w-0">{sidebarNav}</div>
+          </aside>
+
+          <main className="cc-scroll min-w-0 flex-1 overflow-y-auto bg-background">
+            <div className="min-w-0 px-4 py-5 sm:px-6 lg:px-8 lg:py-7">
+              <Breadcrumb />
+              {children}
+            </div>
+          </main>
         </div>
-      </header>
-
-      <div className="flex h-[calc(100dvh-var(--topbar-h))] min-w-0">
-        <aside
-          className={[
-            "h-full min-w-0 border-r border-foreground/10 bg-background",
-            "will-change-[width] transition-[width] duration-300 ease-in-out",
-          ].join(" ")}
-          style={{ width: "var(--sidebar-w)" }}
-        >
-          <div className="flex h-full flex-col min-w-0">
-            <nav className="cc-scroll min-w-0 flex-1 overflow-y-auto px-3 py-4">
-              <div className="flex min-w-0 flex-col gap-2">
-                {nav.map((item) => (
-                  <NavGroup
-                    key={item.key}
-                    item={item}
-                    collapsed={sidebarCollapsed}
-                    onExpandSidebar={() => {
-                      if (sidebarCollapsed) toggleSidebar();
-                    }}
-                  />
-                ))}
-              </div>
-            </nav>
-          </div>
-        </aside>
-
-        <main className="cc-scroll min-w-0 flex-1 overflow-y-auto">
-          <div className="min-w-0 p-5">{children}</div>
-        </main>
       </div>
     </div>
   );

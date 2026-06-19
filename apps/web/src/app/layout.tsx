@@ -1,11 +1,18 @@
 import "./globals.css";
 import Providers from "./providers";
-import { Geist, Gemunu_Libre, Inter, Poppins } from "next/font/google";
+import { Geist, Gemunu_Libre, Inter, Plus_Jakarta_Sans, Poppins } from "next/font/google";
 
 export const metadata = {
   title: "Swaggeroo",
   description: "Swag ops platform"
 };
+
+const fontSans = Plus_Jakarta_Sans({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
+  variable: "--font-plus-jakarta",
+  display: "swap",
+});
 
 const fontLogo = Gemunu_Libre({
   subsets: ["latin"],
@@ -37,7 +44,7 @@ const fontGeist = Geist({
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${fontLogo.variable} ${fontHeading.variable} ${fontBody.variable} ${fontGeist.variable}`}>
+    <html lang="en" className={`${fontSans.variable} ${fontLogo.variable} ${fontHeading.variable} ${fontBody.variable} ${fontGeist.variable}`}>
       <body suppressHydrationWarning>
         <Providers>{children}</Providers>
       </body>

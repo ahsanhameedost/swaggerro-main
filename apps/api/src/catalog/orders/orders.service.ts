@@ -157,6 +157,116 @@ export class CatalogOrdersService extends CatalogSharedService {
     };
   }
 
+  /**
+   * Lightweight dashboard aggregates. Avoids the deep `orderInclude` joins —
+   * selects only the scalar columns plus each item's design phase — so it stays
+   * fast even over the remote DB and across all accessible orders.
+   */
+  async getOrderStats(authUser: AuthUser) {
+    const where = await this.buildAccessibleOrderWhere({} as ListOrdersQuery, authUser);
+
+    const orders = await this.prisma.catalogOrder.findMany({
+      where,
+      select: {
+        status: true,
+        paymentStatus: true,
+        paidAt: true,
+        createdAt: true,
+        totalPrice: true,
+        items: { select: { designPhase: true } }
+      },
+      orderBy: { createdAt: "desc" }
+    });
+
+    const now = new Date();
+    const monthStart = (monthsAgo: number) =>
+      new Date(now.getFullYear(), now.getMonth() - monthsAgo, 1);
+    const thisMonthStart = monthStart(0);
+    const lastMonthStart = monthStart(1);
+
+    const buckets = Array.from({ length: 6 }).map((_, i) => {
+      const start = monthStart(5 - i);
+      return {
+        label: start.toLocaleDateString("en-US", { month: "short" }),
+        start,
+        end: monthStart(4 - i),
+        total: 0
+      };
+    });
+
+    const statusCounts: Record<string, number> = {
+      PENDING_REVIEW: 0,
+      IN_REVIEW: 0,
+      APPROVED: 0,
+      REJECTED: 0,
+      CANCELLED: 0
+    };
+
+    let paidRevenue = 0;
+    let outstanding = 0;
+    let paidOrdersCount = 0;
+    let revenueThisMonth = 0;
+    let revenueLastMonth = 0;
+    let ordersThisMonth = 0;
+    let ordersLastMonth = 0;
+    let pendingReview = 0;
+    let inDesign = 0;
+    let readyToOrder = 0;
+    let unpaid = 0;
+
+    for (const o of orders) {
+      statusCounts[o.status] = (statusCounts[o.status] ?? 0) + 1;
+
+      const price = Number(o.totalPrice);
+      const active = o.status !== "CANCELLED" && o.status !== "REJECTED";
+      const ready =
+        o.items.length > 0 && o.items.every((it) => it.designPhase === "READY_TO_ORDER");
+
+      const created = new Date(o.createdAt);
+      if (created >= thisMonthStart) ordersThisMonth += 1;
+      else if (created >= lastMonthStart && created < thisMonthStart) ordersLastMonth += 1;
+
+      if (o.paymentStatus === "PAID") {
+        paidRevenue += price;
+        paidOrdersCount += 1;
+
+        const revDate = new Date(o.paidAt ?? o.createdAt);
+        if (revDate >= thisMonthStart) revenueThisMonth += price;
+        else if (revDate >= lastMonthStart && revDate < thisMonthStart) revenueLastMonth += price;
+
+        for (const b of buckets) {
+          if (revDate >= b.start && revDate < b.end) {
+            b.total += price;
+            break;
+          }
+        }
+      } else if (active) {
+        outstanding += price;
+      }
+
+      if (o.status === "PENDING_REVIEW") pendingReview += 1;
+      if (active && !ready) inDesign += 1;
+      if (active && ready) readyToOrder += 1;
+      if (o.status === "APPROVED" && o.paymentStatus !== "PAID") unpaid += 1;
+    }
+
+    const pct = (cur: number, prev: number) =>
+      prev > 0 ? Math.round(((cur - prev) / prev) * 100) : null;
+
+    return {
+      totalOrders: orders.length,
+      paidRevenue,
+      outstanding,
+      avgOrderValue: paidOrdersCount ? paidRevenue / paidOrdersCount : 0,
+      paidOrdersCount,
+      statusCounts,
+      monthly: buckets.map((b) => ({ label: b.label, total: b.total })),
+      revenueTrend: pct(revenueThisMonth, revenueLastMonth),
+      ordersTrend: pct(ordersThisMonth, ordersLastMonth),
+      needsAttention: { pendingReview, inDesign, readyToOrder, unpaid }
+    };
+  }
+
   async getOrderById(id: string, authUser: AuthUser) {
     const order = await this.findAccessibleOrderOrThrow(id, authUser);
     return this.serializeOrderDetail(order);

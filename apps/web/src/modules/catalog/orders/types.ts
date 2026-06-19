@@ -156,6 +156,24 @@ export type CatalogOrder = {
   updatedAt: string;
 };
 
+export type CatalogOrderStats = {
+  totalOrders: number;
+  paidRevenue: number;
+  outstanding: number;
+  avgOrderValue: number;
+  paidOrdersCount: number;
+  statusCounts: Record<CatalogOrderStatus, number>;
+  monthly: { label: string; total: number }[];
+  revenueTrend: number | null;
+  ordersTrend: number | null;
+  needsAttention: {
+    pendingReview: number;
+    inDesign: number;
+    readyToOrder: number;
+    unpaid: number;
+  };
+};
+
 export type ListCatalogOrdersParams = {
   search?: string;
   status?: CatalogOrderStatus | "";

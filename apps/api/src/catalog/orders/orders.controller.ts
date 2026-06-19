@@ -45,6 +45,13 @@ export class CatalogOrdersController {
   }
 
   @UseGuards(AuthGuard, PermissionsGuard)
+  @Get("orders/stats")
+  @RequireAnyPermissions("catalog.orders.read", "orders.assigned.read", "orders.self.read")
+  async getOrderStats(@Req() req: FastifyRequest & { user?: AuthUser }) {
+    return await this.ordersService.getOrderStats(req.user!);
+  }
+
+  @UseGuards(AuthGuard, PermissionsGuard)
   @Get("orders/:id")
   @RequireAnyPermissions("catalog.orders.read", "orders.assigned.read", "orders.self.read")
   async getOrderById(

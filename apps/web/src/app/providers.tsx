@@ -12,6 +12,10 @@ export default function Providers({ children }: { children: ReactNode }) {
           queries: {
             refetchOnWindowFocus: false,
             retry: 1,
+            // Serve cached data instantly on re-navigation; mutations still
+            // invalidate explicitly so updates aren't missed.
+            staleTime: 60_000,
+            gcTime: 5 * 60_000,
           },
         },
       })

@@ -4,6 +4,7 @@ import type {
   CatalogOrderDesignPhase,
   CatalogOrderPaymentResponse,
   CatalogOrderResponse,
+  CatalogOrderStats,
   CatalogOrderStatus,
   CreateCatalogOrderPaymentInput,
   CreateOrderDesignUploadInput,
@@ -18,6 +19,10 @@ export async function listCatalogOrders(params: ListCatalogOrdersParams = {}) {
   return apiFetch<ListCatalogOrdersResponse>(`/catalog/orders${buildQuery(params as any)}`, {
     method: "GET"
   });
+}
+
+export async function getCatalogOrderStats() {
+  return apiFetch<CatalogOrderStats>(`/catalog/orders/stats`, { method: "GET" });
 }
 
 export async function getCatalogOrder(id: string) {

@@ -5,6 +5,7 @@ import {
   createCatalogOrderDesignUpload,
   createCatalogOrderPayment,
   getCatalogOrder,
+  getCatalogOrderStats,
   listCatalogOrders,
   requestCatalogOrderItemRevision,
   updateCatalogOrderItemDesign,
@@ -32,6 +33,14 @@ export function useCatalogOrders(params: ListCatalogOrdersParams, enabled = true
     ],
     queryFn: () => listCatalogOrders(params),
     placeholderData: keepPreviousData,
+    enabled
+  });
+}
+
+export function useCatalogOrderStats(enabled = true) {
+  return useQuery({
+    queryKey: ["catalog", "orders", "stats"],
+    queryFn: () => getCatalogOrderStats(),
     enabled
   });
 }
