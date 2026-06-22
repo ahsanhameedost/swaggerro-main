@@ -43,7 +43,18 @@ export type CatalogCartSnapshot = {
   swagPackLogoKey: string | null;
 };
 
+// Logo + placement captured in the Mockup Studio builder, carried to the order
+// (logoUrl persists for printing; `note` describes placement for the designer).
+export type CartBranding = {
+  logoUrl: string | null;
+  logoKey: string | null;
+  mockupUrl: string | null;
+  note: string | null;
+};
+
 type CatalogCartStore = CatalogCartSnapshot & {
+  branding: CartBranding;
+  setBranding: (branding: Partial<CartBranding> | null) => void;
   addBulkItem: (item: BulkCartItem) => void;
   addSwagPackItem: (item: SwagPackCartItem) => void;
   updateBulkQuantity: (key: string, quantity: number) => void;
@@ -116,6 +127,13 @@ export const useCatalogCartStore = create<CatalogCartStore>()(
       swagPackName: createDefaultSwagPackName(),
       swagPackLogoUrl: null,
       swagPackLogoKey: null,
+      branding: { logoUrl: null, logoKey: null, mockupUrl: null, note: null },
+      setBranding: (branding) =>
+        set((state) => ({
+          branding: branding
+            ? { ...state.branding, ...branding }
+            : { logoUrl: null, logoKey: null, mockupUrl: null, note: null }
+        })),
       addBulkItem: (item) =>
         set((state) => ({
           bulkItems: upsertBulk(state.bulkItems, item)
@@ -188,12 +206,13 @@ export const useCatalogCartStore = create<CatalogCartStore>()(
           swagPackQuantity: 25,
           swagPackName: createDefaultSwagPackName(),
           swagPackLogoUrl: null,
-          swagPackLogoKey: null
+          swagPackLogoKey: null,
+          branding: { logoUrl: null, logoKey: null, mockupUrl: null, note: null }
         })
     }),
     {
       name: "soaswag-catalog-cart",
-      version: 3
+      version: 4
     }
   )
 );

@@ -54,7 +54,7 @@ function LoginContent() {
       addToast({
         title: "Login failed",
         description: error?.message ?? "Invalid credentials",
-        color: "danger"
+        color: "primary"
       });
     } finally {
       setLoading(false);
@@ -73,7 +73,7 @@ function LoginContent() {
           Don&apos;t have an account?{" "}
           <Link
             href={next && next !== "/dashboard" ? `/signup?next=${encodeURIComponent(next)}` : "/signup"}
-            className="font-medium text-danger transition hover:opacity-80"
+            className="font-medium text-primary transition hover:opacity-80"
           >
             Create one
           </Link>
@@ -89,7 +89,7 @@ function LoginContent() {
           errorMessage={errors.email?.message}
           classNames={{
             inputWrapper:
-              "h-14 rounded-2xl border border-divider bg-content1 shadow-none data-[hover=true]:border-danger/40 group-data-[focus=true]:border-danger group-data-[focus=true]:ring-2 group-data-[focus=true]:ring-danger/20"
+              "h-14 rounded-2xl border border-divider bg-content1 shadow-none data-[hover=true]:border-primary/40 group-data-[focus=true]:border-primary group-data-[focus=true]:ring-2 group-data-[focus=true]:ring-primary/20"
           }}
           {...register("email")}
         />
@@ -103,14 +103,14 @@ function LoginContent() {
           errorMessage={errors.password?.message}
           classNames={{
             inputWrapper:
-              "h-14 rounded-2xl border border-divider bg-content1 shadow-none data-[hover=true]:border-danger/40 group-data-[focus=true]:border-danger group-data-[focus=true]:ring-2 group-data-[focus=true]:ring-danger/20"
+              "h-14 rounded-2xl border border-divider bg-content1 shadow-none data-[hover=true]:border-primary/40 group-data-[focus=true]:border-primary group-data-[focus=true]:ring-2 group-data-[focus=true]:ring-primary/20"
           }}
           {...register("password")}
         />
 
         <div className="flex items-center justify-end">
 
-          <Link href="/reset-password" className="text-sm font-medium text-danger transition hover:opacity-80">
+          <Link href="/reset-password" className="text-sm font-medium text-primary transition hover:opacity-80">
             Forgot password?
           </Link>
         </div>

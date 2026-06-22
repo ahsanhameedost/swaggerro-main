@@ -416,7 +416,7 @@ export abstract class CatalogSharedService {
             name: product.category.name
           }
         : null,
-      collections: product.collections.map((entry: any) => ({
+      collections: (product.collections ?? []).map((entry: any) => ({
         id: entry.collection.id,
         name: entry.collection.name
       })),
@@ -444,7 +444,25 @@ export abstract class CatalogSharedService {
   protected serializePublicProductListItem(product: any) {
     const item = this.serializeProductListItem(product);
 
+    // Distinct color swatches from the product's COLOR variant group (for shop
+    // filters + card swatches). Read-only, additive.
+    const colorGroup = (product.variants ?? []).find((v: any) => v.type === "COLOR");
+    const swatches = colorGroup
+      ? (colorGroup.options ?? []).map((o: any) => ({ name: o.label, hex: o.colorHex ?? null }))
+      : [];
+
+    // True "from" price = cheapest across base, variants and product pricing tiers.
+    const pricingPrices = (product.pricingOptions ?? [])
+      .map((p: any) => this.decimalToNumber(p.price))
+      .filter((n: number) => Number.isFinite(n) && n > 0);
+    const candidates = [item.lowestPrice, item.basePrice, ...pricingPrices].filter(
+      (n: number) => typeof n === "number" && Number.isFinite(n) && n > 0
+    );
+    const floorPrice = candidates.length ? Math.min(...candidates) : item.lowestPrice;
+
     return {
+      swatches,
+      floorPrice,
       id: item.id,
       slug: item.slug,
       name: item.name,
@@ -452,7 +470,7 @@ export abstract class CatalogSharedService {
       category: product.category
         ? { id: product.category.id, name: product.category.name, slug: product.category.slug }
         : null,
-      collections: product.collections.map((entry: any) => ({
+      collections: (product.collections ?? []).map((entry: any) => ({
         id: entry.collection.id,
         name: entry.collection.name,
         slug: entry.collection.slug
@@ -532,7 +550,7 @@ export abstract class CatalogSharedService {
             slug: product.category.slug
           }
         : null,
-      collections: product.collections.map((entry: any) => ({
+      collections: (product.collections ?? []).map((entry: any) => ({
         id: entry.collection.id,
         name: entry.collection.name,
         slug: entry.collection.slug

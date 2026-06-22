@@ -16,7 +16,7 @@ import {
   Tooltip
 } from "@heroui/react";
 import { addToast } from "@heroui/toast";
-import { Boxes, ContactRound, Download, Truck, UploadCloud } from "lucide-react";
+import { Boxes, ContactRound, Download, Eye, Sparkles, Truck, UploadCloud } from "lucide-react";
 import { useMe } from "@/queries/auth";
 import {
   useCreateCatalogOrderDesignUpload,
@@ -28,6 +28,7 @@ import {
 } from "@/lib/queries.catalog";
 import { uploadFileToPresignedUrl } from "@/modules/catalog/public/api";
 import { downloadApiFile } from "@/lib/download";
+import { parseLogoPlacement } from "@/lib/logo-placement";
 import { formatMoney } from "@/lib/money";
 import { hasAnyPermission, hasPermission } from "@/lib/permissions";
 import {
@@ -351,6 +352,7 @@ export default function OrderDetailsPage() {
 
   const { data, isLoading, isError, error } = useCatalogOrder(orderId ?? "", canRead && !!orderId);
   const order = data?.order;
+  const { customerNotes, placement } = parseLogoPlacement(order?.notes);
 
   const groupedItems = useMemo(
     () => ({
@@ -578,25 +580,71 @@ export default function OrderDetailsPage() {
 
               <div className="space-y-2 md:col-span-2">
                 <div className="text-sm font-semibold uppercase tracking-wide text-foreground/50">
-                  Notes
+                  Customer notes
                 </div>
                 <div className="rounded-2xl border border-divider bg-content1 px-4 py-3 text-sm text-foreground/70">
-                  {order.notes || "No notes provided."}
+                  {customerNotes || "No notes provided."}
                 </div>
               </div>
 
-              {order.logoUrl ? (
-                <div className="space-y-2 md:col-span-2">
-                  <div className="text-sm font-semibold uppercase tracking-wide text-foreground/50">
-                    Requested logo
+              {/* Logo + placement designed in the Mockup Studio — shown as fields + preview */}
+              {order.logoUrl || placement ? (
+                <div className="space-y-3 md:col-span-2">
+                  <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-foreground/50">
+                    <Sparkles className="size-4 text-[var(--primary)]" /> Logo & placement
                   </div>
-                  <div className="flex h-32 w-32 items-center justify-center overflow-hidden rounded-2xl border border-divider bg-content1">
-                    <Image
-                      removeWrapper
-                      src={order.logoUrl}
-                      alt="Order logo"
-                      className="h-full w-full object-contain"
-                    />
+                  <div className="rounded-2xl border border-divider bg-content1 p-4">
+                    <div className="flex flex-col gap-4 sm:flex-row">
+                      {/* preview / logo image */}
+                      <div className="flex h-36 w-36 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-divider bg-white">
+                        {placement?.mockupUrl ? (
+                          <Image removeWrapper src={placement.mockupUrl} alt="Logo placement preview" className="h-full w-full object-contain" />
+                        ) : order.logoUrl ? (
+                          <Image removeWrapper src={order.logoUrl} alt="Order logo" className="h-full w-full object-contain" />
+                        ) : null}
+                      </div>
+
+                      <div className="min-w-0 flex-1">
+                        {placement?.target ? (
+                          <div className="text-sm font-semibold text-foreground">{placement.target}</div>
+                        ) : null}
+
+                        {placement ? (
+                          <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
+                            {[
+                              { label: "Horizontal", value: placement.horizontal != null ? `${placement.horizontal}%` : "—" },
+                              { label: "Vertical", value: placement.vertical != null ? `${placement.vertical}%` : "—" },
+                              { label: "Width", value: placement.width != null ? `${placement.width}%` : "—" },
+                              { label: "Rotation", value: placement.rotation != null ? `${placement.rotation}°` : "—" },
+                              { label: "Opacity", value: placement.opacity != null ? `${placement.opacity}%` : "—" },
+                              { label: "Imprint", value: placement.imprint ?? "—" },
+                            ].map((f) => (
+                              <div key={f.label} className="rounded-xl border border-divider bg-background px-3 py-2">
+                                <div className="text-[10px] font-semibold uppercase tracking-wide text-foreground/40">{f.label}</div>
+                                <div className="truncate text-sm font-medium text-foreground">{f.value}</div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-sm text-foreground/60">Logo uploaded by the customer.</div>
+                        )}
+
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {placement?.mockupUrl ? (
+                            <a href={placement.mockupUrl} target="_blank" rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1.5 rounded-full bg-[var(--primary)] px-3.5 py-1.5 text-xs font-semibold text-white">
+                              <Eye className="size-3.5" /> Preview mockup
+                            </a>
+                          ) : null}
+                          {order.logoUrl ? (
+                            <a href={order.logoUrl} target="_blank" rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1.5 rounded-full border border-divider bg-background px-3.5 py-1.5 text-xs font-semibold text-foreground hover:bg-content2">
+                              <Download className="size-3.5" /> Original logo
+                            </a>
+                          ) : null}
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               ) : null}

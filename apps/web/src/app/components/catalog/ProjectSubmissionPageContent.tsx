@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { Eye, Sparkles } from "lucide-react";
 import {
   Button,
   Card,
@@ -51,6 +52,7 @@ export function ProjectSubmissionPageContent() {
   const swagPackName = useCatalogCartStore((state) => state.swagPackName);
   const swagPackLogoUrl = useCatalogCartStore((state) => state.swagPackLogoUrl);
   const swagPackLogoKey = useCatalogCartStore((state) => state.swagPackLogoKey);
+  const branding = useCatalogCartStore((state) => state.branding);
   const clearCart = useCatalogCartStore((state) => state.clearCart);
 
   const summary = useMemo(
@@ -109,6 +111,18 @@ export function ProjectSubmissionPageContent() {
     setLogoUrl((current) => current ?? swagPackLogoUrl);
     setLogoKey((current) => current ?? swagPackLogoKey);
   }, [swagPackLogoUrl, swagPackLogoKey]);
+
+  // Carry the logo + placement designed in the Mockup Studio into this submission
+  // so the design team sees exactly where the logo goes.
+  useEffect(() => {
+    // Prefill the printable logo only. The placement note is NOT put into the
+    // comments box (that stays free for the customer) — it's shown as a separate
+    // read-only preview card and appended to the order notes at submit time.
+    if (branding.logoUrl) {
+      setLogoUrl((current) => current ?? branding.logoUrl);
+      setLogoKey((current) => current ?? branding.logoKey);
+    }
+  }, [branding.logoUrl, branding.logoKey]);
 
   const trimmedName = name.trim();
   const emailIsValid = isValidEmail(email);
@@ -233,12 +247,15 @@ export function ProjectSubmissionPageContent() {
     }
 
     try {
+      // The customer's comments stay free; the logo placement (from the Mockup
+      // Studio) is appended as a clearly-labeled block for the design team.
+      const finalNotes = [notes.trim(), branding.note?.trim()].filter(Boolean).join("\n\n") || null;
       const result = await submitMutation.mutateAsync({
         name: name.trim(),
         email: email.trim(),
         companyName: companyName.trim() || null,
         phone: phone.trim() || null,
-        notes: notes.trim() || null,
+        notes: finalNotes,
         budgetPerPerson: parsedBudget,
         neededByDate: neededByDate || null,
         logoUrl,
@@ -430,6 +447,36 @@ export function ProjectSubmissionPageContent() {
                   minRows={6}
                   placeholder="Insert card copy, special requests, or anything we missed."
                 />
+
+                {branding.note ? (
+                  <div className="rounded-[28px] border border-[var(--primary)]/25 bg-[var(--primary)]/[0.04] p-4">
+                    <div className="flex items-start gap-4">
+                      {branding.mockupUrl ? (
+                        <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-black/10 bg-white">
+                          <Image removeWrapper src={branding.mockupUrl} alt="Logo placement preview" className="h-full w-full object-contain" />
+                        </div>
+                      ) : null}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 text-sm font-semibold text-black">
+                          <Sparkles className="size-4 text-[var(--primary)]" /> Logo placement attached
+                        </div>
+                        <p className="mt-1 text-xs leading-relaxed text-black/55">
+                          Designed in Mockup Studio — your design team will see exactly where the logo goes. This is sent automatically; your comments above stay separate.
+                        </p>
+                        {branding.mockupUrl ? (
+                          <a
+                            href={branding.mockupUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-[var(--primary)] px-3 py-1.5 text-xs font-semibold text-white"
+                          >
+                            <Eye className="size-3.5" /> View placement preview
+                          </a>
+                        ) : null}
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
 
                 <div className="rounded-[28px] border border-black/10 bg-[#f7f8fb] p-4">
                   <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">

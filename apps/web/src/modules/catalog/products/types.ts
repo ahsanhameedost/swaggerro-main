@@ -104,6 +104,8 @@ export type CatalogProductListItem = {
   compareAtPriceCents?: number | null;
   lowestPrice: number;
   highestPrice: number;
+  floorPrice?: number;
+  swatches?: Array<{ name: string; hex: string | null }>;
   minPrice: number;
   minPriceCents?: number;
   maxPrice?: number;

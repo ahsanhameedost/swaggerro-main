@@ -10,7 +10,12 @@ import {
   NavbarMenuItem,
   Button,
   Navbar,
+  Dropdown,
+  DropdownTrigger,
+  DropdownMenu,
+  DropdownItem,
 } from "@heroui/react";
+import { ChevronDown } from "lucide-react";
 import LogoMark from "@/assets/logo_new.png";
 import Link from "next/link";
 import Image from "next/image";
@@ -26,13 +31,21 @@ type NavItem = {
   href: string;
 };
 
+// Real, live pages.
 const NAV_ITEMS: NavItem[] = [
   { label: "Shop", href: "/shop" },
+  { label: "How it works", href: "/how-it-works" },
+  { label: "About", href: "/about" },
+  { label: "FAQ", href: "/faq" },
+  { label: "Contact", href: "/contact" },
+];
+
+// Pages still in progress — grouped under a single "More" dropdown.
+const COMING_SOON: NavItem[] = [
   { label: "Platform", href: "/platform" },
   { label: "Resources", href: "/resources" },
   { label: "Pricing", href: "/pricing" },
   { label: "Company", href: "/company" },
-  { label: "Contact", href: "/contact" },
 ];
 
 export default function HomeNavbar() {
@@ -113,6 +126,36 @@ export default function HomeNavbar() {
                 </Link>
               </NavbarItem>
             ))}
+
+            {/* Coming-soon pages grouped under one dropdown */}
+            <NavbarItem>
+              <Dropdown placement="bottom-start">
+                <DropdownTrigger>
+                  <button
+                    type="button"
+                    className={`${navLinkClass} inline-flex items-center gap-1`}
+                  >
+                    More <ChevronDown className="size-4" />
+                  </button>
+                </DropdownTrigger>
+                <DropdownMenu aria-label="More pages">
+                  {COMING_SOON.map((item) => (
+                    <DropdownItem
+                      key={item.href}
+                      as={Link}
+                      href={item.href}
+                      endContent={
+                        <span className="rounded-full bg-black/5 px-2 py-0.5 text-[10px] font-semibold text-black/40">
+                          Soon
+                        </span>
+                      }
+                    >
+                      {item.label}
+                    </DropdownItem>
+                  ))}
+                </DropdownMenu>
+              </Dropdown>
+            </NavbarItem>
           </div>
         </NavbarContent>
 
@@ -180,6 +223,24 @@ export default function HomeNavbar() {
                   Cart{cartCount > 0 ? ` (${cartCount})` : ""}
                 </Link>
               </NavbarMenuItem>
+
+              <p className="px-3 pt-4 pb-1 text-xs font-semibold uppercase tracking-wide text-black/35">
+                Coming soon
+              </p>
+              {COMING_SOON.map((item) => (
+                <NavbarMenuItem key={item.label}>
+                  <Link
+                    href={item.href}
+                    onClick={() => setIsMenuOpen(false)}
+                    className="flex items-center justify-between rounded-xl px-3 py-3 text-base font-semibold text-black/60 transition-colors hover:bg-black/5 hover:text-[var(--primary)]"
+                  >
+                    {item.label}
+                    <span className="rounded-full bg-black/5 px-2 py-0.5 text-[10px] font-semibold text-black/40">
+                      Soon
+                    </span>
+                  </Link>
+                </NavbarMenuItem>
+              ))}
             </div>
 
             <div className="mt-6 grid gap-3">

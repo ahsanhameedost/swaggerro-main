@@ -1,6 +1,6 @@
 import "./globals.css";
 import Providers from "./providers";
-import { Geist, Gemunu_Libre, Inter, Plus_Jakarta_Sans, Poppins } from "next/font/google";
+import { Bricolage_Grotesque, Geist, Gemunu_Libre, Inter, Plus_Jakarta_Sans, Poppins } from "next/font/google";
 
 export const metadata = {
   title: "Swaggeroo",
@@ -11,6 +11,14 @@ const fontSans = Plus_Jakarta_Sans({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700", "800"],
   variable: "--font-plus-jakarta",
+  display: "swap",
+});
+
+// New design display font (headings) — used site-wide.
+const fontDisplay = Bricolage_Grotesque({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
+  variable: "--font-bricolage",
   display: "swap",
 });
 
@@ -44,7 +52,7 @@ const fontGeist = Geist({
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${fontSans.variable} ${fontLogo.variable} ${fontHeading.variable} ${fontBody.variable} ${fontGeist.variable}`}>
+    <html lang="en" className={`${fontSans.variable} ${fontDisplay.variable} ${fontLogo.variable} ${fontHeading.variable} ${fontBody.variable} ${fontGeist.variable}`}>
       <body suppressHydrationWarning>
         <Providers>{children}</Providers>
       </body>

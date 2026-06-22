@@ -1,12 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useState } from "react";
-import { Facebook, Twitter, Mail, Youtube, Send } from "lucide-react";
+import { Facebook, Twitter, Mail, Youtube, Send, MapPin, Phone } from "lucide-react";
 import { addToast } from "@heroui/toast";
 import { cx } from "@/lib/helpers";
-import Image from "next/image";
-import LogoWhite from "@/assets/logo_white.png";
+import LogoMark from "@/assets/logo_new.png";
 
 type FooterLink = { label: string; href: string };
 
@@ -15,16 +15,17 @@ const COLS: Array<{ title: string; links: FooterLink[] }> = [
     title: "Order",
     links: [
       { label: "Shop", href: "/shop" },
+      { label: "Pack Studio", href: "/studio" },
+      { label: "Mockup Studio", href: "/mockup" },
       { label: "Build a Pack", href: "/swag-pack" },
-      { label: "Bulk Orders", href: "/shop" },
     ],
   },
   {
     title: "Explore",
     links: [
-      { label: "Platform", href: "/platform" },
-      { label: "Resources", href: "/resources" },
-      { label: "Pricing", href: "/pricing" },
+      { label: "How it works", href: "/how-it-works" },
+      { label: "About", href: "/about" },
+      { label: "FAQ", href: "/faq" },
       { label: "Support", href: "/contact" },
     ],
   },
@@ -34,15 +35,15 @@ const COLS: Array<{ title: string; links: FooterLink[] }> = [
       { label: "Contact Us", href: "/contact" },
       { label: "Book a Demo", href: "/contact" },
       { label: "Vendors & Suppliers", href: "/contact" },
-      { label: "Company", href: "/company" },
+      { label: "Shipping & Returns", href: "/shipping-returns" },
     ],
   },
   {
     title: "Legal",
     links: [
-      { label: "Privacy Policy", href: "/company" },
-      { label: "Terms of Service", href: "/company" },
-      { label: "Careers", href: "/company" },
+      { label: "Privacy Policy", href: "/privacy" },
+      { label: "Terms of Service", href: "/terms" },
+      { label: "Shipping & Returns", href: "/shipping-returns" },
     ],
   },
 ];
@@ -61,9 +62,9 @@ function SocialIcon({
       href={href}
       aria-label={label}
       className={cx(
-        "inline-flex h-11 w-11 items-center justify-center rounded-full",
-        "bg-white text-black",
-        "transition-transform hover:-translate-y-0.5 hover:opacity-95 active:translate-y-0"
+        "inline-flex h-10 w-10 items-center justify-center rounded-full",
+        "border border-border bg-card text-foreground/70",
+        "transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:text-primary"
       )}
     >
       {children}
@@ -73,71 +74,22 @@ function SocialIcon({
 
 function FooterCol({ title, links }: { title: string; links: FooterLink[] }) {
   return (
-    <div className="min-w-[180px]">
-      <h5 className="text-white">{title}</h5>
-      <div className="mt-6 space-y-3 text2 text-white/60">
+    <div>
+      <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        {title}
+      </h3>
+      <ul className="mt-4 space-y-2.5">
         {links.map((l, idx) => (
-          <Link
-            key={`${l.label}-${idx}`}
-            href={l.href}
-            className="block hover:text-white/80"
-          >
-            {l.label}
-          </Link>
+          <li key={`${l.label}-${idx}`}>
+            <Link
+              href={l.href}
+              className="text-sm text-foreground/80 transition-colors hover:text-primary"
+            >
+              {l.label}
+            </Link>
+          </li>
         ))}
-      </div>
-    </div>
-  );
-}
-
-function LocationBlock({
-  title,
-  addressLines,
-  phone,
-  email,
-}: {
-  title: string;
-  addressLines: string[];
-  phone: string;
-  email: string;
-}) {
-  return (
-    <div className="min-w-[240px]">
-      <h5 className="text-white">{title}</h5>
-
-      <div className="mt-6 space-y-8 text2 text-white/60">
-        <div className="space-y-1">
-          {addressLines.map((line, idx) => (
-            <div
-              key={`${title}-addr-${idx}`}
-              className={cx(
-                idx < 2 && "underline decoration-white/20 underline-offset-4"
-              )}
-            >
-              {line}
-            </div>
-          ))}
-        </div>
-
-        <div className="space-y-1">
-          <div>
-            <a
-              href={`tel:${phone.replace(/[^0-9+]/g, "")}`}
-              className="hover:text-white/80 underline decoration-white/20 underline-offset-4"
-            >
-              {phone}
-            </a>
-          </div>
-          <div>
-            <a
-              href={`mailto:${email}`}
-              className="hover:text-white/80 underline decoration-white/20 underline-offset-4"
-            >
-              {email}
-            </a>
-          </div>
-        </div>
-      </div>
+      </ul>
     </div>
   );
 }
@@ -164,44 +116,34 @@ function SubscribeBlock() {
   };
 
   return (
-    <div className={cx("w-full min-w-0", "sm:min-w-[180px] sm:max-w-[420px]")}>
-      <h5 className="text-white">Subscribe</h5>
-
-      <p className="mt-6 text2 text-white/60">
-        Feel free to reach out if you want to collab with us, or simply chat.
+    <div>
+      <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        Subscribe
+      </h3>
+      <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
+        News, drops, and the occasional swag tip — no spam.
       </p>
-
-      <div className="mt-8">
-        <div
-          className={cx(
-            "flex h-14 w-full items-center gap-3 rounded-2xl bg-white/12",
-            "px-4 sm:px-5"
-          )}
+      <div className="mt-4 flex h-12 items-center gap-2 rounded-2xl border border-border bg-card px-3">
+        <input
+          className="h-full w-full min-w-0 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
+          placeholder="Enter your email"
+          type="email"
+          name="email"
+          autoComplete="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") handleSubscribe();
+          }}
+        />
+        <button
+          type="button"
+          aria-label="Submit email"
+          onClick={handleSubscribe}
+          className="inline-flex h-9 w-10 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground transition-opacity hover:opacity-90"
         >
-          <input
-            className={cx(
-              "h-full w-full min-w-0 bg-transparent text3 text-white outline-none",
-              "placeholder:text-white/60"
-            )}
-            placeholder="Enter your email"
-            type="email"
-            name="email"
-            autoComplete="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") handleSubscribe();
-            }}
-          />
-          <button
-            type="button"
-            aria-label="Submit email"
-            onClick={handleSubscribe}
-            className="inline-flex h-10 w-11 shrink-0 items-center justify-center rounded-full hover:bg-white/10"
-          >
-            <Send className="h-5 w-5" style={{ color: "var(--primary)" }} />
-          </button>
-        </div>
+          <Send className="h-4 w-4" />
+        </button>
       </div>
     </div>
   );
@@ -209,62 +151,74 @@ function SubscribeBlock() {
 
 export default function Footer() {
   return (
-    <footer className="bg-black text-white">
-      <div className="container">
-        <div className="grid gap-10 py-20 lg:grid-cols-[420px_1fr]">
-          <div className="pt-4">
+    <footer className="swag-redesign border-t border-border/60 bg-muted/40">
+      <div className="mx-auto max-w-site px-6 py-16">
+        <div className="grid gap-12 lg:grid-cols-[1.4fr_2.6fr]">
+          {/* Brand */}
+          <div className="max-w-sm">
             <Image
-              src={LogoWhite}
+              src={LogoMark}
               alt="Swaggeroo logo"
-              className="h-28 w-auto sm:h-32"
+              className="h-16 w-auto"
               draggable={false}
-              priority
             />
+            <p className="mt-5 text-sm leading-relaxed text-muted-foreground">
+              Creating, managing, and distributing swag your crew actually wants — designed,
+              branded, and shipped anywhere from one simple platform.
+            </p>
 
-            <h5 className="mt-10 max-w-[320px] text-white">
-              Creating, Managing Swag. Distributing Everywhere.
-            </h5>
+            <div className="mt-6 space-y-2.5 text-sm text-muted-foreground">
+              <p className="flex items-center gap-2">
+                <MapPin className="size-4 text-primary" /> 100 E Pine St #110, Orlando, FL 32801
+              </p>
+              <p className="flex items-center gap-2">
+                <Phone className="size-4 text-primary" />
+                <a href="tel:3213524125" className="hover:text-primary">321-352-4125</a>
+              </p>
+              <p className="flex items-center gap-2">
+                <Mail className="size-4 text-primary" />
+                <a href="mailto:sales@swaggeroo.com" className="hover:text-primary">
+                  sales@swaggeroo.com
+                </a>
+              </p>
+            </div>
 
-            <div className="mt-12 flex items-center gap-4">
+            <div className="mt-6 flex items-center gap-3">
               <SocialIcon href="#" label="Facebook">
-                <Facebook className="h-5 w-5" />
+                <Facebook className="h-4 w-4" />
               </SocialIcon>
               <SocialIcon href="#" label="Twitter">
-                <Twitter className="h-5 w-5" />
+                <Twitter className="h-4 w-4" />
               </SocialIcon>
               <SocialIcon href="mailto:sales@swaggeroo.com" label="Email">
-                <Mail className="h-5 w-5" />
+                <Mail className="h-4 w-4" />
               </SocialIcon>
               <SocialIcon href="#" label="YouTube">
-                <Youtube className="h-5 w-5" />
+                <Youtube className="h-4 w-4" />
               </SocialIcon>
             </div>
           </div>
 
-          <div className="border-t border-white/10 pt-10 lg:border-l lg:border-t-0 lg:pl-16 lg:pt-4">
-            <div className="grid gap-12 sm:grid-cols-2 xl:grid-cols-4">
-              {COLS.map((c) => (
-                <FooterCol key={c.title} title={c.title} links={c.links} />
-              ))}
-            </div>
-
-            <div className="mt-16 grid gap-12 xl:grid-cols-[240px_240px_1fr]">
-              <LocationBlock
-                title="Address"
-                addressLines={["100 E Pine St #110, Orlando, FL 32801"]}
-                phone="321-352-4125"
-                email="sales@swaggeroo.com"
-              />
+          {/* Links + subscribe */}
+          <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-3">
+            {COLS.map((c) => (
+              <FooterCol key={c.title} title={c.title} links={c.links} />
+            ))}
+            <div className="sm:col-span-2 lg:col-span-1">
               <SubscribeBlock />
             </div>
           </div>
         </div>
-      </div>
 
-      <div className="border-t border-white/10">
-        <div className="container py-10 text-center text2 text-white/60 font-medium sm:px-6 lg:px-8">
-          © 2026 All rights reserved{" "}
-          <span className="font-semibold text-white">Swaggeroo</span>
+        <div className="mt-14 flex flex-col items-center justify-between gap-3 border-t border-border/60 pt-6 text-sm text-muted-foreground sm:flex-row">
+          <p>
+            © 2026 <span className="font-semibold text-foreground">Swaggeroo</span>. All rights
+            reserved.
+          </p>
+          <p className="flex items-center gap-1.5">
+            <span className="size-1.5 rounded-full bg-success" />
+            Carbon-aware shipping on every order
+          </p>
         </div>
       </div>
     </footer>

@@ -106,7 +106,14 @@ export function buildSwagPackPackagingItem(
   } satisfies PricedSwagPackPackagingItem;
 }
 
-export function calculateCatalogCartSummary(state: CatalogCartSnapshot): CatalogCartSummary {
+// Logo fields live on the persisted snapshot but aren't needed to compute the
+// summary, so accept them optionally — callers may or may not pass them.
+type CartSummaryInput = Omit<CatalogCartSnapshot, "swagPackLogoUrl" | "swagPackLogoKey"> & {
+  swagPackLogoUrl?: string | null;
+  swagPackLogoKey?: string | null;
+};
+
+export function calculateCatalogCartSummary(state: CartSummaryInput): CatalogCartSummary {
   const packQuantity = Math.max(25, Math.floor(state.swagPackQuantity || 25));
   const swagPackName = state.swagPackName?.trim() || createDefaultSwagPackName();
   const bulkItems = buildBulkPricedItems(state.bulkItems);

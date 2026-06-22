@@ -83,7 +83,7 @@ export default function ResetPasswordPage() {
       addToast({
         title: "Could not continue",
         description: error?.message ?? "Failed to send reset code",
-        color: "danger"
+        color: "primary"
       });
     } finally {
       setIsRequesting(false);
@@ -105,7 +105,7 @@ export default function ResetPasswordPage() {
       addToast({
         title: "Verification failed",
         description: error?.message ?? "Invalid or expired code",
-        color: "danger"
+        color: "primary"
       });
     } finally {
       setIsVerifying(false);
@@ -134,7 +134,7 @@ export default function ResetPasswordPage() {
       addToast({
         title: "Update failed",
         description: error?.message ?? "Could not update password",
-        color: "danger"
+        color: "primary"
       });
     } finally {
       setIsResetting(false);
@@ -151,7 +151,7 @@ export default function ResetPasswordPage() {
       footer={
         <>
           Remembered your password?{" "}
-          <Link href="/login" className="font-medium text-danger transition hover:opacity-80">
+          <Link href="/login" className="font-medium text-primary transition hover:opacity-80">
             Go to login
           </Link>
         </>
@@ -170,7 +170,7 @@ export default function ResetPasswordPage() {
               classNames={{
                 base:
                   step === item.key
-                    ? "border border-danger/20 text-white"
+                    ? "border border-primary/20 text-white"
                     : "border border-divider bg-content1 text-foreground/65"
               }}
               style={step === item.key ? { backgroundImage: "var(--primary-gradient)" } : undefined}
@@ -190,7 +190,7 @@ export default function ResetPasswordPage() {
               errorMessage={emailErrors.email?.message}
               classNames={{
                 inputWrapper:
-                  "h-14 rounded-2xl border border-divider bg-content1 shadow-none data-[hover=true]:border-danger/40 group-data-[focus=true]:border-danger group-data-[focus=true]:ring-2 group-data-[focus=true]:ring-danger/20"
+                  "h-14 rounded-2xl border border-divider bg-content1 shadow-none data-[hover=true]:border-primary/40 group-data-[focus=true]:border-primary group-data-[focus=true]:ring-2 group-data-[focus=true]:ring-primary/20"
               }}
               {...registerEmail("email")}
             />
@@ -246,7 +246,7 @@ export default function ResetPasswordPage() {
 
         {step === "reset" ? (
           <form className="space-y-4" onSubmit={submitPassword}>
-            <div className="rounded-3xl border border-danger/10 bg-danger/5 p-4 text-sm text-foreground/70">
+            <div className="rounded-3xl border border-primary/10 bg-primary/5 p-4 text-sm text-foreground/70">
               Code verified for <span className="font-medium text-foreground">{email}</span>.
             </div>
 
@@ -259,7 +259,7 @@ export default function ResetPasswordPage() {
               errorMessage={passwordErrors.password?.message}
               classNames={{
                 inputWrapper:
-                  "h-14 rounded-2xl border border-divider bg-content1 shadow-none data-[hover=true]:border-danger/40 group-data-[focus=true]:border-danger group-data-[focus=true]:ring-2 group-data-[focus=true]:ring-danger/20"
+                  "h-14 rounded-2xl border border-divider bg-content1 shadow-none data-[hover=true]:border-primary/40 group-data-[focus=true]:border-primary group-data-[focus=true]:ring-2 group-data-[focus=true]:ring-primary/20"
               }}
               {...registerPassword("password")}
             />
@@ -273,7 +273,7 @@ export default function ResetPasswordPage() {
               errorMessage={passwordErrors.confirmPassword?.message}
               classNames={{
                 inputWrapper:
-                  "h-14 rounded-2xl border border-divider bg-content1 shadow-none data-[hover=true]:border-danger/40 group-data-[focus=true]:border-danger group-data-[focus=true]:ring-2 group-data-[focus=true]:ring-danger/20"
+                  "h-14 rounded-2xl border border-divider bg-content1 shadow-none data-[hover=true]:border-primary/40 group-data-[focus=true]:border-primary group-data-[focus=true]:ring-2 group-data-[focus=true]:ring-primary/20"
               }}
               {...registerPassword("confirmPassword")}
             />

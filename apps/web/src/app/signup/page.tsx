@@ -90,7 +90,7 @@ function SignupContent() {
       addToast({
         title: "Signup failed",
         description: error?.message ?? "Could not create account",
-        color: "danger"
+        color: "primary"
       });
     } finally {
       setLoading(false);
@@ -99,7 +99,7 @@ function SignupContent() {
 
   const sharedInputClassNames = {
     inputWrapper:
-      "h-14 rounded-2xl border border-divider bg-content1 shadow-none data-[hover=true]:border-danger/40 group-data-[focus=true]:border-danger group-data-[focus=true]:ring-2 group-data-[focus=true]:ring-danger/20"
+      "h-14 rounded-2xl border border-divider bg-content1 shadow-none data-[hover=true]:border-primary/40 group-data-[focus=true]:border-primary group-data-[focus=true]:ring-2 group-data-[focus=true]:ring-primary/20"
   };
 
   return (
@@ -114,7 +114,7 @@ function SignupContent() {
           Already have an account?{" "}
           <Link
             href={next && next !== "/dashboard" ? `/login?next=${encodeURIComponent(next)}` : "/login"}
-            className="font-medium text-danger transition hover:opacity-80"
+            className="font-medium text-primary transition hover:opacity-80"
           >
             Sign in
           </Link>

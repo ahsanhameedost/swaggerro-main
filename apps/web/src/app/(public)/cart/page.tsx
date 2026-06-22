@@ -23,6 +23,8 @@ export default function CartPage() {
   const swagPackPackaging = useCatalogCartStore((state) => state.swagPackPackaging);
   const swagPackQuantity = useCatalogCartStore((state) => state.swagPackQuantity);
   const swagPackName = useCatalogCartStore((state) => state.swagPackName);
+  const swagPackLogoUrl = useCatalogCartStore((state) => state.swagPackLogoUrl);
+  const swagPackLogoKey = useCatalogCartStore((state) => state.swagPackLogoKey);
 
   const updateBulkQuantity = useCatalogCartStore((state) => state.updateBulkQuantity);
   const removeBulkItem = useCatalogCartStore((state) => state.removeBulkItem);
@@ -36,9 +38,19 @@ export default function CartPage() {
         swagPackItems,
         swagPackPackaging,
         swagPackQuantity,
-        swagPackName
+        swagPackName,
+        swagPackLogoUrl,
+        swagPackLogoKey
       }),
-    [bulkItems, swagPackItems, swagPackPackaging, swagPackQuantity, swagPackName]
+    [
+      bulkItems,
+      swagPackItems,
+      swagPackPackaging,
+      swagPackQuantity,
+      swagPackName,
+      swagPackLogoUrl,
+      swagPackLogoKey
+    ]
   );
 
   const totalLabel = [
@@ -102,7 +114,7 @@ export default function CartPage() {
   return (
     <div className="container">
         <div className="mb-6 space-y-2">
-          <h1 className="text-4xl font-semibold tracking-tight text-black">Your cart</h1>
+          <h1 className="text-3xl font-semibold tracking-tight text-black">Your cart</h1>
           <p className="text-black/60">Total ({totalLabel || "0 items"})</p>
         </div>
 
@@ -140,7 +152,7 @@ export default function CartPage() {
                         </div>
 
                         <div className="space-y-3">
-                          <div className="text-2xl font-semibold text-black">{item.name}</div>
+                          <div className="text-xl font-semibold text-black">{item.name}</div>
                           <div className="text-sm text-black/55">
                             Color: {item.variantName || "Standard"}
                           </div>
@@ -336,7 +348,7 @@ export default function CartPage() {
           <Card className="border border-black/10 bg-white shadow-sm">
             <CardBody className="space-y-6 p-6">
               <div className="space-y-5">
-                <div className="text-4xl font-semibold tracking-tight text-black">Project summary</div>
+                <div className="text-2xl font-semibold tracking-tight text-black">Project summary</div>
 
                 <div className="space-y-4">
                   {summary.bulkItems.map((item) => (
@@ -374,7 +386,7 @@ export default function CartPage() {
                       <div className="text-2xl font-semibold text-black">Total Estimate</div>
                       <div className="text-sm text-black/55">(Not including taxes and fees)</div>
                     </div>
-                    <div className="text-4xl font-semibold text-black">{formatMoney(summary.total)}</div>
+                    <div className="text-3xl font-semibold text-black">{formatMoney(summary.total)}</div>
                   </div>
                 </div>
               </div>

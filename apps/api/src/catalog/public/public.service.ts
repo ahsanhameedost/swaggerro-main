@@ -89,17 +89,17 @@ export class CatalogPublicService extends CatalogSharedService {
       this.prisma.catalogProduct.count({ where }),
       this.prisma.catalogProduct.findMany({
         where,
+        // Lean include for the storefront grid — only what the cards/filters need
+        // (category, image, price-from, swatches). Collections + shippingProfile
+        // are omitted here to cut Azure round-trips (they're heavy and unused by cards).
         include: {
           category: true,
-          collections: { include: { collection: true } },
           images: { orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }], take: 1 },
           productCatalogVariants: { orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] },
-          shippingProfile: {
-            include: {
-              countryRules: {
-                orderBy: [{ countryCode: "asc" }]
-              }
-            }
+          variants: { include: { options: { orderBy: [{ sortOrder: "asc" }] } }, orderBy: [{ sortOrder: "asc" }] },
+          pricingOptions: {
+            where: { productCatalogVariantId: null },
+            orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }]
           }
         },
         orderBy: [{ updatedAt: "desc" }],
