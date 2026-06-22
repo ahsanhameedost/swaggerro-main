@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { usePublicCategories, usePublicProducts } from "@/lib/queries.catalog";
 import { ProductCard } from "@/components/shop/product-card";
+import { PageHero } from "@/components/marketing/page-hero";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { CatalogProductListItem } from "@/modules/catalog/products/types";
@@ -157,21 +158,25 @@ export default function ShopPage() {
   );
 
   return (
-    <div className="swag-redesign mx-auto max-w-site px-6 py-10">
-      <div className="border-b border-border pb-6">
-        <h1 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">
-          {activeCategory ? activeCategory.name : "The Shop"}
-        </h1>
-        <p className="mt-2 max-w-2xl text-muted-foreground">
-          {activeCategory?.description ??
-            "Bulk swag for your whole team — branded with your logo and colors, with volume pricing and free proofs before anything prints."}
-        </p>
-        <p className="mt-3 text-xs font-medium tracking-wide text-muted-foreground">
-          Made-to-order for teams · minimums apply · cheaper per unit at higher quantities
-        </p>
-      </div>
+    <div className="swag-redesign">
+      <PageHero
+        eyebrow={activeCategory ? "Category" : "The Catalog"}
+        title={activeCategory ? activeCategory.name : "Shop the catalog"}
+        subtitle={
+          activeCategory?.description ??
+          "Bulk swag for your whole team — branded with your logo and colors, with volume pricing and free proofs before anything prints."
+        }
+      >
+        <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-1.5 text-xs font-medium text-muted-foreground">
+          <span>Made-to-order for teams</span>
+          <span className="text-border">·</span>
+          <span>Minimums apply</span>
+          <span className="text-border">·</span>
+          <span>Cheaper per unit at higher quantities</span>
+        </div>
+      </PageHero>
 
-      <div className="mt-8 grid gap-8 lg:grid-cols-[16rem_1fr]">
+      <div className="mx-auto mt-10 grid max-w-site gap-8 px-6 pb-16 lg:grid-cols-[16rem_1fr]">
         <aside className="hidden lg:block">
           <div className="sticky top-24">{filters}</div>
         </aside>
