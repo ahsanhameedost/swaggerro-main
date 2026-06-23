@@ -29,7 +29,7 @@ export function CtaBand({
 }) {
   return (
     <Section>
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary to-[color-mix(in_oklch,var(--primary),#0b1020_35%)] px-6 py-12 text-primary-foreground sm:px-10 sm:py-14">
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary to-[color-mix(in_oklch,var(--primary),#0d1b3d_35%)] px-6 py-12 text-primary-foreground sm:px-10 sm:py-14">
         {/* top glow */}
         <div
           aria-hidden

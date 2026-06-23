@@ -1,7 +1,7 @@
 import { Check, Sparkles, TrendingDown } from "lucide-react";
 
 const ITEMS = [
-  { name: "Premium Fleece Hoodie", qty: 50, color: "#0b1020", price: "$1,575" },
+  { name: "Premium Fleece Hoodie", qty: 50, color: "#0d1b3d", price: "$1,575" },
   { name: "Insulated Tumbler 20oz", qty: 50, color: "#2563eb", price: "$825" },
   { name: "Hardcover Notebook", qty: 50, color: "#475569", price: "$595" },
 ];

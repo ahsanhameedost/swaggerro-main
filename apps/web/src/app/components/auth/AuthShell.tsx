@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { ArrowLeft, ShieldCheck, SwatchBook, Truck } from "lucide-react";
-import LogoWhite from "@/assets/logo_white.png";
+import LogoWhite from "@/assets/swaggroo-logo.png";
 import LogoMark from "@/assets/logo_new.png";
 
 type AuthShellProps = {
@@ -47,7 +47,7 @@ export function AuthShell({
   return (
     <div className="swag-redesign grid min-h-svh bg-background lg:grid-cols-5">
       {/* Brand panel — dark navy with soft transparent primary glows */}
-      <aside className="relative hidden flex-col justify-between overflow-hidden bg-[#0b1020] p-10 text-white lg:col-span-2 lg:flex">
+      <aside className="relative hidden flex-col justify-between overflow-hidden bg-[#0d1b3d] p-10 text-white lg:col-span-2 lg:flex">
         <div
           aria-hidden
           className="pointer-events-none absolute -top-24 -left-24 size-96 rounded-full bg-primary/30 blur-3xl"

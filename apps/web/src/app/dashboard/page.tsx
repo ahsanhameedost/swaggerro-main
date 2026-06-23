@@ -41,7 +41,7 @@ const STATUS_LABELS: Record<string, string> = {
 
 const STATUS_HEX: Record<string, string> = {
   PENDING_REVIEW: "#f5a524",
-  IN_REVIEW: "#1c83ff",
+  IN_REVIEW: "#2196ff",
   APPROVED: "#17c964",
   REJECTED: "#f31260",
   CANCELLED: "#a1a1aa"

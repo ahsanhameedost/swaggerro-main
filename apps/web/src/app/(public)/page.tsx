@@ -373,7 +373,7 @@ function BrowseFlow({ categories }: { categories: CatalogCategory[] }) {
   // Scale the marquee height to the number of categories so rows never cram.
   const menuHeight = `${Math.max(items.length, 4) * 4.75}rem`;
   return (
-    <section className="bg-[#0b1020] pb-12 sm:pb-16">
+    <section className="bg-[#0d1b3d] pb-12 sm:pb-16">
       <div className="mx-auto max-w-site px-6 pt-20 pb-12 text-center sm:pt-28 sm:pb-16">
         <p className="text-xs font-semibold tracking-[0.2em] text-white/45 uppercase">
           Browse the goods
@@ -389,8 +389,8 @@ function BrowseFlow({ categories }: { categories: CatalogCategory[] }) {
         <FlowingMenu
           items={items}
           textColor="#ffffff"
-          bgColor="#0b1020"
-          marqueeBgColor="#1c83ff"
+          bgColor="#0d1b3d"
+          marqueeBgColor="#2196ff"
           marqueeTextColor="#ffffff"
           borderColor="rgba(255,255,255,0.12)"
         />
@@ -454,7 +454,7 @@ const STACK_CARDS: {
     eyebrow: "Live pricing",
     title: "Price it as you build",
     body: "Pack Studio shows your per-unit price, the next volume break, and setup fees in real time — no quote emails, no surprises.",
-    bg: "bg-gradient-to-br from-primary to-[color-mix(in_oklch,var(--primary),#0b1020_35%)]",
+    bg: "bg-gradient-to-br from-primary to-[color-mix(in_oklch,var(--primary),#0d1b3d_35%)]",
     tone: "dark",
   },
   {
@@ -470,7 +470,7 @@ const STACK_CARDS: {
     eyebrow: "Branded Stores",
     title: "A storefront in your colors",
     body: "Spin up an on-brand store for your team in minutes — your logo, your palette, your catalog, your domain.",
-    bg: "bg-[#0b1020]",
+    bg: "bg-[#0d1b3d]",
     tone: "dark",
   },
   {

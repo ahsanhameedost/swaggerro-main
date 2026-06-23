@@ -13,12 +13,19 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --primary: #1c83ff;
-  --secondary: #000000;
-  --primary-gradient: linear-gradient(90deg, #1c83ff 0%, #1c83ff 100%);
+  /* Brand palette */
+  --primary: #2196ff;          /* Primary Blue — buttons, links, interactive */
+  --secondary: #0d1b3d;        /* Deep Navy */
+  --primary-gradient: linear-gradient(90deg, #2196ff 0%, #1782ed 100%);
   --container-max: 90rem;
   --container-pad: clamp(1rem, 4vw, 2rem);
 
+  /* Foundation brand colors (usable as bg-navy / text-accent-yellow via @theme below) */
+  --navy: #0d1b3d;             /* dark backgrounds, hero, nav, footer */
+  --navy-soft: #16244d;        /* slightly lifted navy for cards/surfaces on dark */
+  --navy-foreground: #ffffff;
+  --accent-yellow: #ffc428;    /* strategic emphasis only */
+  --accent-yellow-foreground: #0d1b3d;
 }
 
 @theme inline {
@@ -344,10 +351,17 @@ body {
   --color-brand-emphasis: var(--brand-emphasis);
   --color-info: var(--info);
 
+  /* Brand palette utilities: bg-navy, text-navy, bg-accent-yellow, text-accent-yellow … */
+  --color-navy: var(--navy);
+  --color-navy-soft: var(--navy-soft);
+  --color-navy-foreground: var(--navy-foreground);
+  --color-accent-yellow: var(--accent-yellow);
+  --color-accent-yellow-foreground: var(--accent-yellow-foreground);
+
   /* new-design fonts site-wide: display headings -> Bricolage Grotesque, body -> Plus Jakarta */
   --font-display: var(--font-bricolage);
 
-  --shadow-brand: 0 10px 28px -8px rgba(28, 131, 255, 0.42);
+  --shadow-brand: 0 10px 28px -8px rgba(33, 150, 255, 0.42);
 
   /* max-w-site (1440px) */
   --container-site: 90rem;
@@ -355,21 +369,21 @@ body {
 
 :root {
   --card: #ffffff;
-  --card-foreground: #0b1020;
+  --card-foreground: #0d1b3d;       /* navy text on light cards */
   --popover: #ffffff;
-  --popover-foreground: #0b1020;
+  --popover-foreground: #0d1b3d;
   --muted: #eef2f8;
-  --muted-foreground: #51607a;
-  --accent: #eef4ff;
-  --accent-foreground: #1e3a8a;
+  --muted-foreground: #6b7280;      /* Neutral Gray — secondary/supporting text */
+  --accent: #e8f2ff;                /* soft blue tint */
+  --accent-foreground: #0d1b3d;     /* navy */
   --border: #e2e8f0;
   --input: #e2e8f0;
-  --ring: #1c83ff;
+  --ring: #2196ff;
   --destructive: #dc2626;
 
-  --brand: #1c83ff;
+  --brand: #2196ff;
   --brand-foreground: #ffffff;
-  --brand-soft: #eef4ff;
-  --brand-emphasis: #1e3a8a;
-  --info: #1c83ff;
+  --brand-soft: #e8f2ff;
+  --brand-emphasis: #0d1b3d;        /* navy */
+  --info: #2196ff;
 }

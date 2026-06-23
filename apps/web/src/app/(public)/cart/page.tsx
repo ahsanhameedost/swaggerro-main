@@ -128,7 +128,7 @@ export default function CartPage() {
             {summary.hasBulkItems ? (
               <Card className="border border-black/10 bg-white shadow-sm">
                 <CardBody className="p-0">
-                  <div className="flex items-center justify-between border-b border-black/10 bg-[#f3f6fb] px-5 py-4">
+                  <div className="flex items-center justify-between border-b border-black/10 bg-brand-soft px-5 py-4">
                     <div className="text-2xl font-semibold text-black">
                       Bulk Products ({summary.bulkItemCount})
                     </div>
@@ -198,7 +198,7 @@ export default function CartPage() {
             {summary.hasSwagPack ? (
               <Card className="border border-black/10 bg-white shadow-sm">
                 <CardBody className="p-0">
-                  <div className="flex flex-wrap items-center justify-between gap-3 border-b border-black/10 bg-[#f3f6fb] px-5 py-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3 border-b border-black/10 bg-brand-soft px-5 py-4">
                     <div>
                       <div className="text-sm text-black/60">Swag Pack</div>
                       <div className="text-2xl font-semibold text-black">{summary.swagPackName}</div>

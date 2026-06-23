@@ -17,7 +17,7 @@ import {
   Avatar,
 } from "@heroui/react";
 import { ChevronDown, ShoppingBag } from "lucide-react";
-import LogoMark from "@/assets/logo_new.png";
+import LogoMark from "@/assets/swaggroo-logo.png";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -62,7 +62,7 @@ export default function HomeNavbar() {
   const cartCount = cartHydrated ? bulkItems.length + (swagPackItems.length > 0 ? 1 : 0) : 0;
 
   const navLinkClass =
-    "text2 font-medium text-black/80 transition-colors hover:text-[var(--primary)]";
+    "text2 font-medium text-navy/80 transition-colors hover:text-primary";
 
   const displayName =
     [user?.firstName, user?.lastName].filter(Boolean).join(" ").trim() ||
@@ -102,7 +102,7 @@ export default function HomeNavbar() {
   );
 
   return (
-    <div className="padding-section-xs">
+    <div className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-navy/10 shadow-[0_2px_10px_-4px_rgba(13,27,61,0.12)]">
       <div className="container">
       <Navbar
         isMenuOpen={isMenuOpen}
@@ -110,27 +110,28 @@ export default function HomeNavbar() {
         maxWidth="full"
         isBordered={false}
         classNames={{
+          base: "bg-transparent",
           wrapper: "h-20 px-0",
         }}
       >
         <NavbarContent className="lg:hidden" justify="start">
           <NavbarMenuToggle
             aria-label={isMenuOpen ? "Close menu" : "Open menu"}
-            className="text-black"
+            className="text-navy"
           />
         </NavbarContent>
 
         <NavbarBrand>
           <Link
             href="/"
-            className="flex items-center gap-3 text-black no-underline"
-            aria-label="Soaswag Home"
+            className="flex items-center gap-3 text-navy no-underline"
+            aria-label="Swaggeroo Home"
           >
             <div className="flex flex-col items-center leading-none ml-11 md:ml-50 lg:ml-0">
               <Image
                 src={LogoMark}
-                alt="Soaswag logo"
-                className="h-14 w-auto sm:h-20"
+                alt="Swaggeroo logo"
+                className="h-9 w-auto sm:h-11"
                 draggable={false}
                 priority
               />
@@ -194,7 +195,7 @@ export default function HomeNavbar() {
                   <button
                     type="button"
                     aria-label="Account menu"
-                    className="flex items-center gap-2 rounded-full p-1 pr-2 transition-colors hover:bg-black/5"
+                    className="flex items-center gap-2 rounded-full p-1 pr-2 transition-colors hover:bg-navy/5"
                   >
                     <Avatar
                       name={initials}
@@ -205,10 +206,10 @@ export default function HomeNavbar() {
                         name: "text-white text-xs font-semibold",
                       }}
                     />
-                    <span className="text2 max-w-[140px] truncate font-medium text-black/80">
+                    <span className="text2 max-w-[140px] truncate font-medium text-navy/85">
                       {displayName}
                     </span>
-                    <ChevronDown className="size-4 text-black/50" />
+                    <ChevronDown className="size-4 text-navy/50" />
                   </button>
                 </DropdownTrigger>
                 <DropdownMenu aria-label="Account actions">
@@ -244,7 +245,7 @@ export default function HomeNavbar() {
               <NavbarItem>
                 <Link
                   href="/login"
-                  className="text2 font-medium text-black/70 transition-colors hover:text-(--primary)"
+                  className="text2 font-medium text-navy/70 transition-colors hover:text-primary"
                 >
                   Sign In
                 </Link>

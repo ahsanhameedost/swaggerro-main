@@ -108,7 +108,7 @@ function LogoIconSingle() {
     <svg width="54" height="64" viewBox="0 0 44 44" aria-hidden>
       <path
         d="M22 8c4 6 7 9 7 14a7 7 0 1 1-14 0c0-5 3-8 7-14Z"
-        fill="#1c83ff"
+        fill="#2196ff"
       />
     </svg>
   );
@@ -118,7 +118,7 @@ function LogoIconDual() {
   return (
     <svg width="54" height="64" viewBox="0 0 44 44" aria-hidden>
       <circle cx="17" cy="22" r="9" fill="#111" />
-      <circle cx="27" cy="22" r="9" fill="#1c83ff" opacity="0.9" />
+      <circle cx="27" cy="22" r="9" fill="#2196ff" opacity="0.9" />
     </svg>
   );
 }
@@ -127,7 +127,7 @@ function LogoIconTri() {
   return (
     <svg width="54" height="64" viewBox="0 0 44 44" aria-hidden>
       <circle cx="16" cy="18" r="8" fill="#111" opacity="0.9" />
-      <circle cx="28" cy="18" r="8" fill="#1c83ff" opacity="0.9" />
+      <circle cx="28" cy="18" r="8" fill="#2196ff" opacity="0.9" />
       <circle cx="22" cy="28" r="8" fill="#777" opacity="0.9" />
     </svg>
   );

@@ -6,7 +6,7 @@ import { useState } from "react";
 import { Facebook, Twitter, Mail, Youtube, Send, MapPin, Phone } from "lucide-react";
 import { addToast } from "@heroui/toast";
 import { cx } from "@/lib/helpers";
-import LogoMark from "@/assets/logo_new.png";
+import LogoMark from "@/assets/swaggroo-logo.png";
 
 type FooterLink = { label: string; href: string };
 
@@ -63,8 +63,8 @@ function SocialIcon({
       aria-label={label}
       className={cx(
         "inline-flex h-10 w-10 items-center justify-center rounded-full",
-        "border border-border bg-card text-foreground/70",
-        "transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:text-primary"
+        "border border-white/15 bg-white/5 text-white/70",
+        "transition-all hover:-translate-y-0.5 hover:border-primary hover:bg-white/10 hover:text-white"
       )}
     >
       {children}
@@ -75,7 +75,7 @@ function SocialIcon({
 function FooterCol({ title, links }: { title: string; links: FooterLink[] }) {
   return (
     <div>
-      <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+      <h3 className="text-xs font-semibold uppercase tracking-wide text-white/45">
         {title}
       </h3>
       <ul className="mt-4 space-y-2.5">
@@ -83,7 +83,7 @@ function FooterCol({ title, links }: { title: string; links: FooterLink[] }) {
           <li key={`${l.label}-${idx}`}>
             <Link
               href={l.href}
-              className="text-sm text-foreground/80 transition-colors hover:text-primary"
+              className="text-sm text-white/75 transition-colors hover:text-white"
             >
               {l.label}
             </Link>
@@ -117,15 +117,15 @@ function SubscribeBlock() {
 
   return (
     <div>
-      <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+      <h3 className="text-xs font-semibold uppercase tracking-wide text-white/45">
         Subscribe
       </h3>
-      <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
+      <p className="mt-4 text-sm leading-relaxed text-white/65">
         News, drops, and the occasional swag tip — no spam.
       </p>
-      <div className="mt-4 flex h-12 items-center gap-2 rounded-2xl border border-border bg-card px-3">
+      <div className="mt-4 flex h-12 items-center gap-2 rounded-2xl border border-white/15 bg-white/5 px-3">
         <input
-          className="h-full w-full min-w-0 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
+          className="h-full w-full min-w-0 bg-transparent text-sm text-white outline-none placeholder:text-white/40"
           placeholder="Enter your email"
           type="email"
           name="email"
@@ -151,7 +151,7 @@ function SubscribeBlock() {
 
 export default function Footer() {
   return (
-    <footer className="swag-redesign border-t border-border/60 bg-muted/40">
+    <footer className="swag-redesign bg-navy text-white/70">
       <div className="mx-auto max-w-site px-6 py-16">
         <div className="grid gap-12 lg:grid-cols-[1.4fr_2.6fr]">
           {/* Brand */}
@@ -159,25 +159,25 @@ export default function Footer() {
             <Image
               src={LogoMark}
               alt="Swaggeroo logo"
-              className="h-16 w-auto"
+              className="h-10 w-auto"
               draggable={false}
             />
-            <p className="mt-5 text-sm leading-relaxed text-muted-foreground">
+            <p className="mt-5 text-sm leading-relaxed text-white/65">
               Creating, managing, and distributing swag your crew actually wants — designed,
               branded, and shipped anywhere from one simple platform.
             </p>
 
-            <div className="mt-6 space-y-2.5 text-sm text-muted-foreground">
+            <div className="mt-6 space-y-2.5 text-sm text-white/65">
               <p className="flex items-center gap-2">
                 <MapPin className="size-4 text-primary" /> 100 E Pine St #110, Orlando, FL 32801
               </p>
               <p className="flex items-center gap-2">
                 <Phone className="size-4 text-primary" />
-                <a href="tel:8886307924" className="hover:text-primary">888-630-7924</a>
+                <a href="tel:8886307924" className="hover:text-white">888-630-7924</a>
               </p>
               <p className="flex items-center gap-2">
                 <Mail className="size-4 text-primary" />
-                <a href="mailto:sales@swaggeroo.com" className="hover:text-primary">
+                <a href="mailto:sales@swaggeroo.com" className="hover:text-white">
                   sales@swaggeroo.com
                 </a>
               </p>
@@ -210,9 +210,9 @@ export default function Footer() {
           </div>
         </div>
 
-        <div className="mt-14 flex flex-col items-center justify-between gap-3 border-t border-border/60 pt-6 text-sm text-muted-foreground sm:flex-row">
+        <div className="mt-14 flex flex-col items-center justify-between gap-3 border-t border-white/10 pt-6 text-sm text-white/55 sm:flex-row">
           <p>
-            © 2026 <span className="font-semibold text-foreground">Swaggeroo</span>. All rights
+            © 2026 <span className="font-semibold text-white">Swaggeroo</span>. All rights
             reserved.
           </p>
           <p className="flex items-center gap-1.5">
