@@ -19,6 +19,7 @@ import { useCatalogCartStore } from "@/lib/cart-store";
 import { calculateCatalogCartSummary } from "@/lib/catalog-cart";
 import { createCatalogImageUpload, uploadFileToPresignedUrl } from "@/lib/catalog";
 import { formatMoney } from "@/lib/money";
+import { PageBanner } from "@/components/marketing/page-banner";
 
 const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"] as const;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -75,7 +76,7 @@ export function ProjectSubmissionPageContent() {
   // survives the round-trip back here after login.
   useEffect(() => {
     if (!authLoading && !user) {
-      router.replace("/login?next=/project-submittion");
+      router.replace("/login?next=/project-submission");
     }
   }, [authLoading, user, router]);
 
@@ -313,13 +314,17 @@ export function ProjectSubmissionPageContent() {
   }
 
   return (
-    <div className="container">
-      <div className="mb-6 space-y-3">
-        <Link href="/cart" className="inline-flex items-center text-sm text-black/60 underline">
-          Back To Cart
-        </Link>
-        <h1 className="text-4xl font-semibold tracking-tight text-black">Add project details</h1>
-      </div>
+    <>
+      <PageBanner
+        title="Project Submission"
+        subtitle="Add your project details to request a quote."
+        breadcrumbs={[
+          { label: "Home", href: "/" },
+          { label: "Cart", href: "/cart" },
+          { label: "Project Submission" },
+        ]}
+      />
+      <div className="container py-10 lg:py-14">
 
       {!summary.hasItems ? (
         <Card className="border border-black/10 bg-white shadow-sm">
@@ -694,6 +699,7 @@ export function ProjectSubmissionPageContent() {
           </Card>
         </div>
       )}
-    </div>
+      </div>
+    </>
   );
 }

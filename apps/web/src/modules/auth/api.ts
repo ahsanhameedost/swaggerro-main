@@ -53,6 +53,20 @@ export async function me() {
   return apiFetch<{ user: User | null }>("/auth/me", { method: "GET" });
 }
 
+export async function updateProfile(input: {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string | null;
+  avatarUrl?: string | null;
+  avatarKey?: string | null;
+}) {
+  return apiFetch<{ user: User }>("/auth/me", {
+    method: "PATCH",
+    body: JSON.stringify(input)
+  });
+}
+
 export async function logout() {
   return apiFetch<{ ok: true }>("/auth/logout", { method: "POST" });
 }

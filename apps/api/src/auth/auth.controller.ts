@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Req, Res, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Patch, Post, Req, Res, UseGuards } from "@nestjs/common";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import { env } from "../env";
 import { AuthService } from "./auth.service";
@@ -7,7 +7,10 @@ import { signupSchema } from "./dto/signup.dto";
 import { resetPasswordWithCodeSchema } from "./dto/reset-password-with-code.dto";
 import { requestPasswordResetSchema } from "./dto/request-password-reset.dto";
 import { AuthGuard } from "../common/guards/auth.guard";
+import { PermissionsGuard } from "../common/guards/permissions.guard";
+import { RequirePermissions } from "../common/decorators/permissions.decorator";
 import { UsersService } from "../users/users.service";
+import { updateProfileSchema } from "../users/user.dto";
 import { verifyPasswordResetCodeSchema } from "./dto/verify-password-reset-code.dto";
 
 @Controller("auth")
@@ -72,6 +75,19 @@ export class AuthController {
   async me(@Req() req: FastifyRequest & { user?: { sub: string } }) {
     const userId = req.user!.sub;
     const user = await this.users.findByIdWithPermissions(userId);
+    return { user };
+  }
+
+  @UseGuards(AuthGuard, PermissionsGuard)
+  @RequirePermissions("profile.update")
+  @Patch("me")
+  async updateMe(
+    @Req() req: FastifyRequest & { user?: { sub: string } },
+    @Body() body: unknown
+  ) {
+    const userId = req.user!.sub;
+    const dto = updateProfileSchema.parse(body);
+    const user = await this.users.updateProfile(userId, dto);
     return { user };
   }
 

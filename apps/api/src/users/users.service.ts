@@ -12,7 +12,8 @@ import type { AuthUser } from "../common/guards/auth.guard";
 import type {
   CreateEmployeeDto,
   ListUsersQueryDto,
-  UpdateEmployeeDto
+  UpdateEmployeeDto,
+  UpdateProfileDto
 } from "./user.dto";
 
 type CreateUserInput = {
@@ -171,6 +172,39 @@ export class UsersService {
     return { ok: true };
   }
 
+  async updateProfile(userId: string, input: UpdateProfileDto) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true }
+    });
+
+    if (!user) {
+      throw new NotFoundException("User not found");
+    }
+
+    const email = input.email.trim().toLowerCase();
+
+    const emailOwner = await this.findByEmail(email);
+    if (emailOwner && emailOwner.id !== userId) {
+      throw new ConflictException("Email already in use");
+    }
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        email,
+        firstName: input.firstName.trim(),
+        lastName: input.lastName.trim(),
+        phone: input.phone?.trim() || null,
+        // Only touch avatar fields when the client explicitly sends them.
+        ...(input.avatarUrl !== undefined ? { avatarUrl: input.avatarUrl || null } : {}),
+        ...(input.avatarKey !== undefined ? { avatarKey: input.avatarKey || null } : {})
+      }
+    });
+
+    return this.findByIdWithPermissions(userId);
+  }
+
   async updatePassword(userId: string, passwordHash: string) {
     return this.prisma.user.update({
       where: { id: userId },
@@ -187,6 +221,7 @@ export class UsersService {
         firstName: true,
         lastName: true,
         phone: true,
+        avatarUrl: true,
         role: {
           select: {
             name: true,
@@ -206,6 +241,7 @@ export class UsersService {
       firstName: user.firstName,
       lastName: user.lastName,
       phone: user.phone,
+      avatarUrl: user.avatarUrl,
       role: user.role.name,
       permissions
     };

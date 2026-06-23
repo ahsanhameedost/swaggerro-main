@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { CatalogPricingOption } from "./catalog";
@@ -212,7 +213,44 @@ export const useCatalogCartStore = create<CatalogCartStore>()(
     }),
     {
       name: "soaswag-catalog-cart",
-      version: 4
+      version: 4,
+      // Only persist cart data, never the action functions.
+      partialize: (state) => ({
+        bulkItems: state.bulkItems,
+        swagPackItems: state.swagPackItems,
+        swagPackPackaging: state.swagPackPackaging,
+        swagPackQuantity: state.swagPackQuantity,
+        swagPackName: state.swagPackName,
+        swagPackLogoUrl: state.swagPackLogoUrl,
+        swagPackLogoKey: state.swagPackLogoKey,
+        branding: state.branding
+      }),
+      // Carts saved under an older schema are incompatible — discard them and
+      // fall back to the store's default state instead of throwing.
+      migrate: () => undefined
     }
   )
 );
+
+// True once the persisted cart has been read from localStorage on the client.
+// Use this to avoid SSR/client hydration mismatches when rendering cart state
+// (e.g. the navbar cart count) — render the persisted value only after hydration.
+export function useCartHydrated() {
+  // Start false so the server render and the first client render agree (no
+  // persisted data exists on the server). Read the real status in an effect,
+  // which only runs on the client where `persist` is available.
+  const [hydrated, setHydrated] = useState(false);
+
+  useEffect(() => {
+    const api = useCatalogCartStore.persist;
+    if (!api) {
+      setHydrated(true);
+      return;
+    }
+    const unsubFinish = api.onFinishHydration(() => setHydrated(true));
+    if (api.hasHydrated()) setHydrated(true);
+    return unsubFinish;
+  }, []);
+
+  return hydrated;
+}

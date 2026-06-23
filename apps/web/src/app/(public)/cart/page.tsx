@@ -10,6 +10,7 @@ import { getCartItemKey, useCatalogCartStore } from "@/lib/cart-store";
 import { calculateCatalogCartSummary } from "@/lib/catalog-cart";
 import { formatMoney } from "@/lib/money";
 import { useMe } from "@/queries/auth";
+import { PageBanner } from "@/components/marketing/page-banner";
 
 export default function CartPage() {
   const router = useRouter();
@@ -96,11 +97,11 @@ export default function CartPage() {
         description: "Create an account or log in to submit your project request.",
         color: "primary"
       });
-      router.push(`/login?next=${encodeURIComponent("/project-submittion")}`);
+      router.push(`/login?next=${encodeURIComponent("/project-submission")}`);
       return;
     }
 
-    router.push("/project-submittion");
+    router.push("/project-submission");
   };
 
   if (!hydrated) {
@@ -112,9 +113,13 @@ export default function CartPage() {
   }
 
   return (
-    <div className="container">
-        <div className="mb-6 space-y-2">
-          <h1 className="text-3xl font-semibold tracking-tight text-black">Your cart</h1>
+    <>
+      <PageBanner
+        title="Cart"
+        breadcrumbs={[{ label: "Home", href: "/" }, { label: "Cart" }]}
+      />
+      <div className="container py-10 lg:py-14">
+        <div className="mb-6">
           <p className="text-black/60">Total ({totalLabel || "0 items"})</p>
         </div>
 
@@ -129,7 +134,7 @@ export default function CartPage() {
                     </div>
                     <Button
                       variant="light"
-                      color="danger"
+                      className="font-medium text-primary data-[hover=true]:bg-primary/10"
                       isDisabled={!summary.bulkItems.length}
                       onPress={clearBulkItems}
                     >
@@ -177,7 +182,7 @@ export default function CartPage() {
 
                           <Button
                             variant="light"
-                            color="danger"
+                            className="font-medium text-primary data-[hover=true]:bg-primary/10"
                             onPress={() => removeBulkItem(getCartItemKey(item))}
                           >
                             Remove
@@ -202,7 +207,7 @@ export default function CartPage() {
                     <div className="flex items-center gap-2">
                       <Button
                         variant="light"
-                        color="danger"
+                        className="font-medium text-primary data-[hover=true]:bg-primary/10"
                         onPress={clearSwagPack}
                       >
                         Remove
@@ -411,6 +416,7 @@ export default function CartPage() {
             </CardBody>
           </Card>
         </div>
-    </div>
+      </div>
+    </>
   );
 }

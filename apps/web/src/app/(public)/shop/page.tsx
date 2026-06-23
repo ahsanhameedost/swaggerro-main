@@ -160,6 +160,11 @@ export default function ShopPage() {
   return (
     <div className="swag-redesign">
       <PageHero
+        breadcrumbs={[
+          { label: "Home", href: "/" },
+          { label: "Shop", href: activeCategory ? "/shop" : undefined },
+          ...(activeCategory ? [{ label: activeCategory.name }] : []),
+        ]}
         eyebrow={activeCategory ? "Category" : "The Catalog"}
         title={activeCategory ? activeCategory.name : "Shop the catalog"}
         subtitle={
@@ -176,7 +181,7 @@ export default function ShopPage() {
         </div>
       </PageHero>
 
-      <div className="mx-auto mt-10 grid max-w-site gap-8 px-6 pb-16 lg:grid-cols-[16rem_1fr]">
+      <div className="mx-auto mt-8 grid max-w-site gap-8 px-6 pb-20 lg:grid-cols-[16rem_1fr]">
         <aside className="hidden lg:block">
           <div className="sticky top-24">{filters}</div>
         </aside>

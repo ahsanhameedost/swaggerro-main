@@ -11,7 +11,7 @@ function OrderConfirmationContent() {
   const email = params.get("email");
 
   return (
-    <div className="container">
+    <div className="container py-10 lg:py-14">
       <Card className="mx-auto max-w-2xl border border-black/10 bg-white shadow-sm">
         <CardBody className="space-y-6 p-10 text-center">
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-success-100 text-3xl">

@@ -21,6 +21,41 @@ export const DESIGN_PHASES: CatalogOrderDesignPhase[] = [
   "READY_TO_ORDER"
 ];
 
+/** A sequential, human-friendly order code, e.g. 1 -> "SW-001". */
+export function formatOrderNumber(orderNumber: number) {
+  return `SW-${String(orderNumber).padStart(3, "0")}`;
+}
+
+/** Turn a status enum into a readable label, e.g. "PENDING_REVIEW" -> "Pending Review". */
+export function formatOrderStatusLabel(status: string) {
+  return status
+    .toLowerCase()
+    .split("_")
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
+/** HeroUI Chip color for each order status. */
+export function getOrderStatusColor(
+  status: string
+): "default" | "primary" | "secondary" | "success" | "warning" | "danger" {
+  switch (status) {
+    case "APPROVED":
+      return "success";
+    case "IN_REVIEW":
+      return "primary";
+    case "PENDING_REVIEW":
+      return "warning";
+    case "REJECTED":
+      return "danger";
+    case "CANCELLED":
+      return "default";
+    default:
+      return "default";
+  }
+}
+
 export function formatOrderTypeLabel(type: CatalogOrder["type"]) {
   switch (type) {
     case "SWAG_PACK":

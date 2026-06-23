@@ -6,6 +6,7 @@ export type User = {
   firstName?: string | null;
   lastName?: string | null;
   phone?: string | null;
+  avatarUrl?: string | null;
   role: RoleName;
   permissions: string[];
 };

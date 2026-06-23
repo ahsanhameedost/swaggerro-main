@@ -192,7 +192,7 @@ export default function SwagPackPage() {
   };
 
   return (
-    <div className="container">
+    <div className="container py-10 lg:py-14">
       <div className="mb-6 space-y-3">
         <Link href="/cart" className="inline-flex items-center text-sm text-black/60 underline">
           Back To Cart
@@ -249,7 +249,7 @@ export default function SwagPackPage() {
                         helperText={`Based on ${summary.packQuantity} swag packs`}
                       />
 
-                      <Button variant="light" color="danger" onPress={() => removeSwagPackItem(getCartItemKey(item))}>
+                      <Button variant="light" className="font-medium text-primary data-[hover=true]:bg-primary/10" onPress={() => removeSwagPackItem(getCartItemKey(item))}>
                         Remove
                       </Button>
                     </div>
@@ -394,7 +394,7 @@ export default function SwagPackPage() {
                     </Button>
                     <Button
                       variant="light"
-                      color="danger"
+                      className="font-medium text-primary data-[hover=true]:bg-primary/10"
                       size="sm"
                       onPress={() => setSwagPackLogo(null)}
                     >
@@ -483,7 +483,7 @@ export default function SwagPackPage() {
                       1 / pack · {formatMoney(summary.swagPackPackaging.pricePerPack, summary.swagPackPackaging.currency)} / pack
                     </div>
                   </div>
-                  <Button variant="light" color="danger" onPress={() => setSwagPackPackaging(null)}>
+                  <Button variant="light" className="font-medium text-primary data-[hover=true]:bg-primary/10" onPress={() => setSwagPackPackaging(null)}>
                     Remove
                   </Button>
                 </div>

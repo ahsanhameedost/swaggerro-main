@@ -173,7 +173,7 @@ export default function Footer() {
               </p>
               <p className="flex items-center gap-2">
                 <Phone className="size-4 text-primary" />
-                <a href="tel:3213524125" className="hover:text-primary">321-352-4125</a>
+                <a href="tel:8886307924" className="hover:text-primary">888-630-7924</a>
               </p>
               <p className="flex items-center gap-2">
                 <Mail className="size-4 text-primary" />

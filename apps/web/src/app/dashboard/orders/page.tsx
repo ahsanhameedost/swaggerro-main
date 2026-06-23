@@ -30,7 +30,14 @@ import {
 import { DataPagination } from "@/app/components/dashboard/shared/DataPagination";
 import { addToast } from "@heroui/toast";
 import { formatMoney } from "@/lib/money";
-import { ORDER_STATUSES, buildUserDisplayName, formatOrderTypeLabel } from "@/lib/order-flow";
+import {
+  ORDER_STATUSES,
+  buildUserDisplayName,
+  formatOrderNumber,
+  formatOrderStatusLabel,
+  formatOrderTypeLabel,
+  getOrderStatusColor
+} from "@/lib/order-flow";
 import { hasAnyPermission, hasPermission } from "@/lib/permissions";
 
 export default function OrdersPage() {
@@ -147,7 +154,7 @@ export default function OrdersPage() {
               className="w-full xl:max-w-xs"
             >
               {ORDER_STATUSES.map((value) => (
-                <SelectItem key={value}>{value}</SelectItem>
+                <SelectItem key={value}>{formatOrderStatusLabel(value)}</SelectItem>
               ))}
             </Select>
 
@@ -193,7 +200,15 @@ export default function OrdersPage() {
                 <TableRow key={order.id}>
                   <TableCell>
                     <div className="space-y-1">
-                      <div className="font-medium">{isCustomer ? `Order #${order.id}` : order.name}</div>
+                      <div className="font-medium">
+                        {isCustomer ? (
+                          <Tooltip content={order.id} placement="top-start">
+                            <span>Order #{formatOrderNumber(order.orderNumber)}</span>
+                          </Tooltip>
+                        ) : (
+                          order.name
+                        )}
+                      </div>
                       <div className="text-xs text-foreground/50">{order.email}</div>
                       {!isCustomer ? (
                         <div className="text-xs text-foreground/50">{order.companyName || "-"}</div>
@@ -238,12 +253,12 @@ export default function OrdersPage() {
                         className="min-w-[180px]"
                       >
                         {ORDER_STATUSES.map((value) => (
-                          <SelectItem key={value}>{value}</SelectItem>
+                          <SelectItem key={value}>{formatOrderStatusLabel(value)}</SelectItem>
                         ))}
                       </Select>
                     ) : (
-                      <Chip size="sm" variant="flat">
-                        {order.status}
+                      <Chip size="sm" variant="flat" color={getOrderStatusColor(order.status)}>
+                        {formatOrderStatusLabel(order.status)}
                       </Chip>
                     )}
                   </TableCell>

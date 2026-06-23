@@ -1186,6 +1186,7 @@ private async createSquarePayment(
 
     return {
       id: order.id,
+      orderNumber: order.orderNumber,
       type: order.type,
       status: order.status,
       paymentStatus: order.paymentStatus,

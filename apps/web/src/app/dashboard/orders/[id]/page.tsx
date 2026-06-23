@@ -36,7 +36,10 @@ import {
   buildUserDisplayName,
   formatDesignPhaseLabel,
   formatItemTypeLabel,
+  formatOrderNumber,
+  formatOrderStatusLabel,
   formatOrderTypeLabel,
+  getOrderStatusColor,
   getPreferredDesignImage
 } from "@/lib/order-flow";
 import type { CatalogOrderItem, CatalogOrderDesignPhase, CatalogOrderStatus } from "@/modules/catalog/orders/types";
@@ -48,14 +51,6 @@ const ORDER_STATUSES: CatalogOrderStatus[] = [
   "REJECTED",
   "CANCELLED"
 ];
-
-function formatOrderStatusLabel(status: string) {
-  return status
-    .toLowerCase()
-    .split("_")
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
-}
 
 function TeamItemCard({
   orderId,
@@ -406,16 +401,18 @@ export default function OrderDetailsPage() {
               <Chip size="sm" variant="flat">
                 {formatOrderTypeLabel(order.type)}
               </Chip>
-              <Chip size="sm" variant="flat">
-                {order.status}
+              <Chip size="sm" variant="flat" color={getOrderStatusColor(order.status)}>
+                {formatOrderStatusLabel(order.status)}
               </Chip>
               <Chip size="sm" variant="flat">
-                {order.paymentStatus}
+                {formatOrderStatusLabel(order.paymentStatus)}
               </Chip>
             </div>
 
             <div>
-              <h1 className="text-2xl font-semibold tracking-tight">Order #{order.id}</h1>
+              <h1 className="text-2xl font-semibold tracking-tight">
+                Order #{formatOrderNumber(order.orderNumber)}
+              </h1>
               <p className="text-sm text-foreground/60">
                 Submitted on {new Date(order.createdAt).toLocaleString()}
               </p>

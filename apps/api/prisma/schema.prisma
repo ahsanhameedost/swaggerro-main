@@ -165,6 +165,8 @@ model User {
   firstName               String?
   lastName                String?
   phone                   String?
+  avatarUrl               String?
+  avatarKey               String?
   roleId                  String
   role                    Role                       @relation(fields: [roleId], references: [id])
   projects                Project[]
@@ -490,6 +492,7 @@ model ProjectItem {
 
 model CatalogOrder {
   id                 String                @id @default(cuid())
+  orderNumber        Int                   @unique @default(autoincrement())
   userId             String?
   projectId          String?
   assignedEmployeeId String?

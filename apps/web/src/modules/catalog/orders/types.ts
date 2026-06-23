@@ -56,6 +56,7 @@ export type CatalogOrderItem = {
 
 export type CatalogOrder = {
   id: string;
+  orderNumber: number;
   type: "BULK" | "SWAG_PACK" | "COMBINED";
   status: CatalogOrderStatus;
   paymentStatus: CatalogPaymentStatus;
