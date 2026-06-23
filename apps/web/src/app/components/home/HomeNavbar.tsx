@@ -90,7 +90,7 @@ export default function HomeNavbar() {
       href="/cart"
       onClick={onClick}
       aria-label={`Cart${cartCount > 0 ? `, ${cartCount} item${cartCount === 1 ? "" : "s"}` : ""}`}
-      className={`${navLinkClass} relative inline-flex items-center justify-center`}
+      className={`${navLinkClass} relative inline-flex size-10 shrink-0 items-center justify-center`}
     >
       <ShoppingBag className="size-6" aria-hidden="true" />
       {cartCount > 0 ? (
@@ -102,16 +102,18 @@ export default function HomeNavbar() {
   );
 
   return (
-    <div className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-navy/10 shadow-[0_2px_10px_-4px_rgba(13,27,61,0.12)]">
+    <div className="sticky top-0 z-50 bg-white border-b border-navy/10 shadow-[0_2px_10px_-4px_rgba(13,27,61,0.12)]">
       <div className="container">
       <Navbar
         isMenuOpen={isMenuOpen}
         onMenuOpenChange={setIsMenuOpen}
         maxWidth="full"
         isBordered={false}
+        isBlurred={false}
+        position="static"
         classNames={{
           base: "bg-transparent",
-          wrapper: "h-20 px-0",
+          wrapper: "h-20 px-0 items-center",
         }}
       >
         <NavbarContent className="lg:hidden" justify="start">
