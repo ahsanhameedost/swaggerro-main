@@ -130,6 +130,16 @@ const productCatalogVariantInputSchema = z
     pricingOptions: pricingOptionsArraySchema.default([])
   })
   .superRefine((value, ctx) => {
+    value.pricingOptions.forEach((tier, index) => {
+      if (tier.price > value.price) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["pricingOptions", index, "price"],
+          message: "Tier unit price cannot exceed the variant price"
+        });
+      }
+    });
+
     const uniqueVariants = new Set<string>();
 
     value.selectedOptions.forEach((option, index) => {
@@ -164,6 +174,7 @@ const productSchemaBase = z.object({
   categoryId: z.string().trim().optional().nullable(),
   collectionIds: z.array(z.string().trim()).default([]),
   isPackaging: z.boolean().default(false),
+  bulkPricingEnabled: z.boolean().default(true),
   shippingProfileId: z.string().trim().optional().nullable(),
   weightOz: z.coerce.number().min(0).optional().nullable(),
   lengthIn: z.coerce.number().min(0).optional().nullable(),
@@ -181,6 +192,25 @@ const productSchemaBase = z.object({
   pricingOptions: pricingOptionsArraySchema.default([])
 });
 
+const validateTiersAgainstBasePrice = (
+  value: { basePrice?: number | null; pricingOptions?: { price: number }[] },
+  ctx: z.RefinementCtx
+) => {
+  if (value.basePrice == null || !value.pricingOptions?.length) {
+    return;
+  }
+
+  value.pricingOptions.forEach((tier, index) => {
+    if (tier.price > (value.basePrice as number)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["pricingOptions", index, "price"],
+        message: "Tier unit price cannot exceed the base product price"
+      });
+    }
+  });
+};
+
 export const createProductSchema = productSchemaBase.superRefine((value, ctx) => {
   if (!value.productCatalogVariants.length && value.basePrice == null) {
     ctx.addIssue({
@@ -197,6 +227,8 @@ export const createProductSchema = productSchemaBase.superRefine((value, ctx) =>
       message: "Compare at price must be greater than or equal to base price"
     });
   }
+
+  validateTiersAgainstBasePrice(value, ctx);
 });
 
 export const updateProductSchema = productSchemaBase.partial().superRefine((value, ctx) => {
@@ -207,6 +239,8 @@ export const updateProductSchema = productSchemaBase.partial().superRefine((valu
       message: "Compare at price must be greater than or equal to base price"
     });
   }
+
+  validateTiersAgainstBasePrice(value, ctx);
 });
 
 export type ListProductsQuery = z.infer<typeof listProductsQuerySchema>;

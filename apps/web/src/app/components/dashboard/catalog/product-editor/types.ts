@@ -56,6 +56,7 @@ export type ProductEditorState = {
   categoryId: string;
   collectionIds: string[];
   isPackaging: boolean;
+  bulkPricingEnabled: boolean;
   shippingProfileId: string;
   weightOz: number | null;
   lengthIn: number | null;

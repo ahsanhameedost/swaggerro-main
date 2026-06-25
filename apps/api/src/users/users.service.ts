@@ -6,7 +6,6 @@ import {
   NotFoundException
 } from "@nestjs/common";
 import * as bcrypt from "bcryptjs";
-import { isBusinessEmail } from "../common/utils/business-email";
 import { PrismaService } from "../prisma/prisma.service";
 import type { AuthUser } from "../common/guards/auth.guard";
 import type {
@@ -84,10 +83,6 @@ export class UsersService {
   async createEmployee(input: CreateEmployeeDto, authUser: AuthUser) {
     const email = input.email.trim().toLowerCase();
 
-    if (!isBusinessEmail(email)) {
-      throw new BadRequestException("Employee email must be a business email address");
-    }
-
     const existing = await this.findByEmail(email);
     if (existing) {
       throw new ConflictException("Email already in use");
@@ -119,10 +114,6 @@ export class UsersService {
     }
 
     const email = input.email.trim().toLowerCase();
-
-    if (!isBusinessEmail(email)) {
-      throw new BadRequestException("Employee email must be a business email address");
-    }
 
     const emailOwner = await this.findByEmail(email);
     if (emailOwner && emailOwner.id !== id) {

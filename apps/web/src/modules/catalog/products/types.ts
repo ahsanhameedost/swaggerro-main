@@ -98,6 +98,7 @@ export type CatalogProductListItem = {
   variantCount: number;
   hasVariants: boolean;
   isPackaging: boolean;
+  bulkPricingEnabled?: boolean;
   basePrice?: number | null;
   basePriceCents?: number | null;
   compareAtPrice?: number | null;
@@ -105,6 +106,7 @@ export type CatalogProductListItem = {
   lowestPrice: number;
   highestPrice: number;
   floorPrice?: number;
+  pricingOptions?: CatalogPricingOption[];
   swatches?: Array<{ name: string; hex: string | null }>;
   minPrice: number;
   minPriceCents?: number;
@@ -127,6 +129,7 @@ export type CatalogProductDetail = {
   description?: string | null;
   status: "DRAFT" | "ACTIVE" | "ARCHIVED";
   isPackaging: boolean;
+  bulkPricingEnabled?: boolean;
   basePrice?: number | null;
   basePriceCents?: number | null;
   compareAtPrice?: number | null;
@@ -184,6 +187,7 @@ export type CreateProductInput = {
   categoryId?: string | null;
   collectionIds: string[];
   isPackaging?: boolean;
+  bulkPricingEnabled?: boolean;
   shippingProfileId?: string | null;
   weightOz?: number | null;
   lengthIn?: number | null;

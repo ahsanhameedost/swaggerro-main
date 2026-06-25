@@ -177,6 +177,7 @@ model User {
   createdShipments        ShippingShipment[]         @relation("ShippingShipmentCreatedBy")
   inventoryLedgerEntries  InventoryLedgerEntry[]      @relation("InventoryLedgerPerformedBy")
   passwordResetCodes      PasswordResetCode[]
+  ownedStore              Store?                     @relation("StoreOwner")
   createdAt               DateTime                   @default(now())
   updatedAt               DateTime                   @updatedAt
 
@@ -279,6 +280,7 @@ model CatalogProduct {
   description            String?                    @db.Text
   status                 CatalogProductStatus       @default(DRAFT)
   isPackaging            Boolean                    @default(false)
+  bulkPricingEnabled     Boolean                    @default(true)
   basePrice              Decimal?                   @db.Decimal(10, 2)
   compareAtPrice         Decimal?                   @db.Decimal(10, 2)
   minQty                 Int                        @default(1)
@@ -295,6 +297,7 @@ model CatalogProduct {
   collections            CatalogProductCollection[]
   projectItems           ProjectItem[]
   orderItems             CatalogOrderItem[]
+  storeLinks             StoreProduct[]
   shipmentItems          ShippingShipmentItem[]
   createdAt              DateTime                   @default(now())
   updatedAt              DateTime                   @updatedAt
@@ -495,9 +498,11 @@ model CatalogOrder {
   orderNumber        Int                   @unique @default(autoincrement())
   userId             String?
   projectId          String?
+  storeId            String?
   assignedEmployeeId String?
   user               User?                 @relation(fields: [userId], references: [id], onDelete: SetNull)
   project            Project?              @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  store              Store?                @relation(fields: [storeId], references: [id], onDelete: SetNull)
   assignedEmployee   User?                 @relation("AssignedCatalogOrders", fields: [assignedEmployeeId], references: [id], onDelete: SetNull)
   type               CatalogOrderType
   status             CatalogOrderStatus    @default(PENDING_REVIEW)
@@ -523,6 +528,7 @@ model CatalogOrder {
 
   @@index([userId])
   @@index([projectId])
+  @@index([storeId])
   @@index([assignedEmployeeId])
   @@index([type])
   @@index([status])
@@ -820,3 +826,84 @@ model ShippingShipmentItem {
   @@map("shipping_shipment_items")
 }
 
+
+enum SellerApplicationStatus {
+  NEW
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+}
+
+model SellerApplication {
+  id                  String                  @id @default(cuid())
+  companyName         String
+  contactName         String
+  email               String
+  phone               String
+  companyAddress      String                  @db.Text
+  businessDescription String                  @db.Text
+  industry            String
+  country             String
+  logoUrl             String?
+  logoKey             String?
+  website             String?
+  additionalInfo      String?                 @db.Text
+  status              SellerApplicationStatus @default(NEW)
+  adminNotes          String?                 @db.Text
+  reviewedAt          DateTime?
+  store               Store?
+  createdAt           DateTime                @default(now())
+  updatedAt           DateTime                @updatedAt
+
+  @@index([status])
+  @@index([email])
+  @@index([createdAt])
+  @@map("seller_applications")
+}
+
+enum StoreStatus {
+  DRAFT
+  ACTIVE
+  SUSPENDED
+}
+
+model Store {
+  id                     String             @id @default(cuid())
+  slug                   String             @unique
+  name                   String
+  companyName            String?
+  status                 StoreStatus        @default(ACTIVE)
+  ownerUserId            String?            @unique
+  owner                  User?              @relation("StoreOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
+  applicationId          String?            @unique
+  application            SellerApplication? @relation(fields: [applicationId], references: [id], onDelete: SetNull)
+  heroHeadline           String?
+  heroSubcopy            String?            @db.Text
+  logoUrl                String?
+  logoKey                String?
+  themePrimary           String             @default("#1e40af")
+  themePrimarySoft       String             @default("#eef2fd")
+  themePrimaryForeground String             @default("#ffffff")
+  products               StoreProduct[]
+  orders                 CatalogOrder[]
+  createdAt              DateTime           @default(now())
+  updatedAt              DateTime           @updatedAt
+
+  @@index([status])
+  @@map("stores")
+}
+
+model StoreProduct {
+  id        String         @id @default(cuid())
+  storeId   String
+  productId String
+  store     Store          @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  product   CatalogProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
+  sortOrder Int            @default(0)
+  createdAt DateTime       @default(now())
+
+  @@unique([storeId, productId])
+  @@index([storeId])
+  @@index([productId])
+  @@map("store_products")
+}

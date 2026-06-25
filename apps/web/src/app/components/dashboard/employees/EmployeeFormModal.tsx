@@ -137,7 +137,7 @@ export function EmployeeFormModal({
                   {...register("lastName")}
                 />
                 <Input
-                  label="Business email"
+                  label="Email"
                   type="email"
                   className="md:col-span-2"
                   isRequired

@@ -359,6 +359,7 @@ const BREADCRUMB_LABELS: Record<string, string> = {
   employees: "Employees",
   permissions: "Permissions",
   "contact-messages": "Contact Messages",
+  partners: "Seller Applications",
   account: "Account Settings",
   new: "New",
   checkout: "Checkout",

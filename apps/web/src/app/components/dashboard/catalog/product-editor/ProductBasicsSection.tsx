@@ -288,6 +288,25 @@ export function ProductBasicsSection({
                             </Switch>
                         </div>
 
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p>Bulk quantity pricing:</p>
+                                <p className="text-xs text-foreground/50">
+                                    Turn off to always charge the base price and hide volume tiers on the storefront.
+                                </p>
+                            </div>
+                            <Switch
+                                isSelected={state.bulkPricingEnabled}
+                                onValueChange={(isSelected) =>
+                                    onStateChange((current) => ({
+                                        ...current,
+                                        bulkPricingEnabled: isSelected
+                                    }))
+                                }
+                            >
+                            </Switch>
+                        </div>
+
                         <Select
                             label="Shipping profile"
                             items={[{ id: EMPTY_CATEGORY_KEY, name: "No shipping profile" }, ...shippingProfiles]}

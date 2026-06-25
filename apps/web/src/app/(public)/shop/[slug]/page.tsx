@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { usePublicProduct } from "@/lib/queries.catalog";
 import { useCatalogCartStore } from "@/lib/cart-store";
-import { resolveUnitPrice } from "@/lib/catalog-pricing";
+import { resolveUnitPrice, computeSavingsPercent } from "@/lib/catalog-pricing";
 import { formatMoney } from "@/lib/money";
 import { getImprintMethods } from "@/lib/imprint";
 import { cn } from "@/lib/utils";
@@ -65,7 +65,10 @@ export default function ProductDetailPage() {
     );
   }, [product, hasVariants, selectedOptions, variantGroups.length]);
 
-  const activePricing = matchedVariant?.pricingOptions?.length ? matchedVariant.pricingOptions : product?.pricingOptions ?? [];
+  const bulkEnabled = product?.bulkPricingEnabled !== false;
+  const activePricing = bulkEnabled
+    ? (matchedVariant?.pricingOptions?.length ? matchedVariant.pricingOptions : product?.pricingOptions ?? [])
+    : [];
   const activeBasePrice = matchedVariant?.price ?? product?.basePrice ?? 0;
   const activeMinQty = matchedVariant?.minQty ?? product?.minQty ?? 1;
   const activeStock = matchedVariant?.stock ?? product?.baseStock ?? 0;
@@ -76,6 +79,9 @@ export default function ProductDetailPage() {
   const subtotal = unit * quantity;
   const total = subtotal + setupFee;
   const perUnitAllIn = quantity > 0 ? total / quantity : 0;
+  const savingsPercent = computeSavingsPercent(activeBasePrice, unit);
+  const discountPerUnit = Math.max(0, activeBasePrice - unit);
+  const discountTotal = discountPerUnit * quantity;
 
   // volume tiers sorted
   const tiers = useMemo(
@@ -278,6 +284,15 @@ export default function ProductDetailPage() {
                 <p className="font-display text-2xl font-bold tabular-nums">{formatMoney(total, product.currency)}</p>
               </div>
             </div>
+
+            {savingsPercent > 0 ? (
+              <div className="mt-3 flex items-center justify-between rounded-lg bg-success/10 px-3 py-2 text-xs font-medium text-success">
+                <span className="inline-flex items-center gap-1.5">
+                  <TrendingDown className="size-3.5" /> You are saving {savingsPercent}% on this quantity
+                </span>
+                <span className="tabular-nums">−{formatMoney(discountTotal, product.currency)}</span>
+              </div>
+            ) : null}
 
             {nextTier ? (
               <div className="mt-3 flex items-center gap-1.5 rounded-lg bg-success/10 px-3 py-2 text-xs font-medium text-success">

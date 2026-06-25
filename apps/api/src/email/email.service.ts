@@ -663,6 +663,174 @@ Swaggeroo Team`,
     this.logger.log(`sendDesignRevisionRequestedEmail success ${mailInfoSummary(info)}`);
   }
 
+  async sendPartnerApplicationAdminEmail(payload: {
+    id: string;
+    companyName: string;
+    contactName: string;
+    email: string;
+    phone: string;
+    companyAddress: string;
+    businessDescription: string;
+    industry: string;
+    country: string;
+    website: string | null;
+    additionalInfo: string | null;
+    logoUrl: string | null;
+    createdAt: Date;
+  }) {
+    this.logger.log(`sendPartnerApplicationAdminEmail start id=${payload.id} to=${env.ADMIN_EMAIL}`);
+
+    const lines = [
+      "New seller / partner application",
+      "",
+      `Company: ${payload.companyName}`,
+      `Contact: ${payload.contactName}`,
+      `Email: ${payload.email}`,
+      `Phone: ${payload.phone}`,
+      `Industry: ${payload.industry}`,
+      `Country: ${payload.country}`,
+      `Website: ${payload.website ?? "-"}`,
+      `Address: ${payload.companyAddress}`,
+      "",
+      "Business description:",
+      payload.businessDescription,
+      "",
+      `Additional info: ${payload.additionalInfo ?? "-"}`,
+      `Submitted: ${payload.createdAt.toISOString()}`
+    ];
+
+    const row = (label: string, value: string | null | undefined) => `
+      <tr>
+        <td style="padding:10px 12px;border-bottom:1px solid #eef0f3;font-weight:600;color:#111827;width:180px;">${escapeHtml(label)}</td>
+        <td style="padding:10px 12px;border-bottom:1px solid #eef0f3;color:#374151;">${value ? escapeHtml(value) : "-"}</td>
+      </tr>
+    `;
+
+    const info = await this.transporter.sendMail({
+      from: env.EMAIL_FROM,
+      to: env.ADMIN_EMAIL,
+      replyTo: payload.email,
+      subject: `New seller application — ${payload.companyName}`,
+      text: lines.join("\n"),
+      html: `
+        <div style="margin:0;padding:24px;background:#f4f4f5;font-family:Arial,Helvetica,sans-serif;color:#111827;">
+          <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="max-width:720px;margin:0 auto;background:#ffffff;border-radius:18px;overflow:hidden;border:1px solid #e5e7eb;">
+            <tr>
+              <td>
+                <div style="background:linear-gradient(90deg,#1e40af 0%,#3b82f6 100%);padding:28px 32px;color:#ffffff;">
+                  <div style="font-size:13px;letter-spacing:.08em;text-transform:uppercase;opacity:.85;">Swaggeroo Partners</div>
+                  <h1 style="margin:10px 0 0;font-size:26px;line-height:1.2;font-weight:700;">New seller application</h1>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:24px 32px 8px;">
+                ${payload.logoUrl ? `<div style="margin-bottom:16px;"><img src="${escapeHtml(payload.logoUrl)}" alt="Company logo" style="max-height:64px;max-width:200px;object-fit:contain;" /></div>` : ""}
+                <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="border:1px solid #eef0f3;border-radius:12px;overflow:hidden;background:#fafafa;">
+                  ${row("Company", payload.companyName)}
+                  ${row("Contact", payload.contactName)}
+                  ${row("Email", payload.email)}
+                  ${row("Phone", payload.phone)}
+                  ${row("Industry", payload.industry)}
+                  ${row("Country", payload.country)}
+                  ${row("Website", payload.website)}
+                  ${row("Address", payload.companyAddress)}
+                </table>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:8px 32px 12px;">
+                <h2 style="margin:0 0 10px;font-size:16px;color:#111827;">Business description</h2>
+                <div style="border:1px solid #eef0f3;background:#fafafa;border-radius:12px;padding:16px;color:#374151;white-space:pre-wrap;line-height:1.6;">${escapeHtml(payload.businessDescription)}</div>
+              </td>
+            </tr>
+            ${
+              payload.additionalInfo
+                ? `<tr><td style="padding:8px 32px 24px;"><h2 style="margin:0 0 10px;font-size:16px;color:#111827;">Additional info</h2><div style="border:1px solid #eef0f3;background:#fafafa;border-radius:12px;padding:16px;color:#374151;white-space:pre-wrap;line-height:1.6;">${escapeHtml(payload.additionalInfo)}</div></td></tr>`
+                : ""
+            }
+            <tr>
+              <td style="padding:0 32px 28px;">
+                <p style="margin:0;color:#6b7280;font-size:12px;">Submitted at ${payload.createdAt.toISOString()}</p>
+              </td>
+            </tr>
+          </table>
+        </div>
+      `
+    });
+
+    this.logger.log(`sendPartnerApplicationAdminEmail success ${mailInfoSummary(info)}`);
+  }
+
+  async sendSellerOnboardingEmail(payload: {
+    to: string;
+    contactName: string;
+    storeName: string;
+    storeSlug: string;
+    tempPassword: string | null;
+  }) {
+    const webBase = (env.CORS_ORIGIN || "http://localhost:3000").split(",")[0].trim();
+    const storeUrl = `${webBase}/store/${payload.storeSlug}`;
+    const dashUrl = `${webBase}/seller`;
+    this.logger.log(`sendSellerOnboardingEmail start to=${payload.to} store=${payload.storeSlug}`);
+
+    const credBlock = payload.tempPassword
+      ? `Your login:\nEmail: ${payload.to}\nTemporary password: ${payload.tempPassword}\n(Please change it after signing in.)\n\n`
+      : `Sign in with your existing Swaggeroo account.\n\n`;
+
+    const info = await this.transporter.sendMail({
+      from: env.EMAIL_FROM,
+      to: payload.to,
+      subject: `Your Swaggeroo store is live — ${payload.storeName}`,
+      text: `Hi ${payload.contactName},
+
+Congratulations! Your application has been approved and your white-label store "${payload.storeName}" is now live.
+
+Storefront: ${storeUrl}
+Seller dashboard: ${dashUrl}
+
+${credBlock}From your seller dashboard you can customize your branding, add products, and manage your store.
+
+Swaggeroo Team`,
+      html: `
+        <div style="margin:0;padding:24px;background:#f4f4f5;font-family:Arial,Helvetica,sans-serif;color:#111827;">
+          <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="max-width:640px;margin:0 auto;background:#ffffff;border-radius:18px;overflow:hidden;border:1px solid #e5e7eb;">
+            <tr>
+              <td>
+                <div style="background:linear-gradient(90deg,#1e40af 0%,#3b82f6 100%);padding:28px 32px;color:#ffffff;">
+                  <div style="font-size:13px;letter-spacing:.08em;text-transform:uppercase;opacity:.85;">Swaggeroo Partners</div>
+                  <h1 style="margin:10px 0 0;font-size:26px;line-height:1.2;font-weight:700;">Your store is live 🎉</h1>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:28px 32px;color:#374151;line-height:1.7;">
+                <p style="margin:0 0 14px;">Hi ${escapeHtml(payload.contactName)},</p>
+                <p style="margin:0 0 14px;">Your application has been approved and your white-label store <strong>${escapeHtml(payload.storeName)}</strong> is now live.</p>
+                <p style="margin:0 0 8px;"><strong>Storefront:</strong> <a href="${escapeHtml(storeUrl)}" style="color:#1e40af;">${escapeHtml(storeUrl)}</a></p>
+                <p style="margin:0 0 18px;"><strong>Seller dashboard:</strong> <a href="${escapeHtml(dashUrl)}" style="color:#1e40af;">${escapeHtml(dashUrl)}</a></p>
+                ${
+                  payload.tempPassword
+                    ? `<div style="margin:0 0 18px;padding:16px 18px;border:1px solid #e5e7eb;border-radius:14px;background:#fafafa;">
+                        <p style="margin:0 0 6px;font-weight:600;color:#111827;">Your login</p>
+                        <p style="margin:0;">Email: ${escapeHtml(payload.to)}</p>
+                        <p style="margin:0;">Temporary password: <strong>${escapeHtml(payload.tempPassword)}</strong></p>
+                        <p style="margin:8px 0 0;font-size:12px;color:#6b7280;">Please change it after signing in.</p>
+                      </div>`
+                    : `<p style="margin:0 0 18px;">Sign in with your existing Swaggeroo account.</p>`
+                }
+                <p style="margin:0 0 14px;">From your seller dashboard you can customize your branding, curate products, and manage your store.</p>
+                <p style="margin:24px 0 0;font-weight:600;color:#111827;">Swaggeroo Team</p>
+              </td>
+            </tr>
+          </table>
+        </div>
+      `
+    });
+
+    this.logger.log(`sendSellerOnboardingEmail success ${mailInfoSummary(info)}`);
+  }
+
 }
 
 function escapeHtml(input: string) {

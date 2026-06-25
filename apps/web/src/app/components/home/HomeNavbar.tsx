@@ -35,6 +35,7 @@ type NavItem = {
 // Real, live pages.
 const NAV_ITEMS: NavItem[] = [
   { label: "Shop", href: "/shop" },
+  { label: "Pack Studio", href: "/swag-pack" },
   { label: "How it works", href: "/how-it-works" },
   { label: "About", href: "/about" },
   { label: "FAQ", href: "/faq" },
@@ -62,7 +63,7 @@ export default function HomeNavbar() {
   const cartCount = cartHydrated ? bulkItems.length + (swagPackItems.length > 0 ? 1 : 0) : 0;
 
   const navLinkClass =
-    "text2 font-medium text-navy/80 transition-colors hover:text-primary";
+    "text-sm font-medium text-foreground/75 transition-colors hover:text-primary";
 
   const displayName =
     [user?.firstName, user?.lastName].filter(Boolean).join(" ").trim() ||
@@ -187,6 +188,14 @@ export default function HomeNavbar() {
         {/* ✅ Right actions only on lg+ */}
         <NavbarContent className="hidden lg:flex" justify="end">
           <NavbarItem>
+            <Link
+              href="/become-a-seller"
+              className="inline-flex items-center rounded-full border border-primary/30 bg-primary/5 px-4 py-1.5 text-sm font-semibold text-primary transition-colors hover:bg-primary/10"
+            >
+              Become a Seller
+            </Link>
+          </NavbarItem>
+          <NavbarItem>
             <CartLink />
           </NavbarItem>
 
@@ -208,7 +217,7 @@ export default function HomeNavbar() {
                         name: "text-white text-xs font-semibold",
                       }}
                     />
-                    <span className="text2 max-w-[140px] truncate font-medium text-navy/85">
+                    <span className="max-w-[140px] truncate text-sm font-medium text-foreground/85">
                       {displayName}
                     </span>
                     <ChevronDown className="size-4 text-navy/50" />
@@ -247,7 +256,7 @@ export default function HomeNavbar() {
               <NavbarItem>
                 <Link
                   href="/login"
-                  className="text2 font-medium text-navy/70 transition-colors hover:text-primary"
+                  className="text-sm font-medium text-foreground/70 transition-colors hover:text-primary"
                 >
                   Sign In
                 </Link>
@@ -289,6 +298,16 @@ export default function HomeNavbar() {
                     ) : null}
                   </span>
                   Cart
+                </Link>
+              </NavbarMenuItem>
+
+              <NavbarMenuItem>
+                <Link
+                  href="/become-a-seller"
+                  onClick={() => setIsMenuOpen(false)}
+                  className="mt-1 flex items-center justify-center rounded-xl border border-primary/30 bg-primary/5 px-3 py-3 text-base font-semibold text-primary transition-colors hover:bg-primary/10"
+                >
+                  Become a Seller
                 </Link>
               </NavbarMenuItem>
 

@@ -42,14 +42,20 @@ function LoginContent() {
     setLoading(true);
 
     try {
-      await login(values.email.trim(), values.password);
+      const result = await login(values.email.trim(), values.password);
       await queryClient.invalidateQueries({ queryKey: ["me"] });
       addToast({
         title: "Welcome back",
         description: "Logged in successfully",
         color: "success"
       });
-      router.push(next);
+      // Sellers land on their own dashboard unless a specific destination was set.
+      const hasExplicitNext = next && next !== "/dashboard";
+      if (!hasExplicitNext && result?.user?.role === "Seller") {
+        router.push("/seller");
+      } else {
+        router.push(next);
+      }
     } catch (error: any) {
       addToast({
         title: "Login failed",

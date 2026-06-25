@@ -108,6 +108,20 @@ const NAV_ITEMS: NavItem[] = [
     requiredPermissions: ["contact.messages.read"]
   },
   {
+    key: "partners",
+    label: "Seller Applications",
+    href: "/dashboard/partners",
+    icon: "Store",
+    requiredPermissions: ["partners.applications.read"]
+  },
+  {
+    key: "stores",
+    label: "Stores",
+    href: "/dashboard/stores",
+    icon: "Building2",
+    requiredPermissions: ["partners.stores.read"]
+  },
+  {
     key: "permissions",
     label: "Permissions",
     href: "/dashboard/permissions",

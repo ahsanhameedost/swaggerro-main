@@ -11,9 +11,7 @@ import { useForm } from "react-hook-form";
 import { useQueryClient } from "@tanstack/react-query";
 import { AuthShell } from "@/app/components/auth/AuthShell";
 import { signup } from "@/lib/auth";
-import { isBusinessEmail } from "@/lib/business-email";
 import {
-  BriefcaseBusiness,
   Lock,
   Mail,
   Phone,
@@ -25,9 +23,7 @@ const schema = z
     firstName: z.string().trim().max(80).optional().or(z.literal("")),
     lastName: z.string().trim().max(80).optional().or(z.literal("")),
     phone: z.string().trim().max(30).optional().or(z.literal("")),
-    email: z.string().trim().email("Enter a valid email").refine(isBusinessEmail, {
-      message: "Use your business email address"
-    }),
+    email: z.string().trim().email("Enter a valid email"),
     password: z.string().min(6, "Password must be at least 6 characters"),
     confirmPassword: z.string().min(6, "Confirm your password")
   })
@@ -106,7 +102,7 @@ function SignupContent() {
     <AuthShell
       eyebrow="Create your account"
       title="Sign up"
-      description="Create your Swaggeroo account with a valid business email address and start working from your dashboard."
+      description="Create your Swaggeroo account with any valid email address and start working from your dashboard."
       sideTitle="Start building a modern swag workflow."
       sideDescription="Launch with the same branded experience you already established on the contact page: bold, clean, and conversion focused."
       footer={
@@ -154,9 +150,9 @@ function SignupContent() {
         />
 
         <Input
-          label="Business email"
-          placeholder="you@company.com"
-          startContent={<BriefcaseBusiness className="size-4 text-foreground/45" />}
+          label="Email"
+          placeholder="you@example.com"
+          startContent={<Mail className="size-4 text-foreground/45" />}
           isInvalid={!!errors.email}
           errorMessage={errors.email?.message}
           classNames={sharedInputClassNames}

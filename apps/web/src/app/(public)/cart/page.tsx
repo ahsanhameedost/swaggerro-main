@@ -178,6 +178,16 @@ export default function CartPage() {
                               {formatMoney(item.unitPrice, item.currency)}
                             </div>
                             <div className="text-sm text-black/55">/ item</div>
+                            {item.label ? (
+                              <div className="mt-1 text-xs font-medium text-black/45">
+                                Tier: {item.label}
+                              </div>
+                            ) : null}
+                            {item.savingsPercent > 0 ? (
+                              <div className="mt-1 inline-flex items-center gap-1 rounded-full bg-success/10 px-2 py-0.5 text-xs font-semibold text-success">
+                                Save {item.savingsPercent}% · −{formatMoney(item.discountTotal, item.currency)}
+                              </div>
+                            ) : null}
                           </div>
 
                           <Button

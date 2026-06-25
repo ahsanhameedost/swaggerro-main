@@ -135,7 +135,7 @@ export function ProjectSubmissionPageContent() {
     missingRequirements.push("your full name");
   }
   if (!emailIsValid) {
-    missingRequirements.push("a valid business email");
+    missingRequirements.push("a valid email");
   }
   if (!budgetIsValid) {
     missingRequirements.push("a budget per swag pack/person");
@@ -230,7 +230,7 @@ export function ProjectSubmissionPageContent() {
     if (!trimmedName || !emailIsValid) {
       addToast({
         title: "Missing contact details",
-        description: "Please provide your name and a valid business email.",
+        description: "Please provide your name and a valid email.",
         color: "warning"
       });
       return;
@@ -397,7 +397,7 @@ export function ProjectSubmissionPageContent() {
                     }
                   />
                   <Input
-                    label="Business email"
+                    label="Email"
                     type="email"
                     value={email}
                     onValueChange={setEmail}
@@ -408,7 +408,7 @@ export function ProjectSubmissionPageContent() {
                       touched.email && !emailIsValid
                         ? email.trim()
                           ? "Please enter a valid email address."
-                          : "Please enter your business email."
+                          : "Please enter your email."
                         : undefined
                     }
                   />
@@ -619,7 +619,13 @@ export function ProjectSubmissionPageContent() {
                             <div className="text-xs text-black/55">{item.variantName || "Standard"}</div>
                             <div className="text-xs text-black/55">
                               Qty: {item.quantity} · {formatMoney(item.unitPrice, item.currency)} / item
+                              {item.label ? ` · ${item.label}` : ""}
                             </div>
+                            {item.savingsPercent > 0 ? (
+                              <div className="text-xs font-medium text-success">
+                                Save {item.savingsPercent}% (−{formatMoney(item.discountTotal, item.currency)})
+                              </div>
+                            ) : null}
                             <div className="text-sm font-semibold text-black">
                               {formatMoney(item.totalPrice, item.currency)}
                             </div>

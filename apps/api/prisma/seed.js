@@ -53,13 +53,21 @@ const PERMISSIONS = [
   { key: "contact.messages.read", description: "Read contact submissions" },
   { key: "contact.messages.delete", description: "Delete contact submissions" },
 
+  { key: "partners.applications.read", description: "Read seller/partner applications" },
+  { key: "partners.applications.write", description: "Manage seller/partner applications" },
+  { key: "partners.stores.read", description: "Read all white-label stores" },
+  { key: "partners.stores.write", description: "Manage all white-label stores" },
+
+  { key: "seller.store.read", description: "Read own white-label store" },
+  { key: "seller.store.write", description: "Manage own white-label store" },
+
   { key: "admin.users.read", description: "Read users" },
   { key: "admin.users.write", description: "Manage users" },
 
   { key: "rbac.manage", description: "Manage RBAC" }
 ];
 
-const SYSTEM_ROLE_NAMES = ["SUPER_ADMIN", "Customer"];
+const SYSTEM_ROLE_NAMES = ["SUPER_ADMIN", "Customer", "Seller"];
 
 // Default assignable (custom) roles so the "Create employee" role dropdown is
 // never empty on a fresh install. These are NOT system roles, so admins can
@@ -70,7 +78,7 @@ const DEFAULT_CUSTOM_ROLES = [
     name: "Manager",
     description: "Operations manager — broad catalog, orders, inventory & shipping access",
     permissionKeys: ALL_PERMISSION_KEYS.filter(
-      (key) => !key.startsWith("rbac") && key !== "admin.users.write"
+      (key) => !key.startsWith("rbac") && key !== "admin.users.write" && !key.startsWith("seller.")
     )
   },
   {
@@ -89,7 +97,7 @@ const DEFAULT_CUSTOM_ROLES = [
     name: "Support",
     description: "Support — read access & contact messages",
     permissionKeys: ALL_PERMISSION_KEYS.filter(
-      (key) => key.endsWith(".read") || key.startsWith("contact")
+      (key) => (key.endsWith(".read") || key.startsWith("contact")) && !key.startsWith("seller.")
     )
   }
 ];
@@ -106,6 +114,12 @@ const ROLE_PERMISSIONS = {
     "shipping.shipments.self.read",
     "shipping.shipments.self.write",
     "shipping.self.estimate"
+  ],
+  Seller: [
+    "profile.read",
+    "profile.update",
+    "seller.store.read",
+    "seller.store.write"
   ]
 };
 

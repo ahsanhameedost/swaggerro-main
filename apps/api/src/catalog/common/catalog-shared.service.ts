@@ -410,6 +410,7 @@ export abstract class CatalogSharedService {
       shortDescription: product.shortDescription,
       status: product.status,
       isPackaging: Boolean(product.isPackaging),
+      bulkPricingEnabled: product.bulkPricingEnabled !== false,
       category: product.category
         ? {
             id: product.category.id,
@@ -460,9 +461,20 @@ export abstract class CatalogSharedService {
     );
     const floorPrice = candidates.length ? Math.min(...candidates) : item.lowestPrice;
 
+    // Expose the product-level tier ladder so the shop card can surface volume
+    // savings ("Buy 25+ and save X%"). Only when bulk pricing is enabled.
+    const pricingOptions =
+      item.bulkPricingEnabled
+        ? (product.pricingOptions ?? [])
+            .filter((p: any) => p.productCatalogVariantId == null)
+            .map((p: any) => this.serializePricingOption(p))
+        : [];
+
     return {
       swatches,
       floorPrice,
+      bulkPricingEnabled: item.bulkPricingEnabled,
+      pricingOptions,
       id: item.id,
       slug: item.slug,
       name: item.name,
@@ -530,6 +542,7 @@ export abstract class CatalogSharedService {
       description: product.description,
       status: product.status,
       isPackaging: Boolean(product.isPackaging),
+      bulkPricingEnabled: product.bulkPricingEnabled !== false,
       basePrice,
       basePriceCents: basePrice,
       compareAtPrice,

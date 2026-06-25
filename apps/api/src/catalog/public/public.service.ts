@@ -468,9 +468,13 @@ export class CatalogPublicService extends CatalogSharedService {
     }
 
     const basePrice = this.decimalToNumber(productCatalogVariant?.price ?? product.basePrice);
-    const pricingOptions = productCatalogVariant?.pricingOptions?.length
-      ? productCatalogVariant.pricingOptions
-      : product.pricingOptions;
+    // When bulk pricing is disabled for a product, ignore the tier ladder so the
+    // base/variant price is always charged.
+    const pricingOptions = product.bulkPricingEnabled === false
+      ? []
+      : productCatalogVariant?.pricingOptions?.length
+        ? productCatalogVariant.pricingOptions
+        : product.pricingOptions;
     const unitPrice = this.requireNumber(
       this.resolveUnitPrice(basePrice, pricingOptions, pricingQuantity),
       "Unable to resolve unit price for the selected product/variant"

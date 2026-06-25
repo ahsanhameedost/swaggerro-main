@@ -95,6 +95,7 @@ export class CatalogProductsService extends CatalogSharedService {
           status: input.status ?? "DRAFT",
           categoryId: input.categoryId || null,
           isPackaging: input.isPackaging === true,
+          bulkPricingEnabled: input.bulkPricingEnabled ?? true,
           shippingProfileId: input.shippingProfileId || null,
           weightOz: input.weightOz != null ? new Prisma.Decimal(input.weightOz) : null,
           lengthIn: input.lengthIn != null ? new Prisma.Decimal(input.lengthIn) : null,
@@ -146,6 +147,10 @@ if (input.categoryId !== undefined) data.category = input.categoryId ? { connect
 
       if (input.isPackaging !== undefined) {
         data.isPackaging = input.isPackaging === true;
+      }
+
+      if (input.bulkPricingEnabled !== undefined) {
+        data.bulkPricingEnabled = input.bulkPricingEnabled === true;
       }
 
       if (input.shippingProfileId !== undefined) {

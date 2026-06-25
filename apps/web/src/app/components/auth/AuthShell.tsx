@@ -21,7 +21,7 @@ const highlights = [
   {
     icon: ShieldCheck,
     title: "Protected account access",
-    description: "Secure login, business email signup, and recovery flows.",
+    description: "Secure login, email signup, and recovery flows.",
   },
   {
     icon: SwatchBook,

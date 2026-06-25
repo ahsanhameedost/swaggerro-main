@@ -13,6 +13,8 @@ import { StorageModule } from "./storage/storage.module";
 import { ShippingModule } from "./shipping/shipping.module";
 import { RecipientsModule } from "./recipients/recipients.module";
 import { InventoryModule } from "./inventory/inventory.module";
+import { PartnersModule } from "./partners/partners.module";
+import { StoresModule } from "./stores/stores.module";
 
 @Module({
   imports: [
@@ -29,7 +31,9 @@ import { InventoryModule } from "./inventory/inventory.module";
     CatalogModule,
     ShippingModule,
     RecipientsModule,
-    InventoryModule
+    InventoryModule,
+    PartnersModule,
+    StoresModule
   ],
   controllers: [HealthController]
 })

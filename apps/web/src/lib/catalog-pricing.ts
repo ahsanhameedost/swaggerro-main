@@ -109,3 +109,67 @@ export function resolveLineTotal(
   const safeQuantity = Math.max(1, toSafeNumber(quantity, 1));
   return resolveUnitPrice(basePrice, safeQuantity, options) * safeQuantity;
 }
+
+/**
+ * Percentage discount of a unit price vs the base price (0–100, rounded).
+ */
+export function computeSavingsPercent(
+  basePrice: number | null | undefined,
+  unitPrice: number | null | undefined
+) {
+  const base = toSafeNumber(basePrice, 0);
+  const unit = toSafeNumber(unitPrice, base);
+  if (base <= 0 || unit >= base) {
+    return 0;
+  }
+  return Math.round(((base - unit) / base) * 100);
+}
+
+export type SavingsTier = {
+  minQty: number;
+  unitPrice: number;
+  savingsPercent: number;
+  savingsPerUnit: number;
+};
+
+/**
+ * Build the list of volume tiers that are cheaper than the base price, with the
+ * percentage saved at each. Powers shop-card badges ("Buy 25+ and save 10%")
+ * and the product-page savings copy. Returns [] when no real discount exists.
+ */
+export function buildSavingsTiers(
+  basePrice: number | null | undefined,
+  options?: CatalogPricingOption[] | null
+): SavingsTier[] {
+  const base = toSafeNumber(basePrice, 0);
+  if (base <= 0) {
+    return [];
+  }
+
+  return sortPricingOptions(options)
+    .map((option) => {
+      const unitPrice = Math.max(0, toSafeNumber(option.price, base));
+      return {
+        minQty: option.qtyFrom,
+        unitPrice,
+        savingsPercent: computeSavingsPercent(base, unitPrice),
+        savingsPerUnit: Math.max(0, base - unitPrice)
+      };
+    })
+    .filter((tier) => tier.savingsPercent > 0);
+}
+
+/**
+ * The single best (largest) volume discount available, for compact shop-card
+ * badges. Returns null when the product has no real volume discount.
+ */
+export function bestSavingsTier(
+  basePrice: number | null | undefined,
+  options?: CatalogPricingOption[] | null
+): SavingsTier | null {
+  const tiers = buildSavingsTiers(basePrice, options);
+  if (!tiers.length) {
+    return null;
+  }
+  return tiers.reduce((best, tier) => (tier.savingsPercent > best.savingsPercent ? tier : best));
+}

@@ -4,12 +4,38 @@ import type {
   SwagPackCartItem,
   SwagPackPackagingItem
 } from "./cart-store";
-import { resolveUnitPrice } from "./catalog-pricing";
+import {
+  resolveUnitPrice,
+  findMatchingPricingOption,
+  computeSavingsPercent
+} from "./catalog-pricing";
+
+export type AppliedTierInfo = {
+  /** Human label for the applied volume tier, e.g. "100+ units" or "25–99 units". Null when no tier applied. */
+  label: string | null;
+  qtyFrom: number | null;
+  savingsPercent: number;
+  discountPerUnit: number;
+  discountTotal: number;
+};
 
 export type PricedBulkCartItem = BulkCartItem & {
   unitPrice: number;
   totalPrice: number;
-};
+} & AppliedTierInfo;
+
+function describeTier(option: ReturnType<typeof findMatchingPricingOption>): {
+  label: string | null;
+  qtyFrom: number | null;
+} {
+  if (!option) {
+    return { label: null, qtyFrom: null };
+  }
+  if (option.isOnward || option.qtyTo == null) {
+    return { label: `${option.qtyFrom}+ units`, qtyFrom: option.qtyFrom };
+  }
+  return { label: `${option.qtyFrom}–${option.qtyTo} units`, qtyFrom: option.qtyFrom };
+}
 
 export type PricedSwagPackItem = SwagPackCartItem & {
   unitPrice: number;
@@ -57,10 +83,18 @@ export function createDefaultSwagPackName(date = new Date()) {
 export function buildBulkPricedItems(items: BulkCartItem[]) {
   return items.map((item) => {
     const unitPrice = resolveUnitPrice(item.basePrice, item.quantity, item.pricingOptions);
+    const matchedTier = findMatchingPricingOption(item.quantity, item.pricingOptions);
+    const tier = describeTier(matchedTier);
+    const discountPerUnit = Math.max(0, (item.basePrice ?? unitPrice) - unitPrice);
     return {
       ...item,
       unitPrice,
-      totalPrice: unitPrice * item.quantity
+      totalPrice: unitPrice * item.quantity,
+      label: tier.label,
+      qtyFrom: tier.qtyFrom,
+      savingsPercent: computeSavingsPercent(item.basePrice, unitPrice),
+      discountPerUnit,
+      discountTotal: discountPerUnit * item.quantity
     } satisfies PricedBulkCartItem;
   });
 }

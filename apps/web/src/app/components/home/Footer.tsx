@@ -32,6 +32,7 @@ const COLS: Array<{ title: string; links: FooterLink[] }> = [
   {
     title: "Connect",
     links: [
+      { label: "Become a Seller", href: "/become-a-seller" },
       { label: "Contact Us", href: "/contact" },
       { label: "Book a Demo", href: "/contact" },
       { label: "Vendors & Suppliers", href: "/contact" },

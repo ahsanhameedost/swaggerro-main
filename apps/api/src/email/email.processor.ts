@@ -6,8 +6,10 @@ import { EmailService } from "./email.service";
 import {
   EMAIL_QUEUE,
   JOB_CONTACT_EMAIL,
+  JOB_PARTNER_APPLICATION_EMAIL,
   JOB_PASSWORD_RESET_CODE_EMAIL,
   JOB_PASSWORD_RESET_SUCCESS_EMAIL,
+  JOB_SELLER_ONBOARDING_EMAIL,
   JOB_SIGNUP_WELCOME_EMAIL
 } from "./email.constants";
 
@@ -15,6 +17,8 @@ type ContactEmailJobData = { contactMessageId: string };
 type SignupWelcomeEmailJobData = { userId: string };
 type PasswordResetCodeJobData = { userId: string; code: string };
 type PasswordResetSuccessJobData = { userId: string };
+type PartnerApplicationEmailJobData = { sellerApplicationId: string };
+type SellerOnboardingEmailJobData = { storeId: string; tempPassword: string | null };
 
 function stringifyError(error: unknown) {
   if (error instanceof Error) {
@@ -63,10 +67,22 @@ export class EmailProcessor extends WorkerHost {
       | SignupWelcomeEmailJobData
       | PasswordResetCodeJobData
       | PasswordResetSuccessJobData
+      | PartnerApplicationEmailJobData
+      | SellerOnboardingEmailJobData
     >
   ) {
     if (job.name === JOB_CONTACT_EMAIL) {
       await this.processContactEmail(job as Job<ContactEmailJobData>);
+      return;
+    }
+
+    if (job.name === JOB_PARTNER_APPLICATION_EMAIL) {
+      await this.processPartnerApplicationEmail(job as Job<PartnerApplicationEmailJobData>);
+      return;
+    }
+
+    if (job.name === JOB_SELLER_ONBOARDING_EMAIL) {
+      await this.processSellerOnboardingEmail(job as Job<SellerOnboardingEmailJobData>);
       return;
     }
 
@@ -86,6 +102,71 @@ export class EmailProcessor extends WorkerHost {
     }
 
     this.logger.warn(`ignored unexpected job name=${job.name}`);
+  }
+
+  private async processSellerOnboardingEmail(job: Job<SellerOnboardingEmailJobData>) {
+    this.logger.log(`processing seller onboarding email jobId=${job.id} storeId=${job.data.storeId}`);
+
+    const store = await this.prisma.store.findUnique({
+      where: { id: job.data.storeId },
+      include: { owner: true }
+    });
+
+    if (!store || !store.owner) {
+      this.logger.warn(`store/owner not found for onboarding email storeId=${job.data.storeId}`);
+      return;
+    }
+
+    try {
+      await this.emailService.sendSellerOnboardingEmail({
+        to: store.owner.email,
+        contactName: store.owner.firstName ?? store.companyName ?? store.name,
+        storeName: store.name,
+        storeSlug: store.slug,
+        tempPassword: job.data.tempPassword
+      });
+    } catch (error) {
+      this.logger.error(`sendSellerOnboardingEmail failed storeId=${store.id} ${stringifyError(error)}`);
+      throw error;
+    }
+  }
+
+  private async processPartnerApplicationEmail(job: Job<PartnerApplicationEmailJobData>) {
+    this.logger.log(
+      `processing partner application email jobId=${job.id} id=${job.data.sellerApplicationId}`
+    );
+
+    const application = await this.prisma.sellerApplication.findUnique({
+      where: { id: job.data.sellerApplicationId }
+    });
+
+    if (!application) {
+      this.logger.warn(`seller application not found id=${job.data.sellerApplicationId}`);
+      return;
+    }
+
+    try {
+      await this.emailService.sendPartnerApplicationAdminEmail({
+        id: application.id,
+        companyName: application.companyName,
+        contactName: application.contactName,
+        email: application.email,
+        phone: application.phone,
+        companyAddress: application.companyAddress,
+        businessDescription: application.businessDescription,
+        industry: application.industry,
+        country: application.country,
+        website: application.website,
+        additionalInfo: application.additionalInfo,
+        logoUrl: application.logoUrl,
+        createdAt: application.createdAt
+      });
+    } catch (error) {
+      this.logger.error(
+        `sendPartnerApplicationAdminEmail failed id=${application.id} ${stringifyError(error)}`
+      );
+      throw error;
+    }
   }
 
   private async processContactEmail(job: Job<ContactEmailJobData>) {

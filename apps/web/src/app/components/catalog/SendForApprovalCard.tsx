@@ -17,7 +17,6 @@ import { Check, Loader2, Upload, X } from "lucide-react";
 import { useMe } from "@/queries/auth";
 import { useSubmitPublicOrder } from "@/lib/queries.catalog";
 import { createCatalogImageUpload, uploadFileToPresignedUrl } from "@/lib/catalog";
-import { isBusinessEmail } from "@/lib/business-email";
 
 const ACCEPTED = ["image/jpeg", "image/png", "image/webp"] as const;
 type AcceptedType = (typeof ACCEPTED)[number];
@@ -146,15 +145,7 @@ export function SendForApprovalCard({
     if (!trimmedName || !emailValid || !budgetValid) {
       addToast({
         title: "Missing details",
-        description: "Please add your name, a valid business email, and a budget per person.",
-        color: "warning",
-      });
-      return;
-    }
-    if (!isBusinessEmail(email)) {
-      addToast({
-        title: "Use a business email",
-        description: "Personal email domains (gmail, yahoo…) aren't accepted for approvals.",
+        description: "Please add your name, a valid email, and a budget per person.",
         color: "warning",
       });
       return;
@@ -292,7 +283,7 @@ export function SendForApprovalCard({
                     errorMessage={touched && !trimmedName ? "Enter your name" : undefined}
                   />
                   <Input
-                    label="Business email"
+                    label="Email"
                     type="email"
                     isRequired
                     value={email}

@@ -12,7 +12,7 @@ import {
   ModalHeader
 } from "@heroui/react";
 import { addToast } from "@heroui/toast";
-import { Minus, Plus } from "lucide-react";
+import { ArrowDown, ArrowUp, Minus, Plus } from "lucide-react";
 import type { CatalogPricingOption } from "@/lib/catalog";
 import {
   createEmptyPricingOption,
@@ -60,6 +60,16 @@ export function PricingOptionsModal({
         return nextRow;
       })
     );
+  };
+
+  const moveRow = (index: number, direction: -1 | 1) => {
+    setLocalRows((current) => {
+      const target = index + direction;
+      if (target < 0 || target >= current.length) return current;
+      const next = [...current];
+      [next[index], next[target]] = [next[target], next[index]];
+      return next.map((row, rowIndex) => ({ ...row, sortOrder: rowIndex }));
+    });
   };
 
   const handleSave = () => {
@@ -129,11 +139,30 @@ export function PricingOptionsModal({
                     Onward
                   </Checkbox>
                 </div>
-                <div className="flex items-center justify-end">
+                <div className="flex items-center justify-end gap-1">
+                  <Button
+                    isIconOnly
+                    variant="flat"
+                    isDisabled={index === 0}
+                    aria-label="Move tier up"
+                    onPress={() => moveRow(index, -1)}
+                  >
+                    <ArrowUp className="size-4" />
+                  </Button>
+                  <Button
+                    isIconOnly
+                    variant="flat"
+                    isDisabled={index === localRows.length - 1}
+                    aria-label="Move tier down"
+                    onPress={() => moveRow(index, 1)}
+                  >
+                    <ArrowDown className="size-4" />
+                  </Button>
                   <Button
                     isIconOnly
                     color="danger"
                     variant="flat"
+                    aria-label="Delete tier"
                     onPress={() =>
                       setLocalRows((current) => current.filter((_, rowIndex) => rowIndex !== index))
                     }

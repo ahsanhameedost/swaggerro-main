@@ -147,6 +147,7 @@ export function createEmptyState(): ProductEditorState {
     categoryId: "",
     collectionIds: [],
     isPackaging: false,
+    bulkPricingEnabled: true,
     shippingProfileId: "",
     weightOz: null,
     lengthIn: null,
@@ -530,6 +531,7 @@ export function mapProductToState(product: CatalogProductDetail): ProductEditorS
       .map((item) => (isRecord(item) ? readString(item.id, "") : ""))
       .filter(Boolean),
     isPackaging: readBoolean(record.isPackaging, false),
+    bulkPricingEnabled: readBoolean(record.bulkPricingEnabled, true),
     shippingProfileId: readString(shipping.shippingProfileId, ""),
     weightOz: shipping.weightOz == null ? null : readNumber(shipping.weightOz, 0),
     lengthIn: dimensions.lengthIn == null ? null : readNumber(dimensions.lengthIn, 0),
@@ -655,6 +657,7 @@ export function buildPayload(state: ProductEditorState): BuildPayloadResult {
     categoryId: state.categoryId || null,
     collectionIds: state.collectionIds,
     isPackaging: state.isPackaging,
+    bulkPricingEnabled: state.bulkPricingEnabled,
     shippingProfileId: state.shippingProfileId || null,
     weightOz: state.weightOz,
     lengthIn: state.lengthIn,
