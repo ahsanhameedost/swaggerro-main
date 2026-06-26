@@ -18,7 +18,7 @@ import { useUIStore } from "@/lib/ui-store";
 import * as Icons from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import React from "react";
-import LogoMark from "@/assets/logo_new.png";
+import LogoMark from "@/assets/swaggroo-logo.png";
 import Image from "next/image";
 
 const TOPBAR_H = 72;
@@ -64,8 +64,8 @@ function Brand({ collapsed }: { collapsed: boolean }) {
     <div className="flex min-w-0 items-center">
       <Image
         src={LogoMark}
-        alt="Soaswag logo"
-        className={`w-auto object-contain ${collapsed ? "h-8" : "h-12"}`}
+        alt="Swaggeroo"
+        className={`w-auto object-contain ${collapsed ? "h-9" : "h-12"}`}
         draggable={false}
         priority
       />
@@ -122,7 +122,7 @@ function NavLinkRow({
 
       <span
         className={[
-          "whitespace-nowrap text-sm font-medium",
+          "whitespace-nowrap text-[15px] font-semibold",
           "transition-[opacity,transform,width,margin] duration-300 ease-in-out",
           collapsed
             ? "ml-0 w-0 -translate-x-1 opacity-0 pointer-events-none"
@@ -192,7 +192,7 @@ function NavDropdownRow({
 
         <span
           className={[
-            "whitespace-nowrap text-sm font-medium",
+            "whitespace-nowrap text-[15px] font-semibold",
             "transition-[opacity,transform,width,margin] duration-300 ease-in-out",
             collapsed
               ? "ml-0 w-0 -translate-x-1 opacity-0 pointer-events-none"

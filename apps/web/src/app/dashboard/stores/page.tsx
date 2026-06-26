@@ -83,7 +83,7 @@ export default function StoresPage() {
 
       <Card className="border border-divider shadow-sm">
         <CardHeader className="flex flex-col gap-4 border-b border-divider px-6 py-5">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <Input
               value={search}
               onValueChange={(value) => {
@@ -92,24 +92,11 @@ export default function StoresPage() {
               }}
               placeholder="Search store, slug, company…"
               startContent={<Search className="size-4 text-foreground/40" />}
-              className="w-full md:max-w-sm"
+              className="w-full sm:max-w-xs"
             />
-            <div className="flex items-center gap-3">
-              <Button as={Link} href="/dashboard/stores/new" color="primary">
-                New store
-              </Button>
-              <DataPagination
-                page={pagination.page}
-                pageSize={pagination.pageSize}
-                totalPages={pagination.totalPages}
-                disabled={isLoading || isFetching}
-                onPageChange={setPage}
-                onPageSizeChange={(next) => {
-                  setPageSize(next);
-                  setPage(1);
-                }}
-              />
-            </div>
+            <Button as={Link} href="/dashboard/stores/new" color="primary" className="h-10 shrink-0">
+              New store
+            </Button>
           </div>
           <div className="flex flex-wrap gap-2">
             {STATUS_FILTERS.map((filter) => (
@@ -129,7 +116,7 @@ export default function StoresPage() {
           </div>
         </CardHeader>
 
-        <CardBody className="p-0">
+        <CardBody className="overflow-x-auto p-0">
           <Table removeWrapper aria-label="Stores table">
             <TableHeader>
               <TableColumn>Store</TableColumn>
@@ -214,6 +201,21 @@ export default function StoresPage() {
             </div>
           ) : null}
         </CardBody>
+
+        <div className="flex items-center justify-between gap-3 border-t border-divider px-6 py-4">
+          <span className="text-sm text-foreground/55">{pagination.total} total</span>
+          <DataPagination
+            page={pagination.page}
+            pageSize={pagination.pageSize}
+            totalPages={pagination.totalPages}
+            disabled={isLoading || isFetching}
+            onPageChange={setPage}
+            onPageSizeChange={(next) => {
+              setPageSize(next);
+              setPage(1);
+            }}
+          />
+        </div>
       </Card>
     </div>
   );

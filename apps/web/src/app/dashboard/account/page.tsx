@@ -6,6 +6,7 @@ import { Button, Card, CardBody, CardHeader, Chip, Input, Spinner } from "@herou
 import { addToast } from "@heroui/toast";
 import { Camera, KeyRound, Loader2, Mail, Phone, ShieldCheck, User as UserIcon } from "lucide-react";
 import { useMe, useUpdateProfile } from "@/queries/auth";
+import { groupPermissions, permissionLabel } from "@/lib/permission-labels";
 import { createCatalogImageUpload, uploadFileToPresignedUrl } from "@/lib/catalog";
 
 const SUPER_ADMIN_ROLE = "SUPER_ADMIN";
@@ -345,11 +346,20 @@ export default function AccountSettingsPage() {
             </CardHeader>
             <CardBody className="p-6 pt-2">
               {permissions.length ? (
-                <div className="flex max-h-48 flex-wrap gap-2 overflow-auto">
-                  {permissions.map((p) => (
-                    <Chip key={p} size="sm" variant="flat" className="font-mono text-xs">
-                      {p}
-                    </Chip>
+                <div className="flex flex-col gap-4">
+                  {groupPermissions(permissions).map(({ group, keys }) => (
+                    <div key={group}>
+                      <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-foreground/45">
+                        {group}
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {keys.map((p) => (
+                          <Chip key={p} size="sm" variant="flat" title={p}>
+                            {permissionLabel(p)}
+                          </Chip>
+                        ))}
+                      </div>
+                    </div>
                   ))}
                 </div>
               ) : (

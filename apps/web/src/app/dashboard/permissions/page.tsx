@@ -12,7 +12,8 @@ import {
   Chip
 } from "@heroui/react";
 import { addToast } from "@heroui/toast";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { ChevronDown, Pencil, Plus, Trash2 } from "lucide-react";
+import { groupPermissions, permissionLabel } from "@/lib/permission-labels";
 import { useMe } from "@/queries/auth";
 import {
   useAllPermissions,
@@ -184,6 +185,11 @@ export default function PermissionsPage() {
               <AccordionItem
                 key={role.id}
                 aria-label={role.name}
+                indicator={({ isOpen }) => (
+                  <ChevronDown
+                    className={`size-4 text-foreground/40 transition-transform ${isOpen ? "rotate-180" : ""}`}
+                  />
+                )}
                 title={
                   <div className="flex flex-wrap items-center gap-2">
                     <span>{titleCase(role.name)}</span>
@@ -199,26 +205,33 @@ export default function PermissionsPage() {
                 }
                 subtitle={role.description ?? "No description provided."}
               >
-                <div className="flex flex-col gap-4">
-                  <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-                    {allPermissions.map((permission) => {
-                      if (permission.key === "rbac.manage") return null;
-
-                      const checked = !!local[role.id]?.has(permission.key);
-                      return (
-                        <Checkbox
-                          key={permission.key}
-                          isSelected={checked}
-                          onValueChange={() => toggle(role.id, permission.key)}
-                        >
-                          <div className="flex flex-col">
-                            <div className="text-sm font-medium">{permission.key}</div>
-                            <div className="text-xs text-foreground/60">{permission.description ?? ""}</div>
-                          </div>
-                        </Checkbox>
-                      );
-                    })}
-                  </div>
+                <div className="flex flex-col gap-5">
+                  {groupPermissions(
+                    allPermissions.map((p) => p.key).filter((k) => k !== "rbac.manage")
+                  ).map(({ group, keys }) => (
+                    <div key={group}>
+                      <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-foreground/45">
+                        {group}
+                      </div>
+                      <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                        {keys.map((key) => {
+                          const checked = !!local[role.id]?.has(key);
+                          return (
+                            <Checkbox
+                              key={key}
+                              isSelected={checked}
+                              onValueChange={() => toggle(role.id, key)}
+                            >
+                              <div className="flex flex-col">
+                                <div className="text-sm font-medium">{permissionLabel(key)}</div>
+                                <div className="text-xs text-foreground/45">{key}</div>
+                              </div>
+                            </Checkbox>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
 
                   <div className="flex flex-col gap-3 border-t border-divider pt-4 sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex gap-2">

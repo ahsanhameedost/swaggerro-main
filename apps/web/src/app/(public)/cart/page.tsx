@@ -5,12 +5,53 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button, Card, CardBody, Image, Spinner } from "@heroui/react";
 import { addToast } from "@heroui/toast";
+import { Box } from "lucide-react";
 import { QuantityStepper } from "@/app/components/catalog/QuantityStepper";
-import { getCartItemKey, useCatalogCartStore } from "@/lib/cart-store";
+import { PackagingProductDrawer } from "@/app/components/catalog/PackagingProductDrawer";
+import {
+  getCartItemKey,
+  useCatalogCartStore,
+  type SwagPackPackagingItem,
+} from "@/lib/cart-store";
 import { calculateCatalogCartSummary } from "@/lib/catalog-cart";
 import { formatMoney } from "@/lib/money";
 import { useMe } from "@/queries/auth";
+import { getPublicProduct } from "@/modules/catalog/public/api";
+import type { CatalogProductDetail, CatalogProductListItem, ProductCatalogVariant } from "@/modules/catalog/products/types";
 import { PageBanner } from "@/components/marketing/page-banner";
+
+function packagingVariant(product: CatalogProductDetail) {
+  return product.productCatalogVariants.find((v) => v.isDefault) ?? product.productCatalogVariants[0] ?? null;
+}
+
+function variantLabel(variant: ProductCatalogVariant | null) {
+  if (!variant) return null;
+  if (variant.title?.trim()) return variant.title.trim();
+  const values = variant.selectedOptions.map((o) => o.label || o.code).filter(Boolean);
+  return values.length ? values.join(" / ") : null;
+}
+
+function toPackagingCartItem(
+  product: CatalogProductDetail,
+  variant: ProductCatalogVariant | null
+): SwagPackPackagingItem {
+  return {
+    productId: product.id,
+    slug: product.slug,
+    name: product.name,
+    imageUrl: product.images[0]?.url ?? null,
+    productCatalogVariantId: variant?.id ?? null,
+    variantName: variantLabel(variant),
+    basePrice: variant?.price ?? product.basePrice ?? product.minPrice ?? 0,
+    compareAtPrice: product.compareAtPrice ?? null,
+    stock: variant?.stock ?? product.baseStock ?? 0,
+    minQty: 1,
+    currency: product.currency,
+    pricingOptions: variant?.pricingOptions?.length ? variant.pricingOptions : product.pricingOptions,
+    quantityPerPack: 1,
+    isPackaging: true,
+  };
+}
 
 export default function CartPage() {
   const router = useRouter();
@@ -31,6 +72,23 @@ export default function CartPage() {
   const removeBulkItem = useCatalogCartStore((state) => state.removeBulkItem);
   const clearBulkItems = useCatalogCartStore((state) => state.clearBulkItems);
   const clearSwagPack = useCatalogCartStore((state) => state.clearSwagPack);
+  const setSwagPackPackaging = useCatalogCartStore((state) => state.setSwagPackPackaging);
+
+  const [packagingDrawerOpen, setPackagingDrawerOpen] = useState(false);
+  const [selectingPackaging, setSelectingPackaging] = useState(false);
+
+  const handlePackagingSelect = async (product: CatalogProductListItem) => {
+    setSelectingPackaging(true);
+    try {
+      const detail = (await getPublicProduct(product.slug)).product;
+      setSwagPackPackaging(toPackagingCartItem(detail, packagingVariant(detail)));
+      addToast({ title: "Packaging added", description: detail.name, color: "success" });
+    } catch (error: any) {
+      addToast({ title: "Couldn't add packaging", description: error?.message ?? "", color: "danger" });
+    } finally {
+      setSelectingPackaging(false);
+    }
+  };
 
   const summary = useMemo(
     () =>
@@ -245,11 +303,14 @@ export default function CartPage() {
                             Select one packaging product to complete your project.
                           </div>
                         </div>
-                        <Link href="/swag-pack">
-                          <Button color="warning" variant="flat">
-                            Add packaging
-                          </Button>
-                        </Link>
+                        <Button
+                          color="warning"
+                          variant="flat"
+                          isLoading={selectingPackaging}
+                          onPress={() => setPackagingDrawerOpen(true)}
+                        >
+                          Add packaging
+                        </Button>
                       </div>
                     ) : null}
 
@@ -283,10 +344,19 @@ export default function CartPage() {
 
                     <div className="grid gap-4 border-t border-black/10 pt-5 sm:grid-cols-2">
                       <div>
-                        <div className="text-sm text-black/60">Packaging ({summary.swagPackPackaging ? 1 : 0})</div>
+                        <div className="flex items-center justify-between">
+                          <div className="text-sm text-black/60">Packaging ({summary.swagPackPackaging ? 1 : 0})</div>
+                          <button
+                            type="button"
+                            onClick={() => setPackagingDrawerOpen(true)}
+                            className="text-sm font-medium text-primary hover:underline"
+                          >
+                            {summary.swagPackPackaging ? "Change" : "Add packaging"}
+                          </button>
+                        </div>
                         {summary.swagPackPackaging ? (
                           <div className="mt-3 flex items-center gap-3 rounded-[20px] border border-black/10 p-3">
-                            <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl bg-zinc-50">
+                            <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl bg-[var(--brand-soft)]">
                               {summary.swagPackPackaging.imageUrl ? (
                                 <Image
                                   removeWrapper
@@ -295,9 +365,7 @@ export default function CartPage() {
                                   className="h-full w-full object-cover"
                                 />
                               ) : (
-                                <div className="text-xs font-semibold text-black/35">
-                                  {summary.swagPackPackaging.name.slice(0, 2).toUpperCase()}
-                                </div>
+                                <Box className="size-7 text-[var(--primary)]" />
                               )}
                             </div>
                             <div className="min-w-0">
@@ -427,6 +495,15 @@ export default function CartPage() {
           </Card>
         </div>
       </div>
+
+      <PackagingProductDrawer
+        isOpen={packagingDrawerOpen}
+        onOpenChange={setPackagingDrawerOpen}
+        selectedProductId={summary.swagPackPackaging?.productId ?? null}
+        onSelect={(product) => {
+          void handlePackagingSelect(product);
+        }}
+      />
     </>
   );
 }

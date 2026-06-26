@@ -16,7 +16,7 @@ import {
     Select,
     SelectItem
 } from "@heroui/react";
-import { Plus, Trash2 } from "lucide-react";
+import { ChevronDown, Plus, Trash2 } from "lucide-react";
 import type {
     EditorVariantDefinition,
     EditorVariantOption,
@@ -127,6 +127,11 @@ export function ProductVariantsSection({
                                                     <AccordionItem
                                                         key={variantRef}
                                                         aria-label={variant.name || "New variant"}
+                                                        indicator={({ isOpen }) => (
+                                                            <ChevronDown
+                                                                className={`size-4 text-foreground/40 transition-transform ${isOpen ? "rotate-180" : ""}`}
+                                                            />
+                                                        )}
                                                         title={
                                                             <div className="flex items-center justify-between gap-3">
                                                                 <div className="flex min-w-0 items-center gap-2">

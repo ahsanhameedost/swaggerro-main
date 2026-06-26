@@ -1,8 +1,5 @@
 import Link from "next/link";
-import { TrendingDown } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { formatMoney } from "@/lib/money";
-import { buildSavingsTiers } from "@/lib/catalog-pricing";
 import type { CatalogProductListItem } from "@/modules/catalog/products/types";
 
 /**
@@ -12,18 +9,9 @@ import type { CatalogProductListItem } from "@/modules/catalog/products/types";
  */
 export function ProductCard({ product }: { product: CatalogProductListItem }) {
   // Show the true "from" price — the cheapest volume tier.
-  const fromPrice =
-    product.floorPrice ?? product.basePrice ?? product.lowestPrice ?? 0;
+  const fromPrice = product.floorPrice ?? product.basePrice ?? product.lowestPrice ?? 0;
   const priceLabel = formatMoney(fromPrice, product.currency);
   const swatches = product.swatches ?? [];
-
-  // Volume-savings indicators ("Buy 25+ and save 10%"). Only when bulk pricing
-  // is enabled and the product exposes its product-level tier ladder.
-  const baseForSavings = product.basePrice ?? product.highestPrice ?? product.lowestPrice ?? 0;
-  const savingsTiers =
-    product.bulkPricingEnabled === false
-      ? []
-      : buildSavingsTiers(baseForSavings, product.pricingOptions).slice(0, 3);
 
   return (
     <Link
@@ -82,24 +70,10 @@ export function ProductCard({ product }: { product: CatalogProductListItem }) {
               <span className="text-sm font-medium text-muted-foreground">/ea</span>
             </p>
           </div>
-          {product.minQty > 1 ? (
-            <Badge variant="outline">{product.minQty} min</Badge>
-          ) : null}
+          <span className="rounded-full bg-brand-soft px-3 py-1 text-xs font-semibold text-primary opacity-0 transition group-hover:opacity-100">
+            View →
+          </span>
         </div>
-
-        {savingsTiers.length ? (
-          <div className="mt-3 space-y-1 rounded-lg bg-success/10 px-2.5 py-2">
-            {savingsTiers.map((tier) => (
-              <p
-                key={tier.minQty}
-                className="flex items-center gap-1.5 text-xs font-medium text-success"
-              >
-                <TrendingDown className="size-3.5 shrink-0" />
-                Buy {tier.minQty}+ and save {tier.savingsPercent}%
-              </p>
-            ))}
-          </div>
-        ) : null}
       </div>
     </Link>
   );

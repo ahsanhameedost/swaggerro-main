@@ -12,6 +12,66 @@ import { EmailService } from "../../email/email.service";
 import { PrismaService } from "../../prisma/prisma.service";
 import { StorageService } from "../../storage/storage.service";
 import { CatalogSharedService } from "../common/catalog-shared.service";
+import { parseCsv, toCsv } from "../common/csv";
+
+const IMPORT_HEADERS = [
+  "name",
+  "slug",
+  "shortDescription",
+  "description",
+  "status",
+  "category",
+  "basePrice",
+  "compareAtPrice",
+  "minQty",
+  "baseStock",
+  "currency",
+  "isPackaging",
+  "bulkPricingEnabled",
+  "imageUrl",
+  "tiers"
+];
+
+function parseBool(value: string | undefined, fallback = false) {
+  if (value == null || value === "") return fallback;
+  return ["1", "true", "yes", "y"].includes(value.trim().toLowerCase());
+}
+
+function parseNum(value: string | undefined): number | null {
+  if (value == null || value.trim() === "") return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+// "1-24:18 | 25-99:17 | 100+:16" -> pricingOptions[]
+function parseTiers(value: string | undefined) {
+  if (!value || !value.trim()) return [] as any[];
+  return value
+    .split("|")
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .map((part, index) => {
+      const [range, priceStr] = part.split(":").map((s) => s.trim());
+      const price = Number(priceStr);
+      if (!range || !Number.isFinite(price)) return null;
+      if (range.endsWith("+")) {
+        const from = Number(range.slice(0, -1));
+        return { qtyFrom: from, qtyTo: null, price, isOnward: true, sortOrder: index };
+      }
+      const [from, to] = range.split("-").map((s) => Number(s));
+      if (!Number.isFinite(from) || !Number.isFinite(to)) return null;
+      return { qtyFrom: from, qtyTo: to, price, isOnward: false, sortOrder: index };
+    })
+    .filter(Boolean) as any[];
+}
+
+function formatTiers(options: Array<{ qtyFrom: number; qtyTo: number | null; price: any; isOnward: boolean }>) {
+  return options
+    .slice()
+    .sort((a, b) => a.qtyFrom - b.qtyFrom)
+    .map((o) => (o.isOnward || o.qtyTo == null ? `${o.qtyFrom}+:${o.price}` : `${o.qtyFrom}-${o.qtyTo}:${o.price}`))
+    .join(" | ");
+}
 
 @Injectable()
 export class CatalogProductsService extends CatalogSharedService {
@@ -80,6 +140,172 @@ export class CatalogProductsService extends CatalogSharedService {
 
     if (!product) throw new NotFoundException("Product not found");
     return this.serializeProductDetail(product);
+  }
+
+  // ---- CSV export / import (WooCommerce-style) -----------------------------
+
+  async exportProductsCsv(): Promise<string> {
+    const products = await this.prisma.catalogProduct.findMany({
+      include: {
+        category: true,
+        images: { orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }], take: 1 },
+        pricingOptions: {
+          where: { productCatalogVariantId: null },
+          orderBy: [{ sortOrder: "asc" }, { qtyFrom: "asc" }]
+        }
+      },
+      orderBy: [{ name: "asc" }]
+    });
+
+    const rows = products.map((p) => ({
+      name: p.name,
+      slug: p.slug,
+      shortDescription: p.shortDescription,
+      description: p.description ?? "",
+      status: p.status,
+      category: p.category?.name ?? "",
+      basePrice: p.basePrice != null ? this.decimalToNumber(p.basePrice) : "",
+      compareAtPrice: p.compareAtPrice != null ? this.decimalToNumber(p.compareAtPrice) : "",
+      minQty: p.minQty,
+      baseStock: p.baseStock,
+      currency: p.currency,
+      isPackaging: p.isPackaging ? "true" : "false",
+      bulkPricingEnabled: p.bulkPricingEnabled ? "true" : "false",
+      imageUrl: p.images[0]?.url ?? "",
+      tiers: formatTiers(
+        p.pricingOptions.map((o) => ({
+          qtyFrom: o.qtyFrom,
+          qtyTo: o.qtyTo,
+          price: this.decimalToNumber(o.price),
+          isOnward: o.isOnward
+        }))
+      )
+    }));
+
+    return toCsv(IMPORT_HEADERS, rows);
+  }
+
+  templateCsv(): string {
+    return toCsv(IMPORT_HEADERS, [
+      {
+        name: "Sample Tee",
+        slug: "",
+        shortDescription: "Soft cotton tee",
+        description: "Full description here",
+        status: "ACTIVE",
+        category: "Apparel",
+        basePrice: "18",
+        compareAtPrice: "24",
+        minQty: "1",
+        baseStock: "500",
+        currency: "USD",
+        isPackaging: "false",
+        bulkPricingEnabled: "true",
+        imageUrl: "",
+        tiers: "1-24:18 | 25-99:17 | 100+:16"
+      }
+    ]);
+  }
+
+  private async findOrCreateCategoryByName(name: string): Promise<string> {
+    const trimmed = name.trim();
+    const existing = await this.prisma.catalogCategory.findFirst({
+      where: { name: { equals: trimmed, mode: "insensitive" } },
+      select: { id: true }
+    });
+    if (existing) return existing.id;
+    const slug = await this.ensureUniqueSlug("catalogCategory", trimmed);
+    const created = await this.prisma.catalogCategory.create({
+      data: { name: trimmed, slug },
+      select: { id: true }
+    });
+    return created.id;
+  }
+
+  async importProductsCsv(csv: string) {
+    const rows = parseCsv(csv);
+    const result = {
+      total: rows.length,
+      created: 0,
+      updated: 0,
+      errors: [] as Array<{ row: number; name: string; message: string }>
+    };
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      const rowNumber = i + 2; // header is row 1
+      const name = (row.name ?? "").trim();
+      try {
+        if (!name) throw new Error("name is required");
+        const basePrice = parseNum(row.basePrice);
+        if (basePrice == null) throw new Error("basePrice is required and must be a number");
+
+        const categoryId = row.category?.trim()
+          ? await this.findOrCreateCategoryByName(row.category)
+          : null;
+
+        const statusRaw = (row.status ?? "").trim().toUpperCase();
+        const status = ["DRAFT", "ACTIVE", "ARCHIVED"].includes(statusRaw)
+          ? (statusRaw as "DRAFT" | "ACTIVE" | "ARCHIVED")
+          : "DRAFT";
+
+        const input = {
+          name,
+          shortDescription: (row.shortDescription ?? "").trim() || name,
+          description: (row.description ?? "").trim() || null,
+          status,
+          categoryId,
+          collectionIds: [],
+          isPackaging: parseBool(row.isPackaging),
+          bulkPricingEnabled: parseBool(row.bulkPricingEnabled, true),
+          shippingProfileId: null,
+          weightOz: null,
+          lengthIn: null,
+          widthIn: null,
+          heightIn: null,
+          basePrice,
+          compareAtPrice: parseNum(row.compareAtPrice),
+          minQty: parseNum(row.minQty) ?? 1,
+          baseStock: parseNum(row.baseStock) ?? 0,
+          currency: (row.currency ?? "").trim() || "USD",
+          images: row.imageUrl?.trim() ? [{ url: row.imageUrl.trim(), sortOrder: 0 }] : [],
+          variantGroups: [],
+          productCatalogVariants: [],
+          pricingOptions: parseTiers(row.tiers)
+        } as unknown as CreateProductDto;
+
+        // Tier price must not exceed base price (matches DTO rule).
+        for (const tier of input.pricingOptions) {
+          if (tier.price > basePrice) {
+            throw new Error(`tier price ${tier.price} exceeds basePrice ${basePrice}`);
+          }
+        }
+
+        const slug = row.slug?.trim();
+        const existing = slug
+          ? await this.prisma.catalogProduct.findUnique({ where: { slug }, select: { id: true } })
+          : await this.prisma.catalogProduct.findFirst({
+              where: { name: { equals: name, mode: "insensitive" } },
+              select: { id: true }
+            });
+
+        if (existing) {
+          await this.updateProduct(existing.id, input as unknown as UpdateProductDto);
+          result.updated++;
+        } else {
+          await this.createProduct(input);
+          result.created++;
+        }
+      } catch (error) {
+        result.errors.push({
+          row: rowNumber,
+          name,
+          message: error instanceof Error ? error.message : "Import failed"
+        });
+      }
+    }
+
+    return result;
   }
 
   async createProduct(input: CreateProductDto) {

@@ -47,7 +47,7 @@ export default function ProductDetailPage() {
   useEffect(() => {
     if (!product) return;
     setSelectedOptions({});
-    setQuantity(product.minQty || 1);
+    setQuantity(1);
     setImageIndex(0);
   }, [product?.id]);
 
@@ -70,7 +70,9 @@ export default function ProductDetailPage() {
     ? (matchedVariant?.pricingOptions?.length ? matchedVariant.pricingOptions : product?.pricingOptions ?? [])
     : [];
   const activeBasePrice = matchedVariant?.price ?? product?.basePrice ?? 0;
-  const activeMinQty = matchedVariant?.minQty ?? product?.minQty ?? 1;
+  // B2C: no minimum order — customers can buy a single unit or many. Volume
+  // tiers still apply at higher quantities, they're just not enforced as a floor.
+  const activeMinQty = 1;
   const activeStock = matchedVariant?.stock ?? product?.baseStock ?? 0;
 
   const method = imprintMethods.find((m) => m.key === methodKey) ?? null;
@@ -205,7 +207,7 @@ export default function ProductDetailPage() {
 
           <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-xs text-muted-foreground">
             <span className="inline-flex items-center gap-1.5"><Truck className="size-3.5" /> Made to order</span>
-            <span className="inline-flex items-center gap-1.5"><PackageOpen className="size-3.5" /> Min order {product.minQty} units</span>
+            <span className="inline-flex items-center gap-1.5"><PackageOpen className="size-3.5" /> Buy 1 or in bulk</span>
             <span className="inline-flex items-center gap-1.5"><TrendingDown className="size-3.5" /> Volume pricing — cheaper per unit at scale</span>
           </div>
 
@@ -262,9 +264,9 @@ export default function ProductDetailPage() {
             <p className="text-sm font-semibold text-foreground">Quantity</p>
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <div className="flex items-center gap-2">
-                <button onClick={() => setQuantity((q) => Math.max(1, q - 25))} className="flex size-9 items-center justify-center rounded-lg border border-border">−</button>
+                <button onClick={() => setQuantity((q) => Math.max(1, q - 1))} className="flex size-9 items-center justify-center rounded-lg border border-border">−</button>
                 <input type="number" value={quantity} onChange={(e) => setQuantity(Math.max(1, Number(e.target.value) || 1))} className="h-9 w-20 rounded-lg border border-input bg-background text-center text-sm outline-none focus-visible:border-ring" />
-                <button onClick={() => setQuantity((q) => q + 25)} className="flex size-9 items-center justify-center rounded-lg border border-border">+</button>
+                <button onClick={() => setQuantity((q) => q + 1)} className="flex size-9 items-center justify-center rounded-lg border border-border">+</button>
               </div>
               {tiers.map((t) => (
                 <button key={t.qtyFrom} onClick={() => setQuantity(t.qtyFrom ?? 1)} className={cn("h-9 rounded-full border px-3 text-sm tabular-nums transition", quantity === t.qtyFrom ? "border-primary text-primary" : "border-border text-muted-foreground hover:border-foreground/30")}>{t.qtyFrom}</button>

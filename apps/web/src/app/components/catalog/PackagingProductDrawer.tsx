@@ -13,7 +13,7 @@ import {
   Input,
   Spinner
 } from "@heroui/react";
-import { Search } from "lucide-react";
+import { Box, Search } from "lucide-react";
 import { usePublicProducts } from "@/lib/queries.catalog";
 import type { CatalogProductListItem } from "@/modules/catalog/products/types";
 import { formatMoneyRange } from "@/lib/money";
@@ -96,7 +96,7 @@ export function PackagingProductDrawer({
                         key={product.id}
                         className="grid gap-4 rounded-[24px] border border-black/10 bg-white p-4 sm:grid-cols-[96px_minmax(0,1fr)_auto]"
                       >
-                        <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-2xl bg-zinc-50">
+                        <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-2xl bg-[var(--brand-soft)]">
                           {product.imageUrl ? (
                             <Image
                               removeWrapper
@@ -105,9 +105,7 @@ export function PackagingProductDrawer({
                               className="h-full w-full object-cover"
                             />
                           ) : (
-                            <div className="text-sm font-semibold text-black/35">
-                              {product.name.slice(0, 2).toUpperCase()}
-                            </div>
+                            <Box className="size-9 text-[var(--primary)]" />
                           )}
                         </div>
 

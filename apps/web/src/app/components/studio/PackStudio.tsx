@@ -9,6 +9,7 @@ import {
   ArrowRight,
   Boxes,
   Check,
+  Eye,
   Loader2,
   Minus,
   Package,
@@ -582,19 +583,47 @@ export function PackStudio() {
                     Upload your logo (PNG, JPG, WEBP)
                   </button>
                 )}
+
+                <Link
+                  href={`/mockup${swagPackItems[0]?.slug ? `?product=${swagPackItems[0].slug}` : ""}`}
+                  className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-border py-2.5 text-sm font-semibold text-foreground transition hover:border-primary/40"
+                >
+                  <Sparkles className="size-4 text-primary" /> Preview your logo
+                </Link>
               </div>
 
-              {/* notes */}
-              <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
-                <p className="mb-2 text-sm font-semibold text-foreground">Notes for our team (optional)</p>
-                <textarea
-                  value={branding.note ?? ""}
-                  onChange={(e) => setBranding({ note: e.target.value })}
-                  rows={3}
-                  placeholder="Placement, colors, deadlines…"
-                  className="w-full resize-none rounded-xl border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:border-ring"
-                />
-              </div>
+              {/* logo placement (read-only, designed in Mockup Studio) */}
+              {branding.note ? (
+                <div className="rounded-2xl border border-primary/25 bg-brand-soft/50 p-4">
+                  <div className="flex items-start gap-4">
+                    {branding.mockupUrl ? (
+                      <div className="flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-border bg-card">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={branding.mockupUrl} alt="Logo placement preview" className="h-full w-full object-contain" />
+                      </div>
+                    ) : null}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                        <Sparkles className="size-4 text-primary" /> Logo placement attached
+                      </div>
+                      <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                        Designed in Mockup Studio — your design team will see exactly where the logo goes. It's sent
+                        with your order automatically.
+                      </p>
+                      {branding.mockupUrl ? (
+                        <a
+                          href={branding.mockupUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground"
+                        >
+                          <Eye className="size-3.5" /> View placement preview
+                        </a>
+                      ) : null}
+                    </div>
+                  </div>
+                </div>
+              ) : null}
             </div>
           ) : null}
 
@@ -606,7 +635,7 @@ export function PackStudio() {
               </div>
 
               <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
-                <label htmlFor="packName" className="text-sm font-semibold text-foreground">
+                <label htmlFor="packName" className="block text-sm font-semibold text-foreground">
                   Pack name
                 </label>
                 <input
@@ -614,7 +643,7 @@ export function PackStudio() {
                   value={summary.swagPackName}
                   onChange={(e) => setSwagPackName(e.target.value)}
                   placeholder="Employee Welcome Kit"
-                  className="mt-2 h-11 w-full max-w-sm rounded-xl border border-input bg-background px-3 text-sm outline-none focus-visible:border-ring"
+                  className="mt-2 block h-11 w-full max-w-md rounded-xl border border-input bg-background px-3 text-sm outline-none focus-visible:border-ring"
                 />
               </div>
 

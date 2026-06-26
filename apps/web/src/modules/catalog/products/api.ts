@@ -38,3 +38,25 @@ export async function deleteProduct(id: string) {
     method: "DELETE"
   });
 }
+
+export async function exportProductsCsv() {
+  return apiFetch<string>(`/catalog/products/export`, { method: "GET" });
+}
+
+export async function downloadProductsTemplate() {
+  return apiFetch<string>(`/catalog/products/import-template`, { method: "GET" });
+}
+
+export type ProductImportResult = {
+  total: number;
+  created: number;
+  updated: number;
+  errors: Array<{ row: number; name: string; message: string }>;
+};
+
+export async function importProductsCsv(csv: string) {
+  return apiFetch<ProductImportResult>(`/catalog/products/import`, {
+    method: "POST",
+    body: JSON.stringify({ csv })
+  });
+}

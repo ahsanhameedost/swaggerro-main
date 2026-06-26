@@ -204,7 +204,8 @@ export class CatalogPublicService extends CatalogSharedService {
         pricingQuantity: item.quantity,
         requestedQuantity: item.quantity,
         quantityPerPack: null,
-        enforceMinQty: true,
+        // B2C: allow single-unit purchases — no minimum-order floor on bulk items.
+        enforceMinQty: false,
         requirePackagingProduct: false,
         productById,
         catalogVariantById

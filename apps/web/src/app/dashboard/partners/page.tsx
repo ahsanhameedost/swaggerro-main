@@ -317,7 +317,7 @@ export default function SellerApplicationsPage() {
 
       <Card className="border border-divider shadow-sm">
         <CardHeader className="flex flex-col gap-4 border-b border-divider px-6 py-5">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <Input
               value={search}
               onValueChange={(value) => {
@@ -326,29 +326,17 @@ export default function SellerApplicationsPage() {
               }}
               placeholder="Search company, contact, email, industry…"
               startContent={<Search className="size-4 text-foreground/40" />}
-              className="w-full md:max-w-sm"
+              className="w-full sm:max-w-xs"
             />
-            <div className="flex items-center gap-3">
-              <Button
-                variant="flat"
-                startContent={<Download className="size-4" />}
-                onPress={handleExport}
-                isLoading={exporting}
-              >
-                Export CSV
-              </Button>
-              <DataPagination
-                page={pagination.page}
-                pageSize={pagination.pageSize}
-                totalPages={pagination.totalPages}
-                disabled={isLoading || isFetching}
-                onPageChange={setPage}
-                onPageSizeChange={(next) => {
-                  setPageSize(next);
-                  setPage(1);
-                }}
-              />
-            </div>
+            <Button
+              variant="flat"
+              className="h-10 shrink-0"
+              startContent={<Download className="size-4" />}
+              onPress={handleExport}
+              isLoading={exporting}
+            >
+              Export CSV
+            </Button>
           </div>
           <div className="flex flex-wrap gap-2">
             {STATUS_FILTERS.map((filter) => (
@@ -368,7 +356,7 @@ export default function SellerApplicationsPage() {
           </div>
         </CardHeader>
 
-        <CardBody className="p-0">
+        <CardBody className="overflow-x-auto p-0">
           <Table removeWrapper aria-label="Seller applications table">
             <TableHeader>
               <TableColumn>Company</TableColumn>
@@ -432,6 +420,21 @@ export default function SellerApplicationsPage() {
             </div>
           ) : null}
         </CardBody>
+
+        <div className="flex items-center justify-between gap-3 border-t border-divider px-6 py-4">
+          <span className="text-sm text-foreground/55">{pagination.total} total</span>
+          <DataPagination
+            page={pagination.page}
+            pageSize={pagination.pageSize}
+            totalPages={pagination.totalPages}
+            disabled={isLoading || isFetching}
+            onPageChange={setPage}
+            onPageSizeChange={(next) => {
+              setPageSize(next);
+              setPage(1);
+            }}
+          />
+        </div>
       </Card>
 
       <DetailModal viewId={viewId} onClose={() => setViewId(null)} canWrite={canWrite} />

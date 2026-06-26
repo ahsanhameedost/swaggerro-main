@@ -19,7 +19,7 @@ import {
   TableRow
 } from "@heroui/react";
 import { addToast } from "@heroui/toast";
-import { Boxes, Plus, Search } from "lucide-react";
+import { Boxes, Download, Plus, Search, Upload } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useMe } from "@/queries/auth";
 import {
@@ -28,6 +28,8 @@ import {
   useDeleteProduct,
   useProducts
 } from "@/lib/queries.catalog";
+import { exportProductsCsv } from "@/modules/catalog/products/api";
+import { ImportProductsModal } from "@/app/components/dashboard/catalog/ImportProductsModal";
 import { DataPagination } from "@/app/components/dashboard/shared/DataPagination";
 import { DeleteConfirmDialog } from "@/app/components/dashboard/shared/DeleteConfirmDialog";
 import { RowActionsDropdown } from "@/app/components/dashboard/shared/RowActionsDropdown";
@@ -74,6 +76,8 @@ export default function ProductsPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(15);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   const deferredSearch = useDeferredValue(search);
 
@@ -89,7 +93,27 @@ export default function ProductsPage() {
     [deferredSearch, status, categoryId, collectionId, page, pageSize]
   );
 
-  const { data, isLoading, isFetching, isError, error } = useProducts(queryParams);
+  const { data, isLoading, isFetching, isError, error, refetch } = useProducts(queryParams);
+
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const csv = await exportProductsCsv();
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `products-${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (err: any) {
+      addToast({ title: "Export failed", description: err?.message ?? "", color: "danger" });
+    } finally {
+      setExporting(false);
+    }
+  };
   const { data: categoriesData } = useCategories({ page: 1, pageSize: 100 });
   const { data: collectionsData } = useCollections({ page: 1, pageSize: 100 });
   const deleteMutation = useDeleteProduct();
@@ -125,16 +149,35 @@ export default function ProductsPage() {
               {/* <p className="text-sm text-foreground/60">Create featured catalog groupings.</p> */}
             </div>
 
-            {canWrite ? (
+            <div className="flex flex-wrap items-center gap-2">
               <Button
-                color="primary"
-                startContent={<Plus className="size-4" />}
-                onPress={() => router.push("/dashboard/catalog/products/new")}
-                style={{ backgroundImage: "var(--primary-gradient)" }}
+                variant="flat"
+                startContent={<Download className="size-4" />}
+                onPress={handleExport}
+                isLoading={exporting}
               >
-                Add product
+                Export
               </Button>
-            ) : null}
+              {canWrite ? (
+                <Button
+                  variant="flat"
+                  startContent={<Upload className="size-4" />}
+                  onPress={() => setImportOpen(true)}
+                >
+                  Import
+                </Button>
+              ) : null}
+              {canWrite ? (
+                <Button
+                  color="primary"
+                  startContent={<Plus className="size-4" />}
+                  onPress={() => router.push("/dashboard/catalog/products/new")}
+                  style={{ backgroundImage: "var(--primary-gradient)" }}
+                >
+                  Add product
+                </Button>
+              ) : null}
+            </div>
           </div>
         </CardBody>
       </Card>
@@ -316,6 +359,12 @@ export default function ProductsPage() {
             });
           }
         }}
+      />
+
+      <ImportProductsModal
+        isOpen={importOpen}
+        onClose={() => setImportOpen(false)}
+        onImported={() => void refetch()}
       />
     </div>
   );
