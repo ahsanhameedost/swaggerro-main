@@ -21,6 +21,7 @@ const IMPORT_HEADERS = [
   "description",
   "status",
   "category",
+  "collections",
   "basePrice",
   "compareAtPrice",
   "minQty",
@@ -28,8 +29,13 @@ const IMPORT_HEADERS = [
   "currency",
   "isPackaging",
   "bulkPricingEnabled",
-  "imageUrl",
-  "tiers"
+  "weightOz",
+  "lengthIn",
+  "widthIn",
+  "heightIn",
+  "images",
+  "tiers",
+  "variants"
 ];
 
 function parseBool(value: string | undefined, fallback = false) {
@@ -71,6 +77,100 @@ function formatTiers(options: Array<{ qtyFrom: number; qtyTo: number | null; pri
     .sort((a, b) => a.qtyFrom - b.qtyFrom)
     .map((o) => (o.isOnward || o.qtyTo == null ? `${o.qtyFrom}+:${o.price}` : `${o.qtyFrom}-${o.qtyTo}:${o.price}`))
     .join(" | ");
+}
+
+function splitList(value: string | undefined): string[] {
+  if (!value || !value.trim()) return [];
+  return value
+    .split(/[|;]/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+// Concrete variants: "Color:Black | Size:M = 12.50 = 100 = 1 ;; Color:Blue | Size:L = 13 = 50 = 1"
+// (axis:value pairs joined by "|", then = price = stock = minQty; variants separated by ";;")
+function formatVariants(
+  variants: Array<{
+    price: any;
+    stock: number;
+    minQty: number;
+    selectedOptions: Array<{ variantName: string; label: string | null; code: string }>;
+  }>
+) {
+  return variants
+    .map((v) => {
+      const opts = v.selectedOptions
+        .map((o) => `${o.variantName}:${o.label ?? o.code}`)
+        .join(" | ");
+      return `${opts} = ${v.price} = ${v.stock} = ${v.minQty}`;
+    })
+    .join(" ;; ");
+}
+
+function parseVariants(value: string | undefined): {
+  variantGroups: any[];
+  productCatalogVariants: any[];
+} {
+  if (!value || !value.trim()) return { variantGroups: [], productCatalogVariants: [] };
+
+  const axisValues = new Map<string, Set<string>>();
+  const variants: any[] = [];
+
+  value
+    .split(";;")
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .forEach((chunk, index) => {
+      const parts = chunk.split("=").map((s) => s.trim());
+      const optionsStr = parts[0];
+      const price = Number(parts[1]);
+      const stock = parts[2] != null && parts[2] !== "" ? Number(parts[2]) : 0;
+      const minQty = parts[3] != null && parts[3] !== "" ? Number(parts[3]) : 1;
+      if (!optionsStr || !Number.isFinite(price)) return;
+
+      const selectedOptions = optionsStr
+        .split("|")
+        .map((s) => s.trim())
+        .filter(Boolean)
+        .map((pair) => {
+          const [axis, ...rest] = pair.split(":");
+          const axisName = axis.trim();
+          const optValue = rest.join(":").trim();
+          if (!axisName || !optValue) return null;
+          if (!axisValues.has(axisName)) axisValues.set(axisName, new Set());
+          axisValues.get(axisName)!.add(optValue);
+          return {
+            variantName: axisName,
+            variantType: "TEXT" as const,
+            code: optValue,
+            label: optValue,
+            colorHex: null,
+            sortOrder: 0
+          };
+        })
+        .filter(Boolean) as any[];
+
+      if (!selectedOptions.length) return;
+      variants.push({
+        price,
+        stock: Number.isFinite(stock) ? stock : 0,
+        minQty: Number.isFinite(minQty) && minQty > 0 ? minQty : 1,
+        isDefault: index === 0,
+        sortOrder: index,
+        imageIds: [],
+        selectedOptions,
+        pricingOptions: []
+      });
+    });
+
+  const variantGroups = Array.from(axisValues.entries()).map(([name, values], gi) => ({
+    name,
+    type: "TEXT" as const,
+    sortOrder: gi,
+    options: Array.from(values).map((v, oi) => ({ code: v, label: v, colorHex: null, sortOrder: oi }))
+  }));
+
+  return { variantGroups, productCatalogVariants: variants };
 }
 
 @Injectable()
@@ -148,10 +248,20 @@ export class CatalogProductsService extends CatalogSharedService {
     const products = await this.prisma.catalogProduct.findMany({
       include: {
         category: true,
-        images: { orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }], take: 1 },
+        collections: { include: { collection: true } },
+        images: { orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] },
         pricingOptions: {
           where: { productCatalogVariantId: null },
           orderBy: [{ sortOrder: "asc" }, { qtyFrom: "asc" }]
+        },
+        productCatalogVariants: {
+          orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+          include: {
+            selectedOptions: {
+              include: { variantOption: { include: { variant: true } } },
+              orderBy: [{ sortOrder: "asc" }]
+            }
+          }
         }
       },
       orderBy: [{ name: "asc" }]
@@ -164,6 +274,7 @@ export class CatalogProductsService extends CatalogSharedService {
       description: p.description ?? "",
       status: p.status,
       category: p.category?.name ?? "",
+      collections: (p.collections ?? []).map((c: any) => c.collection?.name).filter(Boolean).join(" | "),
       basePrice: p.basePrice != null ? this.decimalToNumber(p.basePrice) : "",
       compareAtPrice: p.compareAtPrice != null ? this.decimalToNumber(p.compareAtPrice) : "",
       minQty: p.minQty,
@@ -171,13 +282,29 @@ export class CatalogProductsService extends CatalogSharedService {
       currency: p.currency,
       isPackaging: p.isPackaging ? "true" : "false",
       bulkPricingEnabled: p.bulkPricingEnabled ? "true" : "false",
-      imageUrl: p.images[0]?.url ?? "",
+      weightOz: p.weightOz != null ? this.decimalToNumber(p.weightOz) : "",
+      lengthIn: p.lengthIn != null ? this.decimalToNumber(p.lengthIn) : "",
+      widthIn: p.widthIn != null ? this.decimalToNumber(p.widthIn) : "",
+      heightIn: p.heightIn != null ? this.decimalToNumber(p.heightIn) : "",
+      images: (p.images ?? []).map((img: any) => img.url).filter(Boolean).join(" | "),
       tiers: formatTiers(
         p.pricingOptions.map((o) => ({
           qtyFrom: o.qtyFrom,
           qtyTo: o.qtyTo,
           price: this.decimalToNumber(o.price),
           isOnward: o.isOnward
+        }))
+      ),
+      variants: formatVariants(
+        (p.productCatalogVariants ?? []).map((v: any) => ({
+          price: this.decimalToNumber(v.price),
+          stock: v.stock,
+          minQty: v.minQty,
+          selectedOptions: (v.selectedOptions ?? []).map((so: any) => ({
+            variantName: so.variantOption?.variant?.name ?? "",
+            label: so.variantOption?.label ?? so.variantOption?.code ?? "",
+            code: so.variantOption?.code ?? ""
+          }))
         }))
       )
     }));
@@ -194,6 +321,7 @@ export class CatalogProductsService extends CatalogSharedService {
         description: "Full description here",
         status: "ACTIVE",
         category: "Apparel",
+        collections: "Best Sellers | New Arrivals",
         basePrice: "18",
         compareAtPrice: "24",
         minQty: "1",
@@ -201,8 +329,13 @@ export class CatalogProductsService extends CatalogSharedService {
         currency: "USD",
         isPackaging: "false",
         bulkPricingEnabled: "true",
-        imageUrl: "",
-        tiers: "1-24:18 | 25-99:17 | 100+:16"
+        weightOz: "6",
+        lengthIn: "10",
+        widthIn: "8",
+        heightIn: "1",
+        images: "https://example.com/tee-front.jpg | https://example.com/tee-back.jpg",
+        tiers: "1-24:18 | 25-99:17 | 100+:16",
+        variants: "Color:Black | Size:M = 18 = 100 = 1 ;; Color:Black | Size:L = 18 = 80 = 1"
       }
     ]);
   }
@@ -222,6 +355,29 @@ export class CatalogProductsService extends CatalogSharedService {
     return created.id;
   }
 
+  private async findOrCreateCollectionIds(names: string[]): Promise<string[]> {
+    const ids: string[] = [];
+    for (const raw of names) {
+      const trimmed = raw.trim();
+      if (!trimmed) continue;
+      const existing = await this.prisma.catalogCollection.findFirst({
+        where: { name: { equals: trimmed, mode: "insensitive" } },
+        select: { id: true }
+      });
+      if (existing) {
+        ids.push(existing.id);
+        continue;
+      }
+      const slug = await this.ensureUniqueSlug("catalogCollection", trimmed);
+      const created = await this.prisma.catalogCollection.create({
+        data: { name: trimmed, slug },
+        select: { id: true }
+      });
+      ids.push(created.id);
+    }
+    return ids;
+  }
+
   async importProductsCsv(csv: string) {
     const rows = parseCsv(csv);
     const result = {
@@ -237,17 +393,29 @@ export class CatalogProductsService extends CatalogSharedService {
       const name = (row.name ?? "").trim();
       try {
         if (!name) throw new Error("name is required");
+
+        const { variantGroups, productCatalogVariants } = parseVariants(row.variants);
+        const hasVariants = productCatalogVariants.length > 0;
+
         const basePrice = parseNum(row.basePrice);
-        if (basePrice == null) throw new Error("basePrice is required and must be a number");
+        if (!hasVariants && basePrice == null) {
+          throw new Error("basePrice is required (or provide variants)");
+        }
 
         const categoryId = row.category?.trim()
           ? await this.findOrCreateCategoryByName(row.category)
           : null;
+        const collectionIds = await this.findOrCreateCollectionIds(splitList(row.collections));
 
         const statusRaw = (row.status ?? "").trim().toUpperCase();
         const status = ["DRAFT", "ACTIVE", "ARCHIVED"].includes(statusRaw)
           ? (statusRaw as "DRAFT" | "ACTIVE" | "ARCHIVED")
           : "DRAFT";
+
+        const images = splitList(row.images || row.imageUrl).map((url, idx) => ({
+          url,
+          sortOrder: idx
+        }));
 
         const input = {
           name,
@@ -255,29 +423,31 @@ export class CatalogProductsService extends CatalogSharedService {
           description: (row.description ?? "").trim() || null,
           status,
           categoryId,
-          collectionIds: [],
+          collectionIds,
           isPackaging: parseBool(row.isPackaging),
           bulkPricingEnabled: parseBool(row.bulkPricingEnabled, true),
           shippingProfileId: null,
-          weightOz: null,
-          lengthIn: null,
-          widthIn: null,
-          heightIn: null,
-          basePrice,
+          weightOz: parseNum(row.weightOz),
+          lengthIn: parseNum(row.lengthIn),
+          widthIn: parseNum(row.widthIn),
+          heightIn: parseNum(row.heightIn),
+          basePrice: hasVariants ? (basePrice ?? null) : basePrice,
           compareAtPrice: parseNum(row.compareAtPrice),
           minQty: parseNum(row.minQty) ?? 1,
           baseStock: parseNum(row.baseStock) ?? 0,
           currency: (row.currency ?? "").trim() || "USD",
-          images: row.imageUrl?.trim() ? [{ url: row.imageUrl.trim(), sortOrder: 0 }] : [],
-          variantGroups: [],
-          productCatalogVariants: [],
+          images,
+          variantGroups,
+          productCatalogVariants,
           pricingOptions: parseTiers(row.tiers)
         } as unknown as CreateProductDto;
 
         // Tier price must not exceed base price (matches DTO rule).
-        for (const tier of input.pricingOptions) {
-          if (tier.price > basePrice) {
-            throw new Error(`tier price ${tier.price} exceeds basePrice ${basePrice}`);
+        if (basePrice != null) {
+          for (const tier of input.pricingOptions) {
+            if (tier.price > basePrice) {
+              throw new Error(`tier price ${tier.price} exceeds basePrice ${basePrice}`);
+            }
           }
         }
 

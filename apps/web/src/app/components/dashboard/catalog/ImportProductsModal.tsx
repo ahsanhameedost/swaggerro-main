@@ -138,9 +138,13 @@ export function ImportProductsModal({
 
           <div className="mt-3 rounded-xl bg-default-100 p-3 text-xs leading-relaxed text-foreground/60">
             Columns: <span className="font-mono">name, slug, shortDescription, description, status, category,
-            basePrice, compareAtPrice, minQty, baseStock, currency, isPackaging, bulkPricingEnabled, imageUrl,
-            tiers</span>. Tiers format: <span className="font-mono">1-24:18 | 25-99:17 | 100+:16</span>. Imports
-            simple products (no variants).
+            collections, basePrice, compareAtPrice, minQty, baseStock, currency, isPackaging, bulkPricingEnabled,
+            weightOz, lengthIn, widthIn, heightIn, images, tiers, variants</span>.
+            <br />Tiers: <span className="font-mono">1-24:18 | 25-99:17 | 100+:16</span>. Images &amp; collections
+            are <span className="font-mono">|</span>-separated. Variants:{" "}
+            <span className="font-mono">Color:Black | Size:M = 18 = 100 = 1 ;; Color:Black | Size:L = 18 = 80 = 1</span>{" "}
+            (options = price = stock = minQty, variants split by <span className="font-mono">;;</span>). Tip: export
+            first to get every column pre-filled, edit, then re-import.
           </div>
 
           {result ? (
