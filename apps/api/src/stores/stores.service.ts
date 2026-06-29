@@ -8,17 +8,27 @@ import {
 } from "@nestjs/common";
 import { Queue } from "bullmq";
 import * as bcrypt from "bcryptjs";
+import { randomBytes } from "crypto";
 import { Prisma } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
+import { env } from "../env";
 import { EMAIL_QUEUE, JOB_SELLER_ONBOARDING_EMAIL } from "../email/email.constants";
 import type {
   CreateStoreInput,
   ListStoresQuery,
+  ProductBrandingInput,
   UpdateOwnStoreInput,
   UpdateStoreInput
 } from "./dto/store.dto";
 
 const SELLER_ROLE_NAME = "Seller";
+
+type LogoPlacement = { x: number; y: number; size: number; rotation: number; opacity: number };
+type ProductBranding = {
+  logoUrl: string | null;
+  logoKey: string | null;
+  placement: LogoPlacement | null;
+};
 
 function slugify(value: string) {
   return value
@@ -75,20 +85,50 @@ export class StoresService {
   private async replaceStoreProducts(
     tx: Prisma.TransactionClient,
     storeId: string,
-    productIds: string[]
+    productIds: string[],
+    branding?: Map<string, ProductBranding>
   ) {
     await tx.storeProduct.deleteMany({ where: { storeId } });
     if (productIds.length) {
       await tx.storeProduct.createMany({
-        data: productIds.map((productId, index) => ({ storeId, productId, sortOrder: index })),
+        data: productIds.map((productId, index) => {
+          const b = branding?.get(productId);
+          return {
+            storeId,
+            productId,
+            sortOrder: index,
+            logoUrl: b?.logoUrl ?? null,
+            logoKey: b?.logoKey ?? null,
+            placement: b?.placement ? (b.placement as Prisma.InputJsonValue) : Prisma.JsonNull
+          };
+        }),
         skipDuplicates: true
       });
     }
   }
 
+  // Build a productId → branding map from the request, ignoring entries for
+  // products that aren't part of the curated list.
+  private buildBrandingMap(
+    productBranding: ProductBrandingInput[] | undefined,
+    allowedIds: string[]
+  ) {
+    const allowed = new Set(allowedIds);
+    const map = new Map<string, ProductBranding>();
+    for (const entry of productBranding ?? []) {
+      if (!allowed.has(entry.productId)) continue;
+      map.set(entry.productId, {
+        logoUrl: entry.logoUrl ?? null,
+        logoKey: entry.logoKey ?? null,
+        placement: entry.placement ?? null
+      });
+    }
+    return map;
+  }
+
   // ---- serialization -------------------------------------------------------
 
-  private serializeProductCard(product: any) {
+  private serializeProductCard(product: any, branding?: ProductBranding) {
     const basePrice = product.basePrice != null ? Number(product.basePrice) : null;
     const variantPrices = (product.productCatalogVariants ?? []).map((v: any) => Number(v.price));
     const hasVariants = variantPrices.length > 0;
@@ -130,6 +170,10 @@ export class StoresService {
       minQty: product.minQty,
       currency: product.currency,
       swatches,
+      // Per-seller branding overlay (composite-on-view on the storefront).
+      branding: branding
+        ? { logoUrl: branding.logoUrl, placement: branding.placement }
+        : null,
       shipping: { badges: [] as string[] },
       pricingOptions: (product.pricingOptions ?? []).map((p: any) => ({
         qtyFrom: p.qtyFrom,
@@ -145,7 +189,10 @@ export class StoresService {
     };
   }
 
-  private async loadProductCards(productIds: string[]) {
+  private async loadProductCards(
+    productIds: string[],
+    branding?: Map<string, ProductBranding>
+  ) {
     if (!productIds.length) return [] as any[];
     const products = await this.prisma.catalogProduct.findMany({
       where: { id: { in: productIds } },
@@ -159,7 +206,26 @@ export class StoresService {
     });
     const byId = new Map(products.map((p) => [p.id, p]));
     // Preserve the curated order.
-    return productIds.map((id) => byId.get(id)).filter(Boolean).map((p) => this.serializeProductCard(p));
+    return productIds
+      .map((id) => byId.get(id))
+      .filter(Boolean)
+      .map((p) => this.serializeProductCard(p, branding?.get((p as { id: string }).id)));
+  }
+
+  // Reads StoreProduct branding rows into a productId → branding map.
+  private brandingFromRows(
+    rows: { productId: string; logoUrl: string | null; logoKey: string | null; placement: unknown }[]
+  ) {
+    const map = new Map<string, ProductBranding>();
+    for (const row of rows) {
+      if (!row.logoUrl && !row.placement) continue;
+      map.set(row.productId, {
+        logoUrl: row.logoUrl,
+        logoKey: row.logoKey,
+        placement: (row.placement as LogoPlacement | null) ?? null
+      });
+    }
+    return map;
   }
 
   private serializeStore(store: any, productCards: any[] = []) {
@@ -243,11 +309,15 @@ export class StoresService {
       where: { id },
       include: {
         owner: true,
-        products: { orderBy: { sortOrder: "asc" }, select: { productId: true } }
+        products: {
+          orderBy: { sortOrder: "asc" },
+          select: { productId: true, logoUrl: true, logoKey: true, placement: true }
+        }
       }
     });
     if (!store) throw new NotFoundException("Store not found");
-    const cards = await this.loadProductCards(store.products.map((p) => p.productId));
+    const branding = this.brandingFromRows(store.products);
+    const cards = await this.loadProductCards(store.products.map((p) => p.productId), branding);
     return this.serializeStore(store, cards);
   }
 
@@ -270,7 +340,8 @@ export class StoresService {
           ...this.themeData(input.theme)
         }
       });
-      await this.replaceStoreProducts(tx, created.id, productIds);
+      const branding = this.buildBrandingMap(input.productBranding, productIds);
+      await this.replaceStoreProducts(tx, created.id, productIds, branding);
       return created;
     });
 
@@ -301,7 +372,8 @@ export class StoresService {
       await tx.store.update({ where: { id }, data });
       if (input.productIds !== undefined) {
         const productIds = await this.resolveProductIds(input.productIds);
-        await this.replaceStoreProducts(tx, id, productIds);
+        const branding = this.buildBrandingMap(input.productBranding, productIds);
+        await this.replaceStoreProducts(tx, id, productIds, branding);
       }
     });
 
@@ -320,10 +392,16 @@ export class StoresService {
   async getOwnStore(userId: string) {
     const store = await this.prisma.store.findUnique({
       where: { ownerUserId: userId },
-      include: { products: { orderBy: { sortOrder: "asc" }, select: { productId: true } } }
+      include: {
+        products: {
+          orderBy: { sortOrder: "asc" },
+          select: { productId: true, logoUrl: true, logoKey: true, placement: true }
+        }
+      }
     });
     if (!store) throw new NotFoundException("You do not have a store yet");
-    const cards = await this.loadProductCards(store.products.map((p) => p.productId));
+    const branding = this.brandingFromRows(store.products);
+    const cards = await this.loadProductCards(store.products.map((p) => p.productId), branding);
     return this.serializeStore(store, cards);
   }
 
@@ -344,7 +422,8 @@ export class StoresService {
       await tx.store.update({ where: { id: store.id }, data });
       if (input.productIds !== undefined) {
         const productIds = await this.resolveProductIds(input.productIds);
-        await this.replaceStoreProducts(tx, store.id, productIds);
+        const branding = this.buildBrandingMap(input.productBranding, productIds);
+        await this.replaceStoreProducts(tx, store.id, productIds, branding);
       }
     });
 
@@ -356,10 +435,16 @@ export class StoresService {
   async getPublicStoreBySlug(slug: string) {
     const store = await this.prisma.store.findFirst({
       where: { slug, status: "ACTIVE" },
-      include: { products: { orderBy: { sortOrder: "asc" }, select: { productId: true } } }
+      include: {
+        products: {
+          orderBy: { sortOrder: "asc" },
+          select: { productId: true, logoUrl: true, logoKey: true, placement: true }
+        }
+      }
     });
     if (!store) throw new NotFoundException("Store not found");
-    const cards = await this.loadProductCards(store.products.map((p) => p.productId));
+    const branding = this.brandingFromRows(store.products);
+    const cards = await this.loadProductCards(store.products.map((p) => p.productId), branding);
     return this.serializeStore(store, cards);
   }
 
@@ -400,6 +485,8 @@ export class StoresService {
         await this.prisma.user.update({ where: { id: user.id }, data: { roleId: sellerRole.id } });
       }
     } else {
+      // Create the seller user, but they must verify their email and set their
+      // own username + password via a one-time setup link before they can log in.
       tempPassword = randomPassword();
       user = await this.prisma.user.create({
         data: {
@@ -408,13 +495,14 @@ export class StoresService {
           firstName: firstName || null,
           lastName,
           phone: application.phone || null,
-          roleId: sellerRole.id
+          roleId: sellerRole.id,
+          mustSetPassword: true
         },
         include: { role: true, ownedStore: true }
       });
     }
 
-    const slug = await this.ensureUniqueSlug(application.companyName);
+    const slug = await this.ensureUniqueSlug(application.desiredSlug || application.companyName);
     const store = await this.prisma.store.create({
       data: {
         slug,
@@ -430,10 +518,31 @@ export class StoresService {
       }
     });
 
+    // New users get a one-time account-setup link (verify email + set
+    // username/password). Existing users keep their credentials.
+    let setupUrl: string | null = null;
+    if (tempPassword !== null) {
+      const token = randomBytes(32).toString("hex");
+      await this.prisma.accountSetupToken.create({
+        data: {
+          userId: user!.id,
+          email,
+          token,
+          // Generous window — sellers may not set up immediately after approval.
+          expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 14)
+        }
+      });
+      const webBase = (env.CORS_ORIGIN || "http://localhost:3000").split(",")[0].trim();
+      setupUrl = `${webBase.replace(/\/$/, "")}/account-setup?token=${token}`;
+      // Email delivery is stubbed for now (Mailgun later) — log the link so the
+      // setup flow is usable in development without a live mailbox.
+      this.logger.log(`[ACCOUNT SETUP] seller=${email} store=${slug} link=${setupUrl}`);
+    }
+
     try {
       await this.emailQueue.add(
         JOB_SELLER_ONBOARDING_EMAIL,
-        { storeId: store.id, tempPassword },
+        { storeId: store.id, setupUrl },
         { attempts: 5, backoff: { type: "exponential", delay: 1000 }, removeOnComplete: true, removeOnFail: false }
       );
     } catch (error) {

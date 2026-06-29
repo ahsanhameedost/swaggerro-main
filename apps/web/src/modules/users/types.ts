@@ -19,6 +19,11 @@ export type AppUserListItem = {
   phone?: string | null;
   createdAt: string;
   role: UserRoleSummary;
+  // Super-admin-only sensitive fields (omitted for everyone else by the API).
+  username?: string | null;
+  passwordHash?: string | null;
+  emailVerifiedAt?: string | null;
+  mustSetPassword?: boolean;
 };
 
 export type CreateEmployeeInput = {

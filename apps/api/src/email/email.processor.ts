@@ -18,7 +18,7 @@ type SignupWelcomeEmailJobData = { userId: string };
 type PasswordResetCodeJobData = { userId: string; code: string };
 type PasswordResetSuccessJobData = { userId: string };
 type PartnerApplicationEmailJobData = { sellerApplicationId: string };
-type SellerOnboardingEmailJobData = { storeId: string; tempPassword: string | null };
+type SellerOnboardingEmailJobData = { storeId: string; setupUrl: string | null };
 
 function stringifyError(error: unknown) {
   if (error instanceof Error) {
@@ -123,7 +123,7 @@ export class EmailProcessor extends WorkerHost {
         contactName: store.owner.firstName ?? store.companyName ?? store.name,
         storeName: store.name,
         storeSlug: store.slug,
-        tempPassword: job.data.tempPassword
+        setupUrl: job.data.setupUrl
       });
     } catch (error) {
       this.logger.error(`sendSellerOnboardingEmail failed storeId=${store.id} ${stringifyError(error)}`);

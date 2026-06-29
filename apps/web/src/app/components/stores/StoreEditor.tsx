@@ -2,12 +2,18 @@
 
 import { useMemo, useRef, useState } from "react";
 import { addToast } from "@heroui/toast";
-import { Check, ExternalLink, Loader2, Search, Upload, X } from "lucide-react";
+import { Check, ExternalLink, ImagePlus, Loader2, Search, Upload, X } from "lucide-react";
 import { usePublicProducts } from "@/lib/queries.catalog";
 import { createCatalogImageUpload, uploadFileToPresignedUrl } from "@/modules/catalog/public/api";
 import { formatMoney } from "@/lib/money";
 import { cn } from "@/lib/utils";
-import type { Store, StoreStatus, UpdateStoreInput } from "@/modules/stores/types";
+import type {
+  ProductBrandingInput,
+  Store,
+  StoreStatus,
+  UpdateStoreInput,
+} from "@/modules/stores/types";
+import { ProductLogoModal, type ProductLogoTarget } from "./ProductLogoModal";
 
 const ACCEPTED = ["image/jpeg", "image/png", "image/webp"] as const;
 const MAX_BYTES = 5 * 1024 * 1024;
@@ -44,6 +50,23 @@ export function StoreEditor({
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const logoInputRef = useRef<HTMLInputElement | null>(null);
 
+  // Per-product logo branding, keyed by productId, seeded from the saved store.
+  const [branding, setBranding] = useState<Record<string, ProductBrandingInput>>(() => {
+    const initial: Record<string, ProductBrandingInput> = {};
+    for (const p of store.products) {
+      if (p.branding?.logoUrl) {
+        initial[p.id] = {
+          productId: p.id,
+          logoUrl: p.branding.logoUrl,
+          logoKey: null,
+          placement: p.branding.placement,
+        };
+      }
+    }
+    return initial;
+  });
+  const [brandingTarget, setBrandingTarget] = useState<ProductLogoTarget | null>(null);
+
   const { data: catalog, isLoading: loadingCatalog } = usePublicProducts({ page: 1, pageSize: 48 });
   const catalogProducts = catalog?.items ?? [];
   const selected = useMemo(() => new Set(productIds), [productIds]);
@@ -57,6 +80,30 @@ export function StoreEditor({
   const toggleProduct = (id: string) => {
     setProductIds((current) =>
       current.includes(id) ? current.filter((x) => x !== id) : [...current, id]
+    );
+  };
+
+  const openBranding = (product: { id: string; name: string; imageUrl?: string | null }) => {
+    const existing = branding[product.id];
+    setBrandingTarget({
+      id: product.id,
+      name: product.name,
+      imageUrl: product.imageUrl ?? null,
+      logoUrl: existing?.logoUrl ?? null,
+      placement: existing?.placement ?? null,
+    });
+  };
+
+  const saveBranding = (entry: ProductBrandingInput) => {
+    setBranding((current) => {
+      const next = { ...current };
+      if (entry.logoUrl) next[entry.productId] = entry;
+      else delete next[entry.productId];
+      return next;
+    });
+    // Make sure a freshly branded product is part of the curated list.
+    setProductIds((current) =>
+      current.includes(entry.productId) || !entry.logoUrl ? current : [...current, entry.productId]
     );
   };
 
@@ -98,6 +145,10 @@ export function StoreEditor({
       logoKey: logo.key,
       theme: { primary, primarySoft, primaryForeground },
       productIds,
+      // Only send branding for products still in the curated list.
+      productBranding: productIds
+        .map((id) => branding[id])
+        .filter((b): b is ProductBrandingInput => Boolean(b?.logoUrl)),
     };
     if (mode === "admin") {
       base.slug = slug.trim();
@@ -107,7 +158,7 @@ export function StoreEditor({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-24">
       {/* Branding */}
       <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
         <h2 className="font-display text-lg font-bold">Branding</h2>
@@ -249,8 +300,9 @@ export function StoreEditor({
       </div>
 
       {/* Product curation */}
-      <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="rounded-2xl border border-border bg-card shadow-sm">
+        {/* Sticky header so the search + count stay visible while the grid scrolls */}
+        <div className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-3 rounded-t-2xl border-b border-border bg-card/95 p-6 backdrop-blur supports-[backdrop-filter]:bg-card/80">
           <div>
             <h2 className="font-display text-lg font-bold">Products</h2>
             <p className="text-sm text-muted-foreground">{productIds.length} selected from the catalog</p>
@@ -267,25 +319,28 @@ export function StoreEditor({
         </div>
 
         {loadingCatalog ? (
-          <div className="mt-6 flex justify-center py-10">
+          <div className="flex justify-center py-10">
             <Loader2 className="size-5 animate-spin text-muted-foreground" />
           </div>
         ) : (
-          <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+          <div className="grid max-h-[calc(100vh-15rem)] min-h-[24rem] grid-cols-2 gap-3 overflow-y-auto p-6 sm:grid-cols-3 lg:grid-cols-4">
             {filteredProducts.map((product) => {
               const isSelected = selected.has(product.id);
+              const isBranded = Boolean(branding[product.id]?.logoUrl);
               const price = product.floorPrice ?? product.basePrice ?? product.lowestPrice ?? 0;
               return (
-                <button
+                <div
                   key={product.id}
-                  type="button"
-                  onClick={() => toggleProduct(product.id)}
                   className={cn(
                     "group relative flex flex-col overflow-hidden rounded-xl border bg-card text-left transition hover:shadow-sm",
                     isSelected ? "border-primary ring-1 ring-primary/30" : "border-border"
                   )}
                 >
-                  <div className="relative aspect-square overflow-hidden bg-muted">
+                  <button
+                    type="button"
+                    onClick={() => toggleProduct(product.id)}
+                    className="relative block aspect-square overflow-hidden bg-muted"
+                  >
                     {product.imageUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={product.imageUrl} alt={product.name} className="h-full w-full object-cover" />
@@ -294,6 +349,22 @@ export function StoreEditor({
                         {product.name.slice(0, 2).toUpperCase()}
                       </div>
                     )}
+                    {/* Branded logo preview on the seller's curation card. */}
+                    {isBranded && branding[product.id]?.placement ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={branding[product.id]!.logoUrl!}
+                        alt=""
+                        className="pointer-events-none absolute"
+                        style={{
+                          left: `${branding[product.id]!.placement!.x}%`,
+                          top: `${branding[product.id]!.placement!.y}%`,
+                          width: `${branding[product.id]!.placement!.size}%`,
+                          transform: `translate(-50%,-50%) rotate(${branding[product.id]!.placement!.rotation}deg)`,
+                          opacity: branding[product.id]!.placement!.opacity / 100,
+                        }}
+                      />
+                    ) : null}
                     <span
                       className={cn(
                         "absolute right-2 top-2 flex size-6 items-center justify-center rounded-full border text-xs",
@@ -304,12 +375,41 @@ export function StoreEditor({
                     >
                       {isSelected ? <Check className="size-3.5" /> : null}
                     </span>
+                    {/* Color swatches so sellers can see variant options at a glance. */}
+                    {product.swatches?.length ? (
+                      <div className="absolute bottom-1.5 left-1.5 flex gap-1">
+                        {product.swatches.slice(0, 5).map((s, i) => (
+                          <span
+                            key={i}
+                            className="size-3 rounded-full border border-white/70 shadow"
+                            style={{ backgroundColor: s.hex ?? "#ddd" }}
+                            title={s.name}
+                          />
+                        ))}
+                      </div>
+                    ) : null}
+                  </button>
+                  <div className="flex items-end justify-between gap-1 p-2">
+                    <div className="min-w-0">
+                      <p className="line-clamp-1 text-xs font-medium text-foreground">{product.name}</p>
+                      <p className="text-xs text-muted-foreground">{formatMoney(price, product.currency)}/ea</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => openBranding(product)}
+                      title={isBranded ? "Edit logo branding" : "Add your logo"}
+                      className={cn(
+                        "flex shrink-0 items-center gap-1 rounded-lg border px-1.5 py-1 text-[11px] font-medium transition",
+                        isBranded
+                          ? "border-primary/40 bg-brand-soft text-primary"
+                          : "border-border text-muted-foreground hover:border-primary/40 hover:text-foreground"
+                      )}
+                    >
+                      <ImagePlus className="size-3.5" />
+                      {isBranded ? "Logo" : "Brand"}
+                    </button>
                   </div>
-                  <div className="p-2">
-                    <p className="line-clamp-1 text-xs font-medium text-foreground">{product.name}</p>
-                    <p className="text-xs text-muted-foreground">{formatMoney(price, product.currency)}/ea</p>
-                  </div>
-                </button>
+                </div>
               );
             })}
             {!filteredProducts.length ? (
@@ -319,7 +419,8 @@ export function StoreEditor({
         )}
       </div>
 
-      <div className="flex items-center justify-between gap-4">
+      {/* Sticky action bar — always reachable without scrolling to the very bottom */}
+      <div className="sticky bottom-0 -mx-4 mt-2 flex items-center justify-between gap-4 border-t border-border bg-card/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-card/80 sm:mx-0 sm:rounded-2xl sm:border sm:px-6 sm:shadow-lg">
         <a
           href={`/store/${store.slug}`}
           target="_blank"
@@ -338,6 +439,14 @@ export function StoreEditor({
           Save changes
         </button>
       </div>
+
+      {brandingTarget ? (
+        <ProductLogoModal
+          product={brandingTarget}
+          onClose={() => setBrandingTarget(null)}
+          onSave={saveBranding}
+        />
+      ) : null}
     </div>
   );
 }

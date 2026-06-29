@@ -15,6 +15,7 @@ import { AuthGuard } from "../common/guards/auth.guard";
 import { RequirePermissions } from "../common/decorators/permissions.decorator";
 import { PermissionsGuard } from "../common/guards/permissions.guard";
 import {
+  checkAvailabilityQuerySchema,
   createSellerApplicationSchema,
   listSellerApplicationsQuerySchema,
   updateSellerApplicationStatusSchema
@@ -33,6 +34,17 @@ function csvCell(value: unknown) {
 @Controller("partners")
 export class PartnersController {
   constructor(private readonly partnersService: PartnersService) {}
+
+  // Public — used by the signup form to warn about duplicate store URL / email
+  // before submission. Declared before /:id so the literal route wins.
+  @Get("/applications/availability")
+  async availability(@Query() query: unknown) {
+    const parsed = checkAvailabilityQuerySchema.safeParse(query);
+    if (!parsed.success) {
+      throw new BadRequestException(parsed.error.issues[0]?.message ?? "Invalid query");
+    }
+    return this.partnersService.checkAvailability(parsed.data);
+  }
 
   // Public — prospective sellers/partners submit without an account.
   @Post("/applications")

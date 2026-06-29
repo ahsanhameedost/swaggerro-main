@@ -18,6 +18,7 @@ import { parseOrThrow } from "../catalog/common/parse-or-throw";
 import {
   createEmployeeSchema,
   listUsersQuerySchema,
+  resetUserPasswordSchema,
   updateEmployeeSchema
 } from "./user.dto";
 import { UsersService } from "./users.service";
@@ -29,12 +30,24 @@ export class UsersController {
 
   @Get()
   @RequirePermissions("admin.users.read")
-  async list(@Query() query: unknown) {
+  async list(@Query() query: unknown, @Req() req: FastifyRequest & { user?: AuthUser }) {
     return {
       users: await this.users.listUsers(
-        parseOrThrow(listUsersQuerySchema.safeParse(query), "Invalid user query")
+        parseOrThrow(listUsersQuerySchema.safeParse(query), "Invalid user query"),
+        req.user!
       )
     };
+  }
+
+  @Post(":id/reset-password")
+  @RequirePermissions("admin.users.write")
+  async resetPassword(
+    @Param("id") id: string,
+    @Body() body: unknown,
+    @Req() req: FastifyRequest & { user?: AuthUser }
+  ) {
+    const dto = parseOrThrow(resetUserPasswordSchema.safeParse(body), "Invalid password");
+    return this.users.resetUserPassword(id, dto.newPassword, req.user!);
   }
 
   @Get("employee-roles")

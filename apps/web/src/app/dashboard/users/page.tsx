@@ -8,6 +8,11 @@ import {
   CardBody,
   Chip,
   Input,
+  Modal,
+  ModalBody,
+  ModalContent,
+  ModalFooter,
+  ModalHeader,
   Spinner,
   Table,
   TableBody,
@@ -16,11 +21,13 @@ import {
   TableHeader,
   TableRow
 } from "@heroui/react";
-import { Plus, Search } from "lucide-react";
+import { KeyRound, Plus, Search } from "lucide-react";
 import { addToast } from "@heroui/toast";
 import { useMe } from "@/queries/auth";
 import { useUsers } from "@/lib/queries.catalog";
 import { useCreateEmployee, useEmployeeRoles } from "@/queries/users";
+import { resetUserPassword } from "@/modules/users/api";
+import type { AppUserListItem } from "@/modules/users/types";
 import { EmployeeFormModal } from "@/app/components/dashboard/employees/EmployeeFormModal";
 
 function formatRoleName(value: string) {
@@ -35,6 +42,7 @@ export default function UsersPage() {
   const { data: me } = useMe();
   const canRead = !!me?.permissions?.includes("admin.users.read");
   const canWrite = !!me?.permissions?.includes("admin.users.write");
+  const isSuperAdmin = me?.role === "SUPER_ADMIN";
   const [search, setSearch] = useState("");
   const deferredSearch = useDeferredValue(search);
   const { data: users = [], isLoading, isError, error, refetch } = useUsers({ search: deferredSearch });
@@ -42,6 +50,11 @@ export default function UsersPage() {
   const [formOpen, setFormOpen] = useState(false);
   const { data: roles = [] } = useEmployeeRoles(canWrite);
   const createMutation = useCreateEmployee();
+
+  // Reset-password modal state.
+  const [resetTarget, setResetTarget] = useState<AppUserListItem | null>(null);
+  const [newPw, setNewPw] = useState("");
+  const [resetting, setResetting] = useState(false);
 
   const handleSave = async (values: {
     firstName: string;
@@ -67,6 +80,26 @@ export default function UsersPage() {
     addToast({ title: "User created", description: "The account was created.", color: "success" });
     setFormOpen(false);
     await refetch();
+  };
+
+  const submitReset = async () => {
+    if (!resetTarget) return;
+    if (newPw.length < 8) {
+      addToast({ title: "Password too short", description: "Use at least 8 characters.", color: "warning" });
+      return;
+    }
+    setResetting(true);
+    try {
+      await resetUserPassword(resetTarget.id, newPw);
+      addToast({ title: "Password reset", description: `New password set for ${resetTarget.email}.`, color: "success" });
+      setResetTarget(null);
+      setNewPw("");
+      await refetch();
+    } catch (err: any) {
+      addToast({ title: "Reset failed", description: err?.message ?? "Try again.", color: "danger" });
+    } finally {
+      setResetting(false);
+    }
   };
 
   if (!canRead) {
@@ -114,10 +147,16 @@ export default function UsersPage() {
         <CardBody className="p-0">
           <Table removeWrapper aria-label="Users table">
             <TableHeader>
-              <TableColumn>User</TableColumn>
-              <TableColumn>Role</TableColumn>
-              <TableColumn>Phone</TableColumn>
-              <TableColumn>Joined</TableColumn>
+              {[
+                <TableColumn key="user">User</TableColumn>,
+                <TableColumn key="role">Role</TableColumn>,
+                <TableColumn key="phone">Phone</TableColumn>,
+                <TableColumn key="joined">Joined</TableColumn>,
+                ...(isSuperAdmin
+                  ? [<TableColumn key="pw">Password (encrypted)</TableColumn>]
+                  : []),
+                ...(canWrite ? [<TableColumn key="act">Actions</TableColumn>] : []),
+              ]}
             </TableHeader>
             <TableBody
               isLoading={isLoading}
@@ -126,21 +165,74 @@ export default function UsersPage() {
             >
               {users.map((user) => (
                 <TableRow key={user.id}>
-                  <TableCell>
-                    <div className="space-y-1">
-                      <div className="font-medium">
-                        {[user.firstName, user.lastName].filter(Boolean).join(" ") || "Unnamed user"}
+                  {[
+                    <TableCell key="user">
+                      <div className="space-y-1">
+                        <div className="font-medium">
+                          {[user.firstName, user.lastName].filter(Boolean).join(" ") || "Unnamed user"}
+                        </div>
+                        <div className="text-xs text-foreground/50">{user.email}</div>
+                        {isSuperAdmin && user.username ? (
+                          <div className="text-xs text-foreground/40">@{user.username}</div>
+                        ) : null}
                       </div>
-                      <div className="text-xs text-foreground/50">{user.email}</div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Chip size="sm" variant="flat">
-                      {formatRoleName(user.role.name)}
-                    </Chip>
-                  </TableCell>
-                  <TableCell>{user.phone || "-"}</TableCell>
-                  <TableCell>{new Date(user.createdAt).toLocaleDateString()}</TableCell>
+                    </TableCell>,
+                    <TableCell key="role">
+                      <Chip size="sm" variant="flat">
+                        {formatRoleName(user.role.name)}
+                      </Chip>
+                    </TableCell>,
+                    <TableCell key="phone">{user.phone || "-"}</TableCell>,
+                    <TableCell key="joined">{new Date(user.createdAt).toLocaleDateString()}</TableCell>,
+                    ...(isSuperAdmin
+                      ? [
+                          <TableCell key="pw">
+                            <div className="flex items-center gap-2">
+                              <code
+                                title={user.passwordHash ?? ""}
+                                className="max-w-[200px] truncate rounded bg-default-100 px-2 py-1 font-mono text-xs text-foreground/60"
+                              >
+                                {user.passwordHash ?? "—"}
+                              </code>
+                              {user.passwordHash ? (
+                                <Button
+                                  size="sm"
+                                  variant="light"
+                                  isIconOnly
+                                  aria-label="Copy hash"
+                                  onPress={() => {
+                                    void navigator.clipboard?.writeText(user.passwordHash ?? "");
+                                    addToast({ title: "Copied", color: "success" });
+                                  }}
+                                >
+                                  ⧉
+                                </Button>
+                              ) : null}
+                            </div>
+                            {user.mustSetPassword ? (
+                              <span className="text-[11px] text-warning">awaiting account setup</span>
+                            ) : null}
+                          </TableCell>,
+                        ]
+                      : []),
+                    ...(canWrite
+                      ? [
+                          <TableCell key="act">
+                            <Button
+                              size="sm"
+                              variant="flat"
+                              startContent={<KeyRound className="size-3.5" />}
+                              onPress={() => {
+                                setResetTarget(user);
+                                setNewPw("");
+                              }}
+                            >
+                              Reset password
+                            </Button>
+                          </TableCell>,
+                        ]
+                      : []),
+                  ]}
                 </TableRow>
               ))}
             </TableBody>
@@ -162,6 +254,35 @@ export default function UsersPage() {
         onClose={() => setFormOpen(false)}
         onSave={handleSave}
       />
+
+      <Modal isOpen={!!resetTarget} onClose={() => setResetTarget(null)}>
+        <ModalContent>
+          <ModalHeader className="flex flex-col gap-1">
+            Reset password
+            <span className="text-sm font-normal text-foreground/60">{resetTarget?.email}</span>
+          </ModalHeader>
+          <ModalBody>
+            <p className="text-sm text-foreground/60">
+              Set a new password for this user. They can sign in with it immediately and change it later.
+            </p>
+            <Input
+              type="password"
+              label="New password"
+              placeholder="At least 8 characters"
+              value={newPw}
+              onValueChange={setNewPw}
+            />
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="light" onPress={() => setResetTarget(null)}>
+              Cancel
+            </Button>
+            <Button color="primary" isLoading={resetting} onPress={submitReset}>
+              Set password
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
     </div>
   );
 }

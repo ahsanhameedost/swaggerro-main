@@ -107,3 +107,15 @@ export async function createCatalogOrderPayment(
     body: JSON.stringify(input)
   });
 }
+
+export type CatalogOrderPaymentIntent = {
+  testMode: boolean;
+  clientSecret: string | null;
+  publishableKey: string | null;
+};
+
+export async function createCatalogOrderPaymentIntent(id: string) {
+  return apiFetch<CatalogOrderPaymentIntent>(`/catalog/orders/${id}/payment-intent`, {
+    method: "POST"
+  });
+}

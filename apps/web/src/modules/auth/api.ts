@@ -53,6 +53,24 @@ export async function me() {
   return apiFetch<{ user: User | null }>("/auth/me", { method: "GET" });
 }
 
+export async function verifyAccountSetup(token: string) {
+  return apiFetch<{ ok: true; email: string }>("/auth/account-setup/verify", {
+    method: "POST",
+    body: JSON.stringify({ token })
+  });
+}
+
+export async function completeAccountSetup(input: {
+  token: string;
+  username: string;
+  password: string;
+}) {
+  return apiFetch<{ user: User }>("/auth/account-setup/complete", {
+    method: "POST",
+    body: JSON.stringify(input)
+  });
+}
+
 export async function updateProfile(input: {
   firstName: string;
   lastName: string;
@@ -63,6 +81,13 @@ export async function updateProfile(input: {
 }) {
   return apiFetch<{ user: User }>("/auth/me", {
     method: "PATCH",
+    body: JSON.stringify(input)
+  });
+}
+
+export async function changePassword(input: { currentPassword: string; newPassword: string }) {
+  return apiFetch<{ ok: true }>("/auth/change-password", {
+    method: "POST",
     body: JSON.stringify(input)
   });
 }

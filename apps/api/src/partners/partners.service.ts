@@ -4,11 +4,24 @@ import { Queue } from "bullmq";
 import { PrismaService } from "../prisma/prisma.service";
 import { EMAIL_QUEUE, JOB_PARTNER_APPLICATION_EMAIL } from "../email/email.constants";
 import { StoresService } from "../stores/stores.service";
+import { NotificationsService } from "../notifications/notifications.service";
 import type {
+  CheckAvailabilityQuery,
   CreateSellerApplicationInput,
   ListSellerApplicationsQuery,
   UpdateSellerApplicationStatusInput
 } from "./dto/partner.dto";
+
+// Shared slug normalization — keep in sync with the store slug format
+// (lowercase alphanumerics + dashes, see stores.service slugify).
+export function normalizeSlug(value: string): string {
+  return value
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60);
+}
 
 @Injectable()
 export class PartnersService {
@@ -17,6 +30,7 @@ export class PartnersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly storesService: StoresService,
+    private readonly notifications: NotificationsService,
     @InjectQueue(EMAIL_QUEUE) private readonly emailQueue: Queue
   ) {}
 
@@ -31,6 +45,8 @@ export class PartnersService {
         businessDescription: input.businessDescription.trim(),
         industry: input.industry.trim(),
         country: input.country.trim(),
+        state: input.state?.trim() || null,
+        desiredSlug: input.desiredSlug ? normalizeSlug(input.desiredSlug) || null : null,
         website: input.website?.trim() || null,
         additionalInfo: input.additionalInfo?.trim() || null,
         logoUrl: input.logoUrl || null,
@@ -60,8 +76,56 @@ export class PartnersService {
       );
     }
 
+    // In-app notification to every admin (separate from the email above).
+    await this.notifications.notifyAdmins({
+      type: "seller.application.new",
+      title: "New seller application",
+      body: `${input.companyName.trim()} applied to become a seller.`,
+      link: "/dashboard/partners"
+    });
+
     this.logger.log(`seller application created id=${record.id}`);
     return record;
+  }
+
+  // Public duplicate check used by the multi-step signup form. A slug is taken
+  // if any store uses it or any non-rejected application already requested it.
+  // An email is taken if a user already exists or a non-rejected application
+  // already used that business email.
+  async checkAvailability(query: CheckAvailabilityQuery) {
+    const result: { slug?: string; slugTaken?: boolean; email?: string; emailTaken?: boolean } = {};
+
+    if (query.slug) {
+      const slug = normalizeSlug(query.slug);
+      result.slug = slug;
+      if (!slug) {
+        result.slugTaken = false;
+      } else {
+        const [storeHit, appHit] = await this.prisma.$transaction([
+          this.prisma.store.findUnique({ where: { slug }, select: { id: true } }),
+          this.prisma.sellerApplication.findFirst({
+            where: { desiredSlug: slug, status: { not: "REJECTED" } },
+            select: { id: true }
+          })
+        ]);
+        result.slugTaken = Boolean(storeHit || appHit);
+      }
+    }
+
+    if (query.email) {
+      const email = query.email.trim().toLowerCase();
+      result.email = email;
+      const [userHit, appHit] = await this.prisma.$transaction([
+        this.prisma.user.findUnique({ where: { email }, select: { id: true } }),
+        this.prisma.sellerApplication.findFirst({
+          where: { email, status: { not: "REJECTED" } },
+          select: { id: true }
+        })
+      ]);
+      result.emailTaken = Boolean(userHit || appHit);
+    }
+
+    return result;
   }
 
   async listApplications(query: ListSellerApplicationsQuery) {
@@ -160,6 +224,17 @@ export class PartnersService {
       try {
         const store = await this.storesService.onboardSellerFromApplication(id);
         storeSlug = store?.slug ?? null;
+        // Notify the newly-provisioned seller (they'll see it once they finish
+        // account setup and sign in).
+        if (store && (store as { ownerUserId?: string | null }).ownerUserId) {
+          await this.notifications.notify({
+            userId: (store as { ownerUserId: string }).ownerUserId,
+            type: "seller.application.approved",
+            title: "Your seller application was approved 🎉",
+            body: `Your store "${store.name}" is ready. Set up your account to start selling.`,
+            link: "/seller"
+          });
+        }
       } catch (error) {
         onboardingError = error instanceof Error ? error.message : "Onboarding failed";
         this.logger.error(`onboarding failed for application=${id}: ${onboardingError}`);
@@ -179,6 +254,8 @@ export class PartnersService {
     businessDescription: string;
     industry: string;
     country: string;
+    state?: string | null;
+    desiredSlug?: string | null;
     logoUrl: string | null;
     logoKey: string | null;
     website: string | null;
@@ -199,6 +276,8 @@ export class PartnersService {
       businessDescription: item.businessDescription,
       industry: item.industry,
       country: item.country,
+      state: item.state ?? null,
+      desiredSlug: item.desiredSlug ?? null,
       logoUrl: item.logoUrl,
       logoKey: item.logoKey,
       website: item.website,

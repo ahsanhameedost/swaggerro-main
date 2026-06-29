@@ -161,6 +161,7 @@ model RolePermission {
 model User {
   id                      String                     @id @default(cuid())
   email                   String                     @unique
+  username                String?                    @unique
   passwordHash            String
   firstName               String?
   lastName                String?
@@ -169,6 +170,8 @@ model User {
   avatarKey               String?
   roleId                  String
   role                    Role                       @relation(fields: [roleId], references: [id])
+  emailVerifiedAt         DateTime?
+  mustSetPassword         Boolean                    @default(false)
   projects                Project[]
   catalogOrders           CatalogOrder[]
   assignedCatalogOrders   CatalogOrder[]             @relation("AssignedCatalogOrders")
@@ -177,6 +180,8 @@ model User {
   createdShipments        ShippingShipment[]         @relation("ShippingShipmentCreatedBy")
   inventoryLedgerEntries  InventoryLedgerEntry[]      @relation("InventoryLedgerPerformedBy")
   passwordResetCodes      PasswordResetCode[]
+  accountSetupTokens      AccountSetupToken[]
+  notifications           Notification[]
   ownedStore              Store?                     @relation("StoreOwner")
   createdAt               DateTime                   @default(now())
   updatedAt               DateTime                   @updatedAt
@@ -236,6 +241,23 @@ model PasswordResetCode {
   @@index([userId])
   @@index([email, code, expiresAt])
   @@map("password_reset_codes")
+}
+
+// Single-use token used to verify a seller's email AND set their initial
+// username/password after an admin approves their application.
+model AccountSetupToken {
+  id        String    @id @default(cuid())
+  userId    String
+  email     String
+  token     String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+  @@map("account_setup_tokens")
 }
 
 model CatalogCategory {
@@ -520,6 +542,9 @@ model CatalogOrder {
   squarePaymentId    String?
   paidAt             DateTime?
   stockReserved      Boolean               @default(false)
+  // Marketplace attribution snapshot (set when a store order is paid).
+  commissionPercent  Decimal?              @db.Decimal(5, 2)
+  sellerEarningCents Int?
   items              CatalogOrderItem[]
   shipments          ShippingShipment[]
   inventoryLedgerEntries InventoryLedgerEntry[]
@@ -844,6 +869,8 @@ model SellerApplication {
   businessDescription String                  @db.Text
   industry            String
   country             String
+  state               String?
+  desiredSlug         String?
   logoUrl             String?
   logoKey             String?
   website             String?
@@ -884,13 +911,68 @@ model Store {
   themePrimary           String             @default("#1e40af")
   themePrimarySoft       String             @default("#eef2fd")
   themePrimaryForeground String             @default("#ffffff")
+  // Platform commission taken from each sale (admin-set, per-seller).
+  commissionPercent      Decimal            @default(15) @db.Decimal(5, 2)
+  // Seller payout / bank details (where the admin sends their earnings).
+  payoutMethod           String?
+  payoutBankName         String?
+  payoutAccountName      String?
+  payoutAccountNumber    String?
+  payoutRoutingNumber    String?
+  payoutDetails          String?            @db.Text
   products               StoreProduct[]
   orders                 CatalogOrder[]
+  payouts                SellerPayout[]
   createdAt              DateTime           @default(now())
   updatedAt              DateTime           @updatedAt
 
   @@index([status])
   @@map("stores")
+}
+
+enum PayoutStatus {
+  PENDING
+  PAID
+  CANCELLED
+}
+
+// A recorded payout from the platform to a seller. The seller's withdrawable
+// balance = (sum of sellerEarningCents on their PAID orders) − (sum of PAID payouts).
+model SellerPayout {
+  id          String       @id @default(cuid())
+  storeId     String
+  store       Store        @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  amountCents Int
+  status      PayoutStatus @default(PENDING)
+  method      String?
+  reference   String?
+  note        String?
+  createdById String?
+  paidAt      DateTime?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@index([storeId])
+  @@index([status])
+  @@map("seller_payouts")
+}
+
+// In-app notification for any user (bell in every dashboard).
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String
+  title     String
+  body      String?   @db.Text
+  link      String?
+  data      Json?
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, readAt])
+  @@index([userId, createdAt])
+  @@map("notifications")
 }
 
 model StoreProduct {
@@ -900,6 +982,10 @@ model StoreProduct {
   store     Store          @relation(fields: [storeId], references: [id], onDelete: Cascade)
   product   CatalogProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
   sortOrder Int            @default(0)
+  // Per-seller logo branding overlaid on this product (composite-on-view).
+  logoUrl   String?
+  logoKey   String?
+  placement Json?
   createdAt DateTime       @default(now())
 
   @@unique([storeId, productId])

@@ -122,6 +122,13 @@ const NAV_ITEMS: NavItem[] = [
     requiredPermissions: ["partners.stores.read"]
   },
   {
+    key: "payouts",
+    label: "Payouts",
+    href: "/dashboard/payouts",
+    icon: "Wallet",
+    requiredPermissions: ["partners.stores.read"]
+  },
+  {
     key: "permissions",
     label: "Permissions",
     href: "/dashboard/permissions",

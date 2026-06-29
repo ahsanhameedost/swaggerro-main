@@ -11,6 +11,7 @@ import { PDFDocument, StandardFonts } from "pdf-lib";
 // default import resolved to `.default` (undefined) under this tsconfig and threw
 // "archiver_1.default is not a function". import-require binds the callable export.
 import archiver = require("archiver");
+import Stripe from "stripe";
 import { randomUUID } from "crypto";
 import type { AuthUser } from "../../common/guards/auth.guard";
 import type {
@@ -563,6 +564,51 @@ export class CatalogOrdersService extends CatalogSharedService {
     return this.getOrderById(order.id, authUser);
   }
 
+// Step 1 of the Stripe flow: create a PaymentIntent for the order's amount and
+// return its client secret so the browser can confirm the card. Step 2 is
+// createOrderPayment, which verifies the confirmed intent server-side.
+async createOrderPaymentIntent(id: string, authUser: AuthUser) {
+  if (!hasPermission(authUser, "orders.self.read")) {
+    throw new ForbiddenException("Only customers can pay for orders");
+  }
+
+  const order = await this.findAccessibleOrderOrThrow(id, authUser);
+  const totals = this.calculateOrderTotals(order);
+
+  if (!totals.allItemsReadyToOrder) {
+    throw new BadRequestException(
+      "You can proceed with the Request once all the Products are Approved."
+    );
+  }
+  if (["CANCELLED", "REJECTED"].includes(order.status)) {
+    throw new BadRequestException("This order cannot be paid in its current status");
+  }
+  if (order.paymentStatus === "PAID") {
+    throw new BadRequestException("This order has already been paid");
+  }
+
+  if (env.PAYMENTS_TEST_MODE) {
+    // No real intent in mock mode — the test form posts a TEST sourceId directly.
+    return { testMode: true as const, clientSecret: null, publishableKey: null };
+  }
+
+  const stripe = this.getStripeClient();
+  const intent = await stripe.paymentIntents.create({
+    amount: totals.totalDueCents,
+    currency: (order.currency || "USD").toLowerCase(),
+    metadata: { orderId: order.id },
+    receipt_email: order.email ?? undefined,
+    description: `Catalog order ${order.id}`,
+    automatic_payment_methods: { enabled: true, allow_redirects: "never" }
+  });
+
+  return {
+    testMode: false as const,
+    clientSecret: intent.client_secret,
+    publishableKey: env.STRIPE_PUBLISHABLE_KEY ?? null
+  };
+}
+
 async createOrderPayment(id: string, input: CreateOrderPaymentDto, authUser: AuthUser) {
   if (!hasPermission(authUser, "orders.self.read")) {
     throw new ForbiddenException("Only customers can pay for orders");
@@ -585,9 +631,10 @@ async createOrderPayment(id: string, input: CreateOrderPaymentDto, authUser: Aut
     throw new BadRequestException("This order has already been paid");
   }
 
+  // Stripe is the active provider; Square methods are kept but no longer called.
   const payment = env.PAYMENTS_TEST_MODE
     ? this.createTestPayment(order, totals)
-    : await this.createSquarePayment(order, totals, input.sourceId);
+    : await this.createStripePayment(order, totals, input.sourceId);
   const paymentStatus = this.mapSquarePaymentStatus(payment?.status);
   const paidAt = paymentStatus === "PAID" ? new Date() : null;
 
@@ -1110,6 +1157,78 @@ private async createSquarePayment(
   }
 
   return payload.payment;
+}
+
+private stripeClient: Stripe | null = null;
+
+private getStripeClient() {
+  const secret = env.STRIPE_SECRET_KEY?.trim();
+  if (!secret) {
+    throw new ServiceUnavailableException(
+      "Stripe is not configured. Set STRIPE_SECRET_KEY."
+    );
+  }
+  if (!this.stripeClient) {
+    this.stripeClient = new Stripe(secret);
+  }
+  return this.stripeClient;
+}
+
+// Verifies a PaymentIntent the browser already confirmed, then returns a
+// Square-shaped payment object so the downstream mapping stays unchanged.
+// `sourceId` here is the Stripe PaymentIntent id (pi_...).
+private async createStripePayment(
+  order: Pick<OrderWithRelations, "id" | "email" | "phone" | "currency">,
+  totals: OrderTotals,
+  sourceId: string
+) {
+  const stripe = this.getStripeClient();
+
+  let intent: Stripe.PaymentIntent;
+  try {
+    intent = await stripe.paymentIntents.retrieve(sourceId, { expand: ["latest_charge"] });
+  } catch {
+    throw new BadRequestException("We couldn't verify your payment. Please try again.");
+  }
+
+  // Guard against tampering: the intent must belong to THIS order and match the amount.
+  if (intent.metadata?.orderId !== order.id) {
+    throw new BadRequestException("This payment does not match the order.");
+  }
+  if (intent.amount !== totals.totalDueCents) {
+    throw new BadRequestException("The paid amount does not match the order total.");
+  }
+  if (intent.status !== "succeeded") {
+    throw new BadRequestException(
+      intent.status === "requires_action"
+        ? "Additional authentication is required to complete this payment."
+        : "Your payment was not completed. Please try again."
+    );
+  }
+
+  const charge =
+    intent.latest_charge && typeof intent.latest_charge !== "string"
+      ? (intent.latest_charge as Stripe.Charge)
+      : null;
+  const card = charge?.payment_method_details?.card ?? null;
+
+  return {
+    id: intent.id,
+    status: "COMPLETED",
+    receipt_url: charge?.receipt_url ?? null,
+    amount_money: {
+      amount: intent.amount,
+      currency: (intent.currency || order.currency || "usd").toUpperCase()
+    },
+    card_details: {
+      status: "CAPTURED",
+      card: {
+        card_brand: card?.brand?.toUpperCase() ?? "CARD",
+        last_4: card?.last4 ?? "0000"
+      }
+    },
+    created_at: new Date((intent.created ?? Date.now() / 1000) * 1000).toISOString()
+  };
 }
 
   private getInventorySnapshot(item: OrderWithRelations["items"][number]) {

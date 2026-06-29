@@ -15,6 +15,9 @@ import { RecipientsModule } from "./recipients/recipients.module";
 import { InventoryModule } from "./inventory/inventory.module";
 import { PartnersModule } from "./partners/partners.module";
 import { StoresModule } from "./stores/stores.module";
+import { NotificationsModule } from "./notifications/notifications.module";
+import { StoreCheckoutModule } from "./catalog/store-checkout/store-checkout.module";
+import { PayoutsModule } from "./payouts/payouts.module";
 
 @Module({
   imports: [
@@ -33,7 +36,10 @@ import { StoresModule } from "./stores/stores.module";
     RecipientsModule,
     InventoryModule,
     PartnersModule,
-    StoresModule
+    StoresModule,
+    NotificationsModule,
+    StoreCheckoutModule,
+    PayoutsModule
   ],
   controllers: [HealthController]
 })

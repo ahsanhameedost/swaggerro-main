@@ -147,6 +147,17 @@ export class CatalogOrdersController {
     };
   }
 
+  // Stripe step 1: create a PaymentIntent and hand the client secret to the browser.
+  @UseGuards(AuthGuard)
+  @Post("orders/:id/payment-intent")
+  async createOrderPaymentIntent(
+    @Param("id") id: string,
+    @Req() req: FastifyRequest & { user?: AuthUser }
+  ) {
+    return await this.ordersService.createOrderPaymentIntent(id, req.user!);
+  }
+
+  // Stripe step 2 (or test mode): verify the confirmed intent / mock and mark paid.
   @UseGuards(AuthGuard)
   @Post("orders/:id/payments")
   async createOrderPayment(

@@ -28,6 +28,11 @@ export default function StorefrontPage() {
   const { data, isLoading, isError } = usePublicStore(slug ?? null);
   const store = data?.store;
   const [activeCategory, setActiveCategory] = useState<string>("All");
+  const [selectedColors, setSelectedColors] = useState<string[]>([]);
+  const [priceMax, setPriceMax] = useState<number | null>(null);
+
+  const productPrice = (p: { floorPrice?: number | null; basePrice?: number | null; lowestPrice?: number | null }) =>
+    p.floorPrice ?? p.basePrice ?? p.lowestPrice ?? 0;
 
   const categories = useMemo(() => {
     if (!store) return [];
@@ -36,11 +41,40 @@ export default function StorefrontPage() {
     return Array.from(set);
   }, [store]);
 
+  const colors = useMemo(() => {
+    if (!store) return [] as { name: string; hex: string | null }[];
+    const map = new Map<string, string | null>();
+    store.products.forEach((p) =>
+      (p.swatches ?? []).forEach((s) => {
+        if (s.name && !map.has(s.name)) map.set(s.name, s.hex ?? null);
+      })
+    );
+    return Array.from(map, ([name, hex]) => ({ name, hex }));
+  }, [store]);
+
+  const priceCeiling = useMemo(() => {
+    if (!store || !store.products.length) return 0;
+    return Math.ceil(Math.max(...store.products.map((p) => productPrice(p))));
+  }, [store]);
+
   const visibleProducts = useMemo(() => {
     if (!store) return [];
-    if (activeCategory === "All") return store.products;
-    return store.products.filter((p) => p.category?.name === activeCategory);
-  }, [store, activeCategory]);
+    return store.products.filter((p) => {
+      if (activeCategory !== "All" && p.category?.name !== activeCategory) return false;
+      if (selectedColors.length && !(p.swatches ?? []).some((s) => selectedColors.includes(s.name))) return false;
+      if (priceMax != null && productPrice(p) > priceMax) return false;
+      return true;
+    });
+  }, [store, activeCategory, selectedColors, priceMax]);
+
+  const toggleColor = (name: string) =>
+    setSelectedColors((c) => (c.includes(name) ? c.filter((x) => x !== name) : [...c, name]));
+  const clearFilters = () => {
+    setActiveCategory("All");
+    setSelectedColors([]);
+    setPriceMax(null);
+  };
+  const filtersActive = activeCategory !== "All" || selectedColors.length > 0 || priceMax != null;
 
   if (isLoading) {
     return (
@@ -184,7 +218,7 @@ export default function StorefrontPage() {
           </div>
         </section>
 
-        {/* Products */}
+        {/* Products — shop-style layout with a left filter sidebar */}
         <section id="products" className="mx-auto max-w-site px-6 py-14 scroll-mt-20">
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
@@ -193,39 +227,108 @@ export default function StorefrontPage() {
             </div>
           </div>
 
-          {categories.length > 1 ? (
-            <div className="mt-6 flex flex-wrap gap-2">
-              {["All", ...categories].map((cat) => (
-                <button
-                  key={cat}
-                  type="button"
-                  onClick={() => setActiveCategory(cat)}
-                  className={`rounded-full border px-4 py-1.5 text-sm font-medium transition ${
-                    activeCategory === cat
-                      ? "border-primary bg-primary text-primary-foreground"
-                      : "border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground"
-                  }`}
-                >
-                  {cat}
-                </button>
-              ))}
-            </div>
-          ) : null}
+          <div className="mt-8 grid gap-8 lg:grid-cols-[15rem_1fr]">
+            {/* Left filters */}
+            <aside className="space-y-6 lg:sticky lg:top-24 lg:self-start">
+              <div className="flex items-center justify-between">
+                <h3 className="font-display text-sm font-bold uppercase tracking-wide text-foreground">Filters</h3>
+                {filtersActive ? (
+                  <button onClick={clearFilters} className="text-xs font-medium text-primary hover:underline">
+                    Clear
+                  </button>
+                ) : null}
+              </div>
 
-          {visibleProducts.length ? (
-            <div className="mt-8 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {visibleProducts.map((product) => (
-                <ProductCard key={product.id} product={product} />
-              ))}
-            </div>
-          ) : (
-            <div className="mt-8 flex flex-col items-center rounded-2xl border border-dashed border-border bg-card/50 px-6 py-16 text-center">
-              <PackageOpen className="size-6 text-muted-foreground" />
-              <p className="mt-3 text-sm text-muted-foreground">
-                This store hasn&apos;t added any products yet.
+              {/* Category */}
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Category</p>
+                <div className="mt-2 space-y-1">
+                  {["All", ...categories].map((cat) => (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() => setActiveCategory(cat)}
+                      className={`block w-full rounded-lg px-3 py-1.5 text-left text-sm transition ${
+                        activeCategory === cat
+                          ? "bg-brand-soft font-medium text-primary"
+                          : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                      }`}
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Colors */}
+              {colors.length ? (
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Color</p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {colors.map((c) => (
+                      <button
+                        key={c.name}
+                        type="button"
+                        title={c.name}
+                        onClick={() => toggleColor(c.name)}
+                        className={`size-7 rounded-full border-2 transition ${
+                          selectedColors.includes(c.name) ? "border-primary ring-2 ring-primary/30" : "border-border"
+                        }`}
+                        style={{ backgroundColor: c.hex ?? "#ddd" }}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
+              {/* Price */}
+              {priceCeiling > 0 ? (
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Max price{priceMax != null ? `: $${priceMax}` : ""}
+                  </p>
+                  <input
+                    type="range"
+                    min={0}
+                    max={priceCeiling}
+                    value={priceMax ?? priceCeiling}
+                    onChange={(e) => setPriceMax(Number(e.target.value))}
+                    className="mt-3 w-full accent-[var(--primary)]"
+                  />
+                  <div className="mt-1 flex justify-between text-xs text-muted-foreground">
+                    <span>$0</span>
+                    <span>${priceCeiling}</span>
+                  </div>
+                </div>
+              ) : null}
+            </aside>
+
+            {/* Product grid */}
+            <div>
+              <p className="mb-4 text-sm text-muted-foreground">
+                {visibleProducts.length} product{visibleProducts.length === 1 ? "" : "s"}
               </p>
+              {visibleProducts.length ? (
+                <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
+                  {visibleProducts.map((product) => (
+                    <ProductCard
+                      key={product.id}
+                      product={product}
+                      branding={product.branding}
+                      storeSlug={store.slug}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center rounded-2xl border border-dashed border-border bg-card/50 px-6 py-16 text-center">
+                  <PackageOpen className="size-6 text-muted-foreground" />
+                  <p className="mt-3 text-sm text-muted-foreground">
+                    {store.products.length ? "No products match these filters." : "This store hasn't added any products yet."}
+                  </p>
+                </div>
+              )}
             </div>
-          )}
+          </div>
         </section>
 
         {/* CTA band */}

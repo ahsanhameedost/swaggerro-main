@@ -22,6 +22,22 @@ const slugSchema = z
   .max(120)
   .regex(/^[a-z0-9-]+$/, "Slug can only contain lowercase letters, numbers and dashes");
 
+// Per-product logo placement (matches the seller-side mockup editor).
+const placementSchema = z.object({
+  x: z.number(),
+  y: z.number(),
+  size: z.number(),
+  rotation: z.number(),
+  opacity: z.number()
+});
+
+const productBrandingSchema = z.object({
+  productId: z.string().trim(),
+  logoUrl: z.string().url().max(2048).optional().nullable(),
+  logoKey: z.string().max(500).optional().nullable(),
+  placement: placementSchema.optional().nullable()
+});
+
 export const listStoresQuerySchema = z.object({
   search: z
     .string()
@@ -45,7 +61,8 @@ export const createStoreSchema = z.object({
   logoUrl: z.string().url().max(2048).optional().nullable(),
   logoKey: z.string().max(500).optional().nullable(),
   theme: themeSchema,
-  productIds: z.array(z.string().trim()).max(500).optional()
+  productIds: z.array(z.string().trim()).max(500).optional(),
+  productBranding: z.array(productBrandingSchema).max(500).optional()
 });
 
 export const updateStoreSchema = createStoreSchema.partial();
@@ -60,10 +77,12 @@ export const updateOwnStoreSchema = z.object({
   logoUrl: z.string().url().max(2048).optional().nullable(),
   logoKey: z.string().max(500).optional().nullable(),
   theme: themeSchema,
-  productIds: z.array(z.string().trim()).max(500).optional()
+  productIds: z.array(z.string().trim()).max(500).optional(),
+  productBranding: z.array(productBrandingSchema).max(500).optional()
 });
 
 export type ListStoresQuery = z.infer<typeof listStoresQuerySchema>;
 export type CreateStoreInput = z.infer<typeof createStoreSchema>;
 export type UpdateStoreInput = z.infer<typeof updateStoreSchema>;
 export type UpdateOwnStoreInput = z.infer<typeof updateOwnStoreSchema>;
+export type ProductBrandingInput = z.infer<typeof productBrandingSchema>;

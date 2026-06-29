@@ -45,3 +45,10 @@ export async function deleteEmployee(id: string) {
     method: "DELETE"
   });
 }
+
+export async function resetUserPassword(id: string, newPassword: string) {
+  return apiFetch<{ ok: true }>(`/users/${id}/reset-password`, {
+    method: "POST",
+    body: JSON.stringify({ newPassword })
+  });
+}

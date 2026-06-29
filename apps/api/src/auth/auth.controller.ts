@@ -12,6 +12,11 @@ import { RequirePermissions } from "../common/decorators/permissions.decorator";
 import { UsersService } from "../users/users.service";
 import { updateProfileSchema } from "../users/user.dto";
 import { verifyPasswordResetCodeSchema } from "./dto/verify-password-reset-code.dto";
+import {
+  completeAccountSetupSchema,
+  verifyAccountSetupSchema
+} from "./dto/account-setup.dto";
+import { changePasswordSchema } from "./dto/change-password.dto";
 
 @Controller("auth")
 export class AuthController {
@@ -68,6 +73,44 @@ export class AuthController {
   async resetPassword(@Body() body: unknown) {
     const dto = resetPasswordWithCodeSchema.parse(body);
     return this.auth.resetPasswordWithCode(dto);
+  }
+
+  // Seller account setup (post-approval): verify the one-time link, then set
+  // username + password. Completing it logs the seller in via the auth cookie.
+  @Post("account-setup/verify")
+  async verifyAccountSetup(@Body() body: unknown) {
+    const dto = verifyAccountSetupSchema.parse(body);
+    return this.auth.verifyAccountSetup(dto);
+  }
+
+  @Post("account-setup/complete")
+  async completeAccountSetup(
+    @Body() body: unknown,
+    @Res({ passthrough: true }) reply: FastifyReply
+  ) {
+    const dto = completeAccountSetupSchema.parse(body);
+    const { token, user } = await this.auth.completeAccountSetup(dto);
+
+    reply.setCookie(env.COOKIE_NAME, token, {
+      httpOnly: true,
+      secure: env.COOKIE_SECURE,
+      sameSite: "lax",
+      path: "/",
+      maxAge: 60 * 60 * 24 * 7
+    });
+
+    return { user };
+  }
+
+  // Self-service password change for any logged-in user.
+  @UseGuards(AuthGuard)
+  @Post("change-password")
+  async changePassword(
+    @Req() req: FastifyRequest & { user?: { sub: string } },
+    @Body() body: unknown
+  ) {
+    const dto = changePasswordSchema.parse(body);
+    return this.auth.changePassword(req.user!.sub, dto);
   }
 
   @UseGuards(AuthGuard)

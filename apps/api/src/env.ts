@@ -54,8 +54,13 @@ const schema = z.object({
   SQUARE_LOCATION_ID: z.string().optional(),
   SQUARE_API_VERSION: z.string().default("2026-01-22"),
 
-  // When true, order payments are mocked as successful instead of calling Square.
-  // For local/testing only — never enable in production.
+  // Stripe is the active card payment provider (test keys = sandbox). The
+  // publishable key is also exposed to the client via the payment-intent route.
+  STRIPE_SECRET_KEY: z.string().optional(),
+  STRIPE_PUBLISHABLE_KEY: z.string().optional(),
+
+  // When true, order payments are mocked as successful instead of calling the
+  // payment provider. For local/testing only — never enable in production.
   PAYMENTS_TEST_MODE: boolFromEnv(false),
 });
 

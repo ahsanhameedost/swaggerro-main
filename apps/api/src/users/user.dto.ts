@@ -32,7 +32,13 @@ export const updateProfileSchema = z.object({
   avatarKey: z.string().trim().max(512).optional().nullable()
 });
 
+// Admin reset of another user's password (no current password required).
+export const resetUserPasswordSchema = z.object({
+  newPassword: z.string().min(8, "Password must be at least 8 characters").max(200)
+});
+
 export type ListUsersQueryDto = z.infer<typeof listUsersQuerySchema>;
+export type ResetUserPasswordDto = z.infer<typeof resetUserPasswordSchema>;
 export type CreateEmployeeDto = z.infer<typeof createEmployeeSchema>;
 export type UpdateEmployeeDto = z.infer<typeof updateEmployeeSchema>;
 export type UpdateProfileDto = z.infer<typeof updateProfileSchema>;

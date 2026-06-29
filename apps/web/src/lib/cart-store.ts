@@ -17,6 +17,10 @@ type CartItemBase = {
   minQty: number;
   currency: string;
   pricingOptions: CatalogPricingOption[];
+  // White-label store the item was added from (drives payout attribution).
+  // Absent for items added from the global shop.
+  storeId?: string | null;
+  storeSlug?: string | null;
 };
 
 export type BulkCartItem = CartItemBase & {
@@ -72,8 +76,12 @@ type CatalogCartStore = CatalogCartSnapshot & {
   clearCart: () => void;
 };
 
-function getItemKey(item: Pick<CartItemBase, "productId" | "productCatalogVariantId">) {
-  return `${item.productId}:${item.productCatalogVariantId ?? "base"}`;
+function getItemKey(
+  item: Pick<CartItemBase, "productId" | "productCatalogVariantId" | "storeId">
+) {
+  // Same product bought from different stores (or the global shop) are distinct
+  // cart lines so each keeps its own store attribution.
+  return `${item.storeId ?? "shop"}:${item.productId}:${item.productCatalogVariantId ?? "base"}`;
 }
 
 function upsertBulk(items: BulkCartItem[], nextItem: BulkCartItem) {
@@ -114,7 +122,9 @@ function upsertSwagPack(items: SwagPackCartItem[], nextItem: SwagPackCartItem) {
   );
 }
 
-export function getCartItemKey(item: Pick<CartItemBase, "productId" | "productCatalogVariantId">) {
+export function getCartItemKey(
+  item: Pick<CartItemBase, "productId" | "productCatalogVariantId" | "storeId">
+) {
   return getItemKey(item);
 }
 

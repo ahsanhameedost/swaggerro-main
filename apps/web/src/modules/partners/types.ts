@@ -10,6 +10,8 @@ export type SellerApplication = {
   businessDescription: string;
   industry: string;
   country: string;
+  state: string | null;
+  desiredSlug: string | null;
   logoUrl: string | null;
   logoKey: string | null;
   website: string | null;
@@ -30,10 +32,19 @@ export type CreateSellerApplicationInput = {
   businessDescription: string;
   industry: string;
   country: string;
+  state?: string;
+  desiredSlug?: string;
   website?: string;
   additionalInfo?: string;
   logoUrl?: string | null;
   logoKey?: string | null;
+};
+
+export type AvailabilityResult = {
+  slug?: string;
+  slugTaken?: boolean;
+  email?: string;
+  emailTaken?: boolean;
 };
 
 export type ListSellerApplicationsParams = {

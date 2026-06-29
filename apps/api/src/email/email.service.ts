@@ -767,29 +767,30 @@ Swaggeroo Team`,
     contactName: string;
     storeName: string;
     storeSlug: string;
-    tempPassword: string | null;
+    setupUrl: string | null;
   }) {
     const webBase = (env.CORS_ORIGIN || "http://localhost:3000").split(",")[0].trim();
     const storeUrl = `${webBase}/store/${payload.storeSlug}`;
     const dashUrl = `${webBase}/seller`;
     this.logger.log(`sendSellerOnboardingEmail start to=${payload.to} store=${payload.storeSlug}`);
 
-    const credBlock = payload.tempPassword
-      ? `Your login:\nEmail: ${payload.to}\nTemporary password: ${payload.tempPassword}\n(Please change it after signing in.)\n\n`
+    const credBlock = payload.setupUrl
+      ? `Set up your account (verify your email and choose a username + password):\n${payload.setupUrl}\n\n`
       : `Sign in with your existing Swaggeroo account.\n\n`;
 
     const info = await this.transporter.sendMail({
       from: env.EMAIL_FROM,
       to: payload.to,
-      subject: `Your Swaggeroo store is live — ${payload.storeName}`,
+      subject: `Your Swaggeroo store is approved — ${payload.storeName}`,
       text: `Hi ${payload.contactName},
 
-Congratulations! Your application has been approved and your white-label store "${payload.storeName}" is now live.
+Congratulations! Your application has been approved and your white-label store "${payload.storeName}" is being set up.
 
+${credBlock}Once your account is set up:
 Storefront: ${storeUrl}
 Seller dashboard: ${dashUrl}
 
-${credBlock}From your seller dashboard you can customize your branding, add products, and manage your store.
+From your seller dashboard you can customize your branding, add products, and manage your store.
 
 Swaggeroo Team`,
       html: `
@@ -810,12 +811,11 @@ Swaggeroo Team`,
                 <p style="margin:0 0 8px;"><strong>Storefront:</strong> <a href="${escapeHtml(storeUrl)}" style="color:#1e40af;">${escapeHtml(storeUrl)}</a></p>
                 <p style="margin:0 0 18px;"><strong>Seller dashboard:</strong> <a href="${escapeHtml(dashUrl)}" style="color:#1e40af;">${escapeHtml(dashUrl)}</a></p>
                 ${
-                  payload.tempPassword
+                  payload.setupUrl
                     ? `<div style="margin:0 0 18px;padding:16px 18px;border:1px solid #e5e7eb;border-radius:14px;background:#fafafa;">
-                        <p style="margin:0 0 6px;font-weight:600;color:#111827;">Your login</p>
-                        <p style="margin:0;">Email: ${escapeHtml(payload.to)}</p>
-                        <p style="margin:0;">Temporary password: <strong>${escapeHtml(payload.tempPassword)}</strong></p>
-                        <p style="margin:8px 0 0;font-size:12px;color:#6b7280;">Please change it after signing in.</p>
+                        <p style="margin:0 0 10px;font-weight:600;color:#111827;">Set up your account</p>
+                        <p style="margin:0 0 12px;font-size:14px;color:#374151;">Verify your email and choose a username + password to access your dashboard.</p>
+                        <a href="${escapeHtml(payload.setupUrl)}" style="display:inline-block;background:#1e40af;color:#ffffff;text-decoration:none;padding:10px 18px;border-radius:10px;font-weight:600;">Set up account</a>
                       </div>`
                     : `<p style="margin:0 0 18px;">Sign in with your existing Swaggeroo account.</p>`
                 }

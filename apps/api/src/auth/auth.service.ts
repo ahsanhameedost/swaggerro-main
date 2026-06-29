@@ -14,6 +14,11 @@ import {
 import { PrismaService } from "../prisma/prisma.service";
 import { ResetPasswordWithCodeDto } from "./dto/reset-password-with-code.dto";
 import { VerifyPasswordResetCodeDto } from "./dto/verify-password-reset-code.dto";
+import {
+  CompleteAccountSetupDto,
+  VerifyAccountSetupDto
+} from "./dto/account-setup.dto";
+import { ChangePasswordDto } from "./dto/change-password.dto";
 
 @Injectable()
 export class AuthService {
@@ -68,6 +73,14 @@ export class AuthService {
     const userRow = await this.users.findByEmail(email.trim().toLowerCase());
     if (!userRow) {
       throw new UnauthorizedException("Invalid credentials");
+    }
+
+    // Approved sellers must finish account setup (verify email + set password)
+    // via their one-time link before they can sign in.
+    if ((userRow as { mustSetPassword?: boolean }).mustSetPassword) {
+      throw new UnauthorizedException(
+        "Please finish setting up your account using the link we emailed you."
+      );
     }
 
     const isValid = bcrypt.compareSync(password, userRow.passwordHash);
@@ -172,6 +185,86 @@ export class AuthService {
     );
 
     return { ok: true };
+  }
+
+  async changePassword(userId: string, dto: ChangePasswordDto) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, passwordHash: true }
+    });
+    if (!user) {
+      throw new NotFoundException("User not found");
+    }
+    if (!bcrypt.compareSync(dto.currentPassword, user.passwordHash)) {
+      throw new BadRequestException("Your current password is incorrect");
+    }
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash: bcrypt.hashSync(dto.newPassword, 12), mustSetPassword: false }
+    });
+    return { ok: true };
+  }
+
+  // ---- account setup (seller onboarding: verify email + set credentials) ----
+
+  async verifyAccountSetup(dto: VerifyAccountSetupDto) {
+    const setup = await this.getValidSetupToken(dto.token);
+    return { ok: true, email: setup.email };
+  }
+
+  async completeAccountSetup(dto: CompleteAccountSetupDto) {
+    const setup = await this.getValidSetupToken(dto.token);
+    const username = dto.username.trim();
+
+    // Username must be unique (excluding the same user, in case they retry).
+    const usernameOwner = await this.prisma.user.findUnique({
+      where: { username },
+      select: { id: true }
+    });
+    if (usernameOwner && usernameOwner.id !== setup.userId) {
+      throw new ConflictException("That username is taken");
+    }
+
+    const passwordHash = bcrypt.hashSync(dto.password, 12);
+
+    await this.prisma.$transaction([
+      this.prisma.user.update({
+        where: { id: setup.userId },
+        data: {
+          username,
+          passwordHash,
+          mustSetPassword: false,
+          emailVerifiedAt: new Date()
+        }
+      }),
+      // Invalidate this and any other outstanding setup tokens for the user.
+      this.prisma.accountSetupToken.updateMany({
+        where: { userId: setup.userId, usedAt: null },
+        data: { usedAt: new Date() }
+      })
+    ]);
+
+    const user = await this.users.findByIdWithPermissions(setup.userId);
+    const token = await this.jwt.signAsync({
+      sub: user!.id,
+      email: user!.email,
+      role: user!.role,
+      permissions: user!.permissions
+    });
+
+    return { token, user };
+  }
+
+  private async getValidSetupToken(tokenInput: string) {
+    const token = tokenInput.trim();
+    const setup = await this.prisma.accountSetupToken.findFirst({
+      where: { token, usedAt: null, expiresAt: { gt: new Date() } },
+      orderBy: { createdAt: "desc" }
+    });
+    if (!setup) {
+      throw new BadRequestException("This setup link is invalid or has expired");
+    }
+    return setup;
   }
 
   private async getValidResetCode(emailInput: string, codeInput: string) {

@@ -5,6 +5,7 @@ import { PrismaModule } from "../prisma/prisma.module";
 import { PermissionsGuard } from "../common/guards/permissions.guard";
 import { EMAIL_QUEUE } from "../email/email.constants";
 import { StoresModule } from "../stores/stores.module";
+import { NotificationsModule } from "../notifications/notifications.module";
 import { PartnersController } from "./partners.controller";
 import { PartnersService } from "./partners.service";
 
@@ -13,6 +14,7 @@ import { PartnersService } from "./partners.service";
     AuthModule,
     PrismaModule,
     StoresModule,
+    NotificationsModule,
     BullModule.registerQueue({ name: EMAIL_QUEUE })
   ],
   controllers: [PartnersController],

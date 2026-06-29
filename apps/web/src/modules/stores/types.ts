@@ -2,6 +2,32 @@ import type { CatalogProductListItem } from "@/modules/catalog/products/types";
 
 export type StoreStatus = "DRAFT" | "ACTIVE" | "SUSPENDED";
 
+// Per-product logo placement (matches the seller mockup editor + API).
+export type LogoPlacement = {
+  x: number;
+  y: number;
+  size: number;
+  rotation: number;
+  opacity: number;
+};
+
+export type ProductBranding = {
+  logoUrl: string | null;
+  placement: LogoPlacement | null;
+};
+
+// A curated store product card, plus the seller's optional logo branding.
+export type StoreProductCard = CatalogProductListItem & {
+  branding: ProductBranding | null;
+};
+
+export type ProductBrandingInput = {
+  productId: string;
+  logoUrl?: string | null;
+  logoKey?: string | null;
+  placement?: LogoPlacement | null;
+};
+
 export type StoreTheme = {
   primary: string;
   primarySoft: string;
@@ -23,7 +49,7 @@ export type Store = {
   logoKey: string | null;
   theme: StoreTheme;
   productCount: number;
-  products: CatalogProductListItem[];
+  products: StoreProductCard[];
   createdAt: string;
   updatedAt: string;
 };
@@ -54,6 +80,7 @@ export type UpdateStoreInput = {
   logoKey?: string | null;
   theme?: StoreThemeInput;
   productIds?: string[];
+  productBranding?: ProductBrandingInput[];
 };
 
 export type CreateStoreInput = UpdateStoreInput & { name: string };

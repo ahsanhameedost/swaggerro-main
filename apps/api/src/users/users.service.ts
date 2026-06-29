@@ -238,7 +238,9 @@ export class UsersService {
     };
   }
 
-  async listUsers(query: ListUsersQueryDto = {}) {
+  async listUsers(query: ListUsersQueryDto = {}, authUser?: AuthUser) {
+    // Only a super admin may see the encrypted password hash + username.
+    const isSuperAdmin = authUser?.role === SUPER_ADMIN_ROLE_NAME;
     const users = await this.prisma.user.findMany({
       where: {
         ...(query.role ? { role: { name: query.role } } : {}),
@@ -260,11 +262,34 @@ export class UsersService {
         lastName: true,
         phone: true,
         createdAt: true,
-        role: { select: { id: true, name: true } }
+        role: { select: { id: true, name: true } },
+        ...(isSuperAdmin
+          ? { username: true, passwordHash: true, emailVerifiedAt: true, mustSetPassword: true }
+          : {})
       }
     });
 
     return users;
+  }
+
+  // Super admin / admin.users.write can set a new password for any user. A
+  // non-super-admin cannot reset a super admin's password.
+  async resetUserPassword(targetId: string, newPassword: string, authUser: AuthUser) {
+    const target = await this.prisma.user.findUnique({
+      where: { id: targetId },
+      select: { id: true, role: { select: { name: true } } }
+    });
+    if (!target) {
+      throw new NotFoundException("User not found");
+    }
+    if (target.role.name === SUPER_ADMIN_ROLE_NAME && authUser.role !== SUPER_ADMIN_ROLE_NAME) {
+      throw new ForbiddenException("Only a super admin can reset a super admin's password");
+    }
+    await this.prisma.user.update({
+      where: { id: targetId },
+      data: { passwordHash: bcrypt.hashSync(newPassword, 12), mustSetPassword: false }
+    });
+    return { ok: true };
   }
 
   async listEmployees(search?: string) {

@@ -7,7 +7,7 @@ import { ArrowLeft, CheckCircle2, LockKeyhole } from "lucide-react";
 import { useCatalogOrder } from "@/lib/queries.catalog";
 import { formatMoney } from "@/lib/money";
 import { useMe } from "@/queries/auth";
-import { SquareCardPaymentForm } from "@/app/components/dashboard/orders/SquareCardPaymentForm";
+import { StripeCardPaymentForm } from "@/app/components/dashboard/orders/StripeCardPaymentForm";
 import { TestPaymentForm } from "@/app/components/dashboard/orders/TestPaymentForm";
 import { formatItemTypeLabel, formatOrderTypeLabel } from "@/lib/order-flow";
 import { hasPermission } from "@/lib/permissions";
@@ -192,7 +192,7 @@ export default function OrderCheckoutPage() {
 
         <div className="flex items-center gap-2 rounded-full bg-content1 px-4 py-2 text-sm text-foreground/65">
           <LockKeyhole className="size-4" />
-          {PAYMENTS_TEST_MODE ? "Test checkout (no real charge)" : "Secure checkout powered by Square"}
+          {PAYMENTS_TEST_MODE ? "Test checkout (no real charge)" : "Secure checkout powered by Stripe"}
         </div>
       </div>
 
@@ -286,7 +286,7 @@ export default function OrderCheckoutPage() {
                   onSuccess={() => router.refresh()}
                 />
               ) : (
-                <SquareCardPaymentForm
+                <StripeCardPaymentForm
                   orderId={order.id}
                   amount={order.totalDue}
                   currency={order.currency}
@@ -359,7 +359,7 @@ export default function OrderCheckoutPage() {
             </div>
 
             <div className="rounded-3xl border border-divider bg-content1 px-4 py-3 text-xs text-foreground/55">
-              Orders are charged server-side using Square Payments after the card token is securely generated in the browser.
+              Orders are charged with Stripe — your card is confirmed securely in the browser, then verified server-side before the order is marked paid.
             </div>
           </CardBody>
         </Card>

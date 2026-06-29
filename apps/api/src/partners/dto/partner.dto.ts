@@ -24,6 +24,22 @@ export const createSellerApplicationSchema = z.object({
   businessDescription: z.string().trim().min(1, "Business description is required").max(4000),
   industry: z.string().trim().min(1, "Industry is required").max(160),
   country: z.string().trim().min(1, "Country is required").max(120),
+  state: z
+    .string()
+    .trim()
+    .max(120)
+    .optional()
+    .or(z.literal(""))
+    .transform((value) => (value ? value : undefined)),
+  // Desired storefront URL slug (e.g. "acme-corp" → swaggeroo.com/store/acme-corp).
+  // Optional: if omitted we derive it from the company name during onboarding.
+  desiredSlug: z
+    .string()
+    .trim()
+    .max(120)
+    .optional()
+    .or(z.literal(""))
+    .transform((value) => (value ? value : undefined)),
   website: z
     .string()
     .trim()
@@ -35,6 +51,18 @@ export const createSellerApplicationSchema = z.object({
   logoUrl: z.string().url().max(2048).optional().nullable(),
   logoKey: z.string().max(500).optional().nullable()
 });
+
+// Public availability check for the multi-step signup form: lets the UI warn
+// about a duplicate store URL or an already-registered business email before
+// the applicant submits.
+export const checkAvailabilityQuerySchema = z
+  .object({
+    slug: z.string().trim().max(120).optional(),
+    email: z.string().trim().max(200).optional()
+  })
+  .refine((value) => value.slug || value.email, {
+    message: "Provide a slug or email to check"
+  });
 
 export const listSellerApplicationsQuerySchema = z.object({
   search: z
@@ -54,6 +82,7 @@ export const updateSellerApplicationStatusSchema = z.object({
 });
 
 export type CreateSellerApplicationInput = z.infer<typeof createSellerApplicationSchema>;
+export type CheckAvailabilityQuery = z.infer<typeof checkAvailabilityQuerySchema>;
 export type ListSellerApplicationsQuery = z.infer<typeof listSellerApplicationsQuerySchema>;
 export type UpdateSellerApplicationStatusInput = z.infer<
   typeof updateSellerApplicationStatusSchema

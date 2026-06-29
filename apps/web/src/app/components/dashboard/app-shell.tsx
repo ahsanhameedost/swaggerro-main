@@ -20,6 +20,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import React from "react";
 import LogoMark from "@/assets/swaggroo-logo.png";
 import Image from "next/image";
+import { NotificationBell } from "@/app/components/notifications/NotificationBell";
 
 const TOPBAR_H = 72;
 const SIDEBAR_EXPANDED = 288;
@@ -516,7 +517,10 @@ export function AppShell({
                 )}
               </Button>
 
-              <ProfileMenu user={user} onLogout={onLogout} />
+              <div className="flex items-center gap-1">
+                <NotificationBell />
+                <ProfileMenu user={user} onLogout={onLogout} />
+              </div>
             </div>
           </div>
         </header>

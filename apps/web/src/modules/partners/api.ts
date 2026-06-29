@@ -1,5 +1,6 @@
 import { apiFetch } from "@/lib/api";
 import type {
+  AvailabilityResult,
   CreateSellerApplicationInput,
   ListSellerApplicationsParams,
   SellerApplication,
@@ -15,6 +16,12 @@ function buildQuery(params: Record<string, unknown>) {
   }
   const qs = search.toString();
   return qs ? `?${qs}` : "";
+}
+
+export async function checkSellerAvailability(params: { slug?: string; email?: string }) {
+  return apiFetch<AvailabilityResult>(`/partners/applications/availability${buildQuery(params)}`, {
+    method: "GET"
+  });
 }
 
 export async function submitSellerApplication(input: CreateSellerApplicationInput) {
