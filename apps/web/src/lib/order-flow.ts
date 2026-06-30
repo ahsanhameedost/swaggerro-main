@@ -56,6 +56,24 @@ export function getOrderStatusColor(
   }
 }
 
+/** HeroUI Chip color for each payment status. */
+export function getPaymentStatusColor(
+  status: string
+): "default" | "primary" | "secondary" | "success" | "warning" | "danger" {
+  switch (status) {
+    case "PAID":
+      return "success";
+    case "PENDING":
+      return "warning";
+    case "FAILED":
+    case "REFUNDED":
+      return "danger";
+    case "UNPAID":
+    default:
+      return "default";
+  }
+}
+
 export function formatOrderTypeLabel(type: CatalogOrder["type"]) {
   switch (type) {
     case "SWAG_PACK":

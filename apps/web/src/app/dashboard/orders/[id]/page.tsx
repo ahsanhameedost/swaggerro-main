@@ -40,6 +40,7 @@ import {
   formatOrderStatusLabel,
   formatOrderTypeLabel,
   getOrderStatusColor,
+  getPaymentStatusColor,
   getPreferredDesignImage
 } from "@/lib/order-flow";
 import type { CatalogOrderItem, CatalogOrderDesignPhase, CatalogOrderStatus } from "@/modules/catalog/orders/types";
@@ -404,7 +405,7 @@ export default function OrderDetailsPage() {
               <Chip size="sm" variant="flat" color={getOrderStatusColor(order.status)}>
                 {formatOrderStatusLabel(order.status)}
               </Chip>
-              <Chip size="sm" variant="flat">
+              <Chip size="sm" variant="flat" color={getPaymentStatusColor(order.paymentStatus)}>
                 {formatOrderStatusLabel(order.paymentStatus)}
               </Chip>
             </div>

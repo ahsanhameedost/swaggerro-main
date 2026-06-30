@@ -1,6 +1,11 @@
 import { z } from "zod";
 import { isBusinessEmail } from "../../common/utils/business-email";
 
+// Version of the Swaggeroo Seller Agreement currently in force. Bump this when
+// the contract text changes so we can tell which version each seller accepted.
+// Keep in sync with apps/web/src/lib/seller-agreement.ts.
+export const SELLER_AGREEMENT_VERSION = "2026-06-v1";
+
 export const sellerApplicationStatusSchema = z.enum([
   "NEW",
   "UNDER_REVIEW",
@@ -49,7 +54,12 @@ export const createSellerApplicationSchema = z.object({
     .transform((value) => (value ? value : undefined)),
   additionalInfo: z.string().trim().max(4000).optional(),
   logoUrl: z.string().url().max(2048).optional().nullable(),
-  logoKey: z.string().max(500).optional().nullable()
+  logoKey: z.string().max(500).optional().nullable(),
+  // Seller must accept the Swaggeroo Seller Agreement before submitting.
+  termsAccepted: z.literal(true, {
+    message: "You must accept the Seller Agreement to continue"
+  }),
+  termsVersion: z.string().trim().max(40).optional()
 });
 
 // Public availability check for the multi-step signup form: lets the UI warn

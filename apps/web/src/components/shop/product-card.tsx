@@ -18,13 +18,17 @@ export function ProductCard({
   branding,
   storeSlug,
 }: {
-  product: CatalogProductListItem;
+  product: CatalogProductListItem & { customPrice?: number | null };
   branding?: ProductBranding | null;
   // When set, the card links into the white-label store instead of the global shop.
   storeSlug?: string;
 }) {
-  // Show the true "from" price — the cheapest volume tier.
-  const fromPrice = product.floorPrice ?? product.basePrice ?? product.lowestPrice ?? 0;
+  // On a seller store, the seller's custom price (if set) wins; otherwise show
+  // the true "from" price — the cheapest volume tier.
+  const fromPrice =
+    product.customPrice != null && product.customPrice > 0
+      ? product.customPrice
+      : product.floorPrice ?? product.basePrice ?? product.lowestPrice ?? 0;
   const priceLabel = formatMoney(fromPrice, product.currency);
   const swatches = product.swatches ?? [];
   const overlay = branding?.logoUrl && branding.placement ? branding : null;

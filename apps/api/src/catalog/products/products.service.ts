@@ -501,7 +501,10 @@ export class CatalogProductsService extends CatalogSharedService {
           compareAtPrice: input.compareAtPrice != null ? new Prisma.Decimal(input.compareAtPrice) : null,
           minQty: input.minQty ?? 1,
           baseStock: input.productCatalogVariants.length ? 0 : input.baseStock ?? 0,
-          currency: input.currency || "USD"
+          currency: input.currency || "USD",
+          commissionType: input.commissionType ?? "PERCENT",
+          commissionValue:
+            input.commissionValue != null ? new Prisma.Decimal(input.commissionValue) : null
         }
       });
 
@@ -591,6 +594,15 @@ if (input.categoryId !== undefined) data.category = input.categoryId ? { connect
 
       if (input.currency !== undefined) {
         data.currency = input.currency || "USD";
+      }
+
+      if (input.commissionType !== undefined) {
+        data.commissionType = input.commissionType;
+      }
+
+      if (input.commissionValue !== undefined) {
+        data.commissionValue =
+          input.commissionValue != null ? new Prisma.Decimal(input.commissionValue) : null;
       }
 
       await tx.catalogProduct.update({

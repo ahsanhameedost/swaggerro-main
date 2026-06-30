@@ -5,11 +5,12 @@ import { PrismaService } from "../prisma/prisma.service";
 import { EMAIL_QUEUE, JOB_PARTNER_APPLICATION_EMAIL } from "../email/email.constants";
 import { StoresService } from "../stores/stores.service";
 import { NotificationsService } from "../notifications/notifications.service";
-import type {
-  CheckAvailabilityQuery,
-  CreateSellerApplicationInput,
-  ListSellerApplicationsQuery,
-  UpdateSellerApplicationStatusInput
+import {
+  SELLER_AGREEMENT_VERSION,
+  type CheckAvailabilityQuery,
+  type CreateSellerApplicationInput,
+  type ListSellerApplicationsQuery,
+  type UpdateSellerApplicationStatusInput
 } from "./dto/partner.dto";
 
 // Shared slug normalization — keep in sync with the store slug format
@@ -50,7 +51,9 @@ export class PartnersService {
         website: input.website?.trim() || null,
         additionalInfo: input.additionalInfo?.trim() || null,
         logoUrl: input.logoUrl || null,
-        logoKey: input.logoKey || null
+        logoKey: input.logoKey || null,
+        termsAgreedAt: new Date(),
+        termsVersion: input.termsVersion?.trim() || SELLER_AGREEMENT_VERSION
       },
       select: { id: true }
     });
@@ -263,6 +266,8 @@ export class PartnersService {
     status: string;
     adminNotes: string | null;
     reviewedAt: Date | null;
+    termsAgreedAt?: Date | null;
+    termsVersion?: string | null;
     createdAt: Date;
     updatedAt: Date;
   }) {
@@ -285,6 +290,8 @@ export class PartnersService {
       status: item.status,
       adminNotes: item.adminNotes,
       reviewedAt: item.reviewedAt ? item.reviewedAt.toISOString() : null,
+      termsAgreedAt: item.termsAgreedAt ? item.termsAgreedAt.toISOString() : null,
+      termsVersion: item.termsVersion ?? null,
       createdAt: item.createdAt.toISOString(),
       updatedAt: item.updatedAt.toISOString()
     };

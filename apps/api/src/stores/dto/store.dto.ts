@@ -35,7 +35,10 @@ const productBrandingSchema = z.object({
   productId: z.string().trim(),
   logoUrl: z.string().url().max(2048).optional().nullable(),
   logoKey: z.string().max(500).optional().nullable(),
-  placement: placementSchema.optional().nullable()
+  placement: placementSchema.optional().nullable(),
+  // Seller's chosen sale price. Null/omitted => use the catalog price. Enforced
+  // server-side to be >= the catalog base price.
+  customPrice: z.coerce.number().min(0).max(1000000).optional().nullable()
 });
 
 export const listStoresQuerySchema = z.object({

@@ -185,12 +185,29 @@ const productSchemaBase = z.object({
   minQty: z.coerce.number().int().min(1).default(1),
   baseStock: z.coerce.number().int().min(0).default(0),
   currency: z.string().trim().min(3).max(8).default("USD"),
+  // Swaggeroo's per-product commission. PERCENT value is capped 0-15;
+  // FLAT value is a dollar amount taken at the catalog base price.
+  commissionType: z.enum(["PERCENT", "FLAT"]).default("PERCENT"),
+  commissionValue: z.coerce.number().min(0).max(1000000).optional().nullable(),
   images: z.array(imageInputSchema).default([]),
   variantGroups: z.array(variantGroupInputSchema).default([]),
   variants: z.array(variantGroupInputSchema).optional(),
   productCatalogVariants: z.array(productCatalogVariantInputSchema).default([]),
   pricingOptions: pricingOptionsArraySchema.default([])
 });
+
+const validateCommission = (
+  value: { commissionType?: "PERCENT" | "FLAT"; commissionValue?: number | null },
+  ctx: z.RefinementCtx
+) => {
+  if (value.commissionType === "PERCENT" && value.commissionValue != null && value.commissionValue > 15) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["commissionValue"],
+      message: "Commission percentage cannot exceed 15%"
+    });
+  }
+};
 
 const validateTiersAgainstBasePrice = (
   value: { basePrice?: number | null; pricingOptions?: { price: number }[] },
@@ -229,6 +246,7 @@ export const createProductSchema = productSchemaBase.superRefine((value, ctx) =>
   }
 
   validateTiersAgainstBasePrice(value, ctx);
+  validateCommission(value, ctx);
 });
 
 export const updateProductSchema = productSchemaBase.partial().superRefine((value, ctx) => {
@@ -241,6 +259,7 @@ export const updateProductSchema = productSchemaBase.partial().superRefine((valu
   }
 
   validateTiersAgainstBasePrice(value, ctx);
+  validateCommission(value, ctx);
 });
 
 export type ListProductsQuery = z.infer<typeof listProductsQuerySchema>;

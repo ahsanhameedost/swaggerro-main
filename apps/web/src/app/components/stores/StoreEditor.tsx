@@ -2,10 +2,11 @@
 
 import { useMemo, useRef, useState } from "react";
 import { addToast } from "@heroui/toast";
-import { Check, ExternalLink, ImagePlus, Loader2, Search, Upload, X } from "lucide-react";
+import { Check, ExternalLink, Loader2, Plus, Search, Tag, Upload, X } from "lucide-react";
 import { usePublicProducts } from "@/lib/queries.catalog";
 import { createCatalogImageUpload, uploadFileToPresignedUrl } from "@/modules/catalog/public/api";
 import { formatMoney } from "@/lib/money";
+import { computeCommission } from "@/lib/commission";
 import { cn } from "@/lib/utils";
 import type {
   ProductBrandingInput,
@@ -50,16 +51,21 @@ export function StoreEditor({
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const logoInputRef = useRef<HTMLInputElement | null>(null);
 
-  // Per-product logo branding, keyed by productId, seeded from the saved store.
+  // Store default commission %, fallback for products without their own rate.
+  const fallbackPercent = store.commissionPercent ?? 15;
+
+  // Per-product overrides (logo + custom price), keyed by productId, seeded from
+  // the saved store.
   const [branding, setBranding] = useState<Record<string, ProductBrandingInput>>(() => {
     const initial: Record<string, ProductBrandingInput> = {};
     for (const p of store.products) {
-      if (p.branding?.logoUrl) {
+      if (p.branding?.logoUrl || p.customPrice != null) {
         initial[p.id] = {
           productId: p.id,
-          logoUrl: p.branding.logoUrl,
+          logoUrl: p.branding?.logoUrl ?? null,
           logoKey: null,
-          placement: p.branding.placement,
+          placement: p.branding?.placement ?? null,
+          customPrice: p.customPrice ?? null,
         };
       }
     }
@@ -83,27 +89,39 @@ export function StoreEditor({
     );
   };
 
-  const openBranding = (product: { id: string; name: string; imageUrl?: string | null }) => {
+  // Open the customize popup for a product (and select it if it isn't already).
+  const openBranding = (product: (typeof catalogProducts)[number]) => {
     const existing = branding[product.id];
+    const basePrice = product.basePrice ?? product.floorPrice ?? product.lowestPrice ?? 0;
+    setProductIds((current) =>
+      current.includes(product.id) ? current : [...current, product.id]
+    );
     setBrandingTarget({
       id: product.id,
       name: product.name,
       imageUrl: product.imageUrl ?? null,
       logoUrl: existing?.logoUrl ?? null,
       placement: existing?.placement ?? null,
+      currency: product.currency,
+      basePrice,
+      commissionType: product.commissionType ?? "PERCENT",
+      commissionValue: product.commissionValue ?? null,
+      fallbackPercent,
+      customPrice: existing?.customPrice ?? null,
     });
   };
 
   const saveBranding = (entry: ProductBrandingInput) => {
+    const hasOverride = Boolean(entry.logoUrl) || entry.customPrice != null;
     setBranding((current) => {
       const next = { ...current };
-      if (entry.logoUrl) next[entry.productId] = entry;
+      if (hasOverride) next[entry.productId] = entry;
       else delete next[entry.productId];
       return next;
     });
-    // Make sure a freshly branded product is part of the curated list.
+    // A product configured in the popup is part of the curated list.
     setProductIds((current) =>
-      current.includes(entry.productId) || !entry.logoUrl ? current : [...current, entry.productId]
+      current.includes(entry.productId) ? current : [...current, entry.productId]
     );
   };
 
@@ -145,10 +163,10 @@ export function StoreEditor({
       logoKey: logo.key,
       theme: { primary, primarySoft, primaryForeground },
       productIds,
-      // Only send branding for products still in the curated list.
+      // Send per-product overrides (logo and/or custom price) for curated products.
       productBranding: productIds
         .map((id) => branding[id])
-        .filter((b): b is ProductBrandingInput => Boolean(b?.logoUrl)),
+        .filter((b): b is ProductBrandingInput => Boolean(b?.logoUrl) || b?.customPrice != null),
     };
     if (mode === "admin") {
       base.slug = slug.trim();
@@ -326,19 +344,29 @@ export function StoreEditor({
           <div className="grid max-h-[calc(100vh-15rem)] min-h-[24rem] grid-cols-2 gap-3 overflow-y-auto p-6 sm:grid-cols-3 lg:grid-cols-4">
             {filteredProducts.map((product) => {
               const isSelected = selected.has(product.id);
-              const isBranded = Boolean(branding[product.id]?.logoUrl);
-              const price = product.floorPrice ?? product.basePrice ?? product.lowestPrice ?? 0;
+              const override = branding[product.id];
+              const isBranded = Boolean(override?.logoUrl);
+              const basePrice = product.basePrice ?? product.floorPrice ?? product.lowestPrice ?? 0;
+              const hasCustom = override?.customPrice != null && override.customPrice > basePrice;
+              const salePrice = hasCustom ? override!.customPrice! : basePrice;
+              const earn = computeCommission(salePrice, {
+                commissionType: product.commissionType ?? "PERCENT",
+                commissionValue: product.commissionValue ?? null,
+                basePrice,
+                fallbackPercent,
+              });
               return (
                 <div
                   key={product.id}
                   className={cn(
-                    "group relative flex flex-col overflow-hidden rounded-xl border bg-card text-left transition hover:shadow-sm",
+                    "group relative flex flex-col overflow-hidden rounded-2xl border bg-card text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md",
                     isSelected ? "border-primary ring-1 ring-primary/30" : "border-border"
                   )}
                 >
+                  {/* Click the product to add it and open the customize popup (Pack Studio style). */}
                   <button
                     type="button"
-                    onClick={() => toggleProduct(product.id)}
+                    onClick={() => openBranding(product)}
                     className="relative block aspect-square overflow-hidden bg-muted"
                   >
                     {product.imageUrl ? (
@@ -350,31 +378,45 @@ export function StoreEditor({
                       </div>
                     )}
                     {/* Branded logo preview on the seller's curation card. */}
-                    {isBranded && branding[product.id]?.placement ? (
+                    {isBranded && override?.placement ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
-                        src={branding[product.id]!.logoUrl!}
+                        src={override.logoUrl!}
                         alt=""
                         className="pointer-events-none absolute"
                         style={{
-                          left: `${branding[product.id]!.placement!.x}%`,
-                          top: `${branding[product.id]!.placement!.y}%`,
-                          width: `${branding[product.id]!.placement!.size}%`,
-                          transform: `translate(-50%,-50%) rotate(${branding[product.id]!.placement!.rotation}deg)`,
-                          opacity: branding[product.id]!.placement!.opacity / 100,
+                          left: `${override.placement.x}%`,
+                          top: `${override.placement.y}%`,
+                          width: `${override.placement.size}%`,
+                          transform: `translate(-50%,-50%) rotate(${override.placement.rotation}deg)`,
+                          opacity: override.placement.opacity / 100,
                         }}
                       />
                     ) : null}
+                    {/* Top-right add/selected badge — plus when not added, check when added. */}
                     <span
+                      role="button"
+                      tabIndex={0}
+                      onClick={(e) => {
+                        // Toggle selection without opening the popup.
+                        e.stopPropagation();
+                        toggleProduct(product.id);
+                      }}
                       className={cn(
-                        "absolute right-2 top-2 flex size-6 items-center justify-center rounded-full border text-xs",
+                        "absolute right-2 top-2 flex size-7 items-center justify-center rounded-full border shadow-sm transition",
                         isSelected
                           ? "border-primary bg-primary text-primary-foreground"
-                          : "border-border bg-card"
+                          : "border-border bg-card text-foreground group-hover:border-primary/50"
                       )}
                     >
-                      {isSelected ? <Check className="size-3.5" /> : null}
+                      {isSelected ? <Check className="size-4" /> : <Plus className="size-4" />}
                     </span>
+                    {/* Custom-price tag */}
+                    {hasCustom ? (
+                      <span className="absolute left-1.5 top-1.5 inline-flex items-center gap-1 rounded-full bg-primary/90 px-1.5 py-0.5 text-[10px] font-semibold text-primary-foreground shadow">
+                        <Tag className="size-2.5" /> Your price
+                      </span>
+                    ) : null}
                     {/* Color swatches so sellers can see variant options at a glance. */}
                     {product.swatches?.length ? (
                       <div className="absolute bottom-1.5 left-1.5 flex gap-1">
@@ -389,25 +431,34 @@ export function StoreEditor({
                       </div>
                     ) : null}
                   </button>
-                  <div className="flex items-end justify-between gap-1 p-2">
-                    <div className="min-w-0">
-                      <p className="line-clamp-1 text-xs font-medium text-foreground">{product.name}</p>
-                      <p className="text-xs text-muted-foreground">{formatMoney(price, product.currency)}/ea</p>
+                  <div className="space-y-1 p-2.5">
+                    <p className="line-clamp-1 text-xs font-semibold text-foreground">{product.name}</p>
+                    <div className="flex items-baseline gap-1.5">
+                      <span className="text-sm font-semibold tabular-nums text-foreground">
+                        {formatMoney(salePrice, product.currency)}
+                      </span>
+                      {hasCustom ? (
+                        <span className="text-[10px] text-muted-foreground line-through tabular-nums">
+                          {formatMoney(basePrice, product.currency)}
+                        </span>
+                      ) : null}
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => openBranding(product)}
-                      title={isBranded ? "Edit logo branding" : "Add your logo"}
-                      className={cn(
-                        "flex shrink-0 items-center gap-1 rounded-lg border px-1.5 py-1 text-[11px] font-medium transition",
-                        isBranded
-                          ? "border-primary/40 bg-brand-soft text-primary"
-                          : "border-border text-muted-foreground hover:border-primary/40 hover:text-foreground"
-                      )}
-                    >
-                      <ImagePlus className="size-3.5" />
-                      {isBranded ? "Logo" : "Brand"}
-                    </button>
+                    {isSelected ? (
+                      <p className="text-[11px] text-muted-foreground">
+                        You earn{" "}
+                        <span className="font-semibold text-primary tabular-nums">
+                          {formatMoney(earn.sellerEarning, product.currency)}
+                        </span>
+                      </p>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => openBranding(product)}
+                        className="text-[11px] font-medium text-primary hover:underline"
+                      >
+                        Add to store
+                      </button>
+                    )}
                   </div>
                 </div>
               );

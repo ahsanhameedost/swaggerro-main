@@ -178,6 +178,17 @@ function DetailModal({
                 <Detail label="Additional information" value={application.additionalInfo} multiline />
               ) : null}
 
+              <Detail
+                label="Seller Agreement"
+                value={
+                  application.termsAgreedAt
+                    ? `Accepted on ${new Date(application.termsAgreedAt).toLocaleString()}${
+                        application.termsVersion ? ` (v${application.termsVersion})` : ""
+                      }`
+                    : "Not recorded"
+                }
+              />
+
               <div className="rounded-2xl border border-divider p-4">
                 <div className="mb-3 flex items-center justify-between">
                   <span className="text-sm font-semibold">Status</span>

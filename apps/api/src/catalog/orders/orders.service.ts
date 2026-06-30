@@ -27,6 +27,7 @@ import type {
 import { EmailService } from "../../email/email.service";
 import { PrismaService } from "../../prisma/prisma.service";
 import { StorageService } from "../../storage/storage.service";
+import { NotificationsService } from "../../notifications/notifications.service";
 import { CatalogSharedService } from "../common/catalog-shared.service";
 import { hasPermission } from "../../common/utils/permissions";
 import { env } from "../../env";
@@ -85,7 +86,8 @@ export class CatalogOrdersService extends CatalogSharedService {
   constructor(
     prisma: PrismaService,
     storage: StorageService,
-    emailService: EmailService
+    emailService: EmailService,
+    private readonly notifications: NotificationsService
   ) {
     super(prisma, storage, emailService);
   }
@@ -296,6 +298,23 @@ export class CatalogOrdersService extends CatalogSharedService {
         include: this.orderInclude
       });
     });
+
+    // Let the customer know when their order status changes.
+    if (order.userId && input.status !== existing.status) {
+      const orderLabel = `SW-${String(order.orderNumber).padStart(3, "0")}`;
+      const statusLabel = input.status
+        .toLowerCase()
+        .split("_")
+        .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+        .join(" ");
+      await this.notifications.notify({
+        userId: order.userId,
+        type: "catalog.order.status",
+        title: `Order ${statusLabel.toLowerCase()}`,
+        body: `Your order ${orderLabel} is now ${statusLabel}.`,
+        link: `/dashboard/orders/${order.id}`
+      });
+    }
 
     return this.serializeOrderDetail(order);
   }
@@ -661,6 +680,27 @@ async createOrderPayment(id: string, input: CreateOrderPaymentDto, authUser: Aut
       });
     }
   });
+
+  // Notify super admins + the customer once the payment lands.
+  if (paymentStatus === "PAID") {
+    const orderLabel = `SW-${String(order.orderNumber).padStart(3, "0")}`;
+    const totalLabel = `$${totals.totalDue.toFixed(2)}`;
+    await this.notifications.notifyAdmins({
+      type: "catalog.order.paid",
+      title: "Order paid",
+      body: `${order.name} paid ${totalLabel} for order ${orderLabel}.`,
+      link: `/dashboard/orders/${order.id}`
+    });
+    if (order.userId) {
+      await this.notifications.notify({
+        userId: order.userId,
+        type: "catalog.order.paid",
+        title: "Payment received",
+        body: `Thanks! Your payment for order ${orderLabel} was received.`,
+        link: `/dashboard/orders/${order.id}`
+      });
+    }
+  }
 
   return {
     order: await this.getOrderById(order.id, authUser),

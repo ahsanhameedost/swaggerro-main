@@ -2,11 +2,12 @@ import { Module } from "@nestjs/common";
 import { PermissionsGuard } from "../../common/guards/permissions.guard";
 import { OptionalAuthGuard } from "../../common/guards/optional-auth.guard";
 import { CatalogCoreModule } from "../common/catalog-core.module";
+import { NotificationsModule } from "../../notifications/notifications.module";
 import { CatalogPublicController } from "./public.controller";
 import { CatalogPublicService } from "./public.service";
 
 @Module({
-  imports: [CatalogCoreModule],
+  imports: [CatalogCoreModule, NotificationsModule],
   controllers: [CatalogPublicController],
   providers: [CatalogPublicService, PermissionsGuard, OptionalAuthGuard],
   exports: [CatalogPublicService]

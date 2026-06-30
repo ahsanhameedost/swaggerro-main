@@ -5,6 +5,9 @@ import { addToast } from "@heroui/toast";
 import { Download, Loader2, Maximize2, Move, RotateCw, Trash2, Upload, X } from "lucide-react";
 import { createCatalogImageUpload, uploadFileToPresignedUrl } from "@/modules/catalog/public/api";
 import type { LogoPlacement, ProductBrandingInput } from "@/modules/stores/types";
+import type { SwagCommissionType } from "@/modules/catalog/products/types";
+import { computeCommission } from "@/lib/commission";
+import { formatMoney } from "@/lib/money";
 import { cn } from "@/lib/utils";
 
 const LOGO_TYPES = ["image/png", "image/jpeg", "image/webp"] as const;
@@ -28,6 +31,13 @@ export type ProductLogoTarget = {
   imageUrl: string | null;
   logoUrl: string | null;
   placement: LogoPlacement | null;
+  // Pricing + commission context (so the seller sees their earnings).
+  currency?: string;
+  basePrice: number;
+  commissionType: SwagCommissionType;
+  commissionValue: number | null;
+  fallbackPercent: number;
+  customPrice: number | null;
 };
 
 export function ProductLogoModal({
@@ -39,6 +49,29 @@ export function ProductLogoModal({
   onClose: () => void;
   onSave: (branding: ProductBrandingInput) => void;
 }) {
+  const currency = product.currency ?? "USD";
+  const basePrice = product.basePrice > 0 ? product.basePrice : 0;
+
+  // "Your price": default (catalog) vs a custom price the seller sets (>= base).
+  const [useCustomPrice, setUseCustomPrice] = useState<boolean>(
+    product.customPrice != null && product.customPrice > basePrice
+  );
+  const [customPriceInput, setCustomPriceInput] = useState<string>(
+    product.customPrice != null ? String(product.customPrice) : ""
+  );
+
+  const parsedCustom = Number(customPriceInput);
+  const customValid = useCustomPrice && customPriceInput.trim() !== "" && parsedCustom >= basePrice;
+  const belowMin =
+    useCustomPrice && customPriceInput.trim() !== "" && parsedCustom < basePrice;
+  // The price actually used for the commission preview / save.
+  const effectivePrice = customValid ? parsedCustom : basePrice;
+  const commission = computeCommission(effectivePrice, {
+    commissionType: product.commissionType,
+    commissionValue: product.commissionValue,
+    basePrice,
+    fallbackPercent: product.fallbackPercent,
+  });
   // Existing saved logo (remote url) or a freshly picked local file.
   const [logoUrl, setLogoUrl] = useState<string | null>(product.logoUrl);
   const [logoKey, setLogoKey] = useState<string | null>(null);
@@ -223,11 +256,20 @@ export function ProductLogoModal({
       addToast({ title: "Please wait", description: "Your logo is still uploading.", color: "warning" });
       return;
     }
+    if (belowMin) {
+      addToast({
+        title: "Price too low",
+        description: `Your price can't be below the ${formatMoney(basePrice, currency)} base price.`,
+        color: "warning",
+      });
+      return;
+    }
     onSave({
       productId: product.id,
       logoUrl: logoUrl,
       logoKey: logoKey,
       placement: logoUrl ? placement : null,
+      customPrice: customValid ? parsedCustom : null,
     });
     onClose();
   };
@@ -235,18 +277,18 @@ export function ProductLogoModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <button type="button" aria-label="Close" className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative z-10 flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl">
+      <div className="relative z-10 flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl">
         <div className="flex items-center justify-between border-b border-border px-5 py-3">
           <div>
-            <h3 className="font-display text-base font-bold">Brand this product</h3>
-            <p className="text-xs text-muted-foreground">{product.name}</p>
+            <h3 className="font-display text-base font-bold">Customize this product</h3>
+            <p className="text-xs text-muted-foreground">{product.name} · logo, price &amp; earnings</p>
           </div>
           <button type="button" onClick={onClose} className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted">
             <X className="size-5" />
           </button>
         </div>
 
-        <div className="grid gap-5 overflow-y-auto p-5 sm:grid-cols-[1fr_15rem]">
+        <div className="grid gap-5 overflow-y-auto p-5 sm:grid-cols-[1fr_22rem]">
           {/* Stage */}
           <div className="rounded-2xl border border-border bg-muted/30 p-3">
             <div
@@ -362,6 +404,96 @@ export function ProductLogoModal({
                 <Trash2 className="size-4" /> Remove logo
               </button>
             ) : null}
+
+            {/* Your price & earnings */}
+            <div className="space-y-3 rounded-2xl border border-border bg-card p-4">
+              <div>
+                <h4 className="text-sm font-semibold text-foreground">Your price &amp; earnings</h4>
+                <p className="text-xs text-muted-foreground">
+                  {product.commissionType === "FLAT"
+                    ? `Swaggeroo takes a flat fee of ${formatMoney(product.commissionValue ?? 0, currency)} at the base price (scales if you raise your price).`
+                    : `Swaggeroo takes ${commission.effectivePercent}% commission on each sale.`}
+                </p>
+              </div>
+
+              {/* Default vs custom price */}
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setUseCustomPrice(false)}
+                  className={cn(
+                    "rounded-xl border px-3 py-2 text-left text-xs transition",
+                    !useCustomPrice
+                      ? "border-primary bg-brand-soft text-primary"
+                      : "border-border text-muted-foreground hover:border-primary/40"
+                  )}
+                >
+                  <span className="block font-semibold">Default price</span>
+                  <span className="block tabular-nums">{formatMoney(basePrice, currency)}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setUseCustomPrice(true)}
+                  className={cn(
+                    "rounded-xl border px-3 py-2 text-left text-xs transition",
+                    useCustomPrice
+                      ? "border-primary bg-brand-soft text-primary"
+                      : "border-border text-muted-foreground hover:border-primary/40"
+                  )}
+                >
+                  <span className="block font-semibold">Set my price</span>
+                  <span className="block">Earn more per sale</span>
+                </button>
+              </div>
+
+              {useCustomPrice ? (
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">
+                    Your price (min {formatMoney(basePrice, currency)})
+                  </label>
+                  <div className="mt-1 flex items-center gap-1 rounded-xl border border-input bg-background px-2.5">
+                    <span className="text-sm text-muted-foreground">$</span>
+                    <input
+                      type="number"
+                      min={basePrice}
+                      step="0.01"
+                      value={customPriceInput}
+                      onChange={(e) => setCustomPriceInput(e.target.value)}
+                      placeholder={basePrice.toFixed(2)}
+                      className="h-9 w-full bg-transparent text-sm tabular-nums outline-none"
+                    />
+                  </div>
+                  {belowMin ? (
+                    <p className="mt-1 text-xs font-medium text-destructive">
+                      Can&apos;t be below the {formatMoney(basePrice, currency)} base price.
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
+
+              {/* Live breakdown */}
+              <div className="space-y-1 rounded-xl bg-muted/50 p-3 text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Sale price</span>
+                  <span className="font-medium tabular-nums">{formatMoney(effectivePrice, currency)}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">
+                    Swaggeroo commission
+                    {product.commissionType === "PERCENT" ? ` (${commission.effectivePercent}%)` : ""}
+                  </span>
+                  <span className="font-medium tabular-nums text-foreground">
+                    −{formatMoney(commission.commission, currency)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between border-t border-border pt-1">
+                  <span className="font-semibold text-foreground">You earn</span>
+                  <span className="font-bold tabular-nums text-primary">
+                    {formatMoney(commission.sellerEarning, currency)}
+                  </span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -376,10 +508,10 @@ export function ProductLogoModal({
           <button
             type="button"
             onClick={handleSave}
-            disabled={uploading}
+            disabled={uploading || belowMin}
             className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground shadow-brand transition hover:bg-primary/90 disabled:opacity-60"
           >
-            Save branding
+            Save
           </button>
         </div>
       </div>

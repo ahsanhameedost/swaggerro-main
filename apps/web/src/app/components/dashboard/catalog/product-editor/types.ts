@@ -3,7 +3,8 @@ import type {
   CatalogImage,
   CatalogPricingOption,
   CreateProductInput,
-  ProductCatalogVariantSelection
+  ProductCatalogVariantSelection,
+  SwagCommissionType
 } from "@/lib/catalog";
 
 export type ProductEditorMode = "create" | "edit";
@@ -66,6 +67,8 @@ export type ProductEditorState = {
   compareAtPrice: number | null;
   minQty: number;
   baseStock: number;
+  commissionType: SwagCommissionType;
+  commissionValue: number | null;
   images: EditorImage[];
   variantDefinitions: EditorVariantDefinition[];
   productCatalogVariants: EditorProductCatalogVariant[];

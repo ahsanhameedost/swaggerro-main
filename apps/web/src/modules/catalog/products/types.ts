@@ -3,6 +3,8 @@ import type { CatalogCollection } from "../collections/types";
 import type { PaginationMeta } from "../shared";
 
 
+export type SwagCommissionType = "PERCENT" | "FLAT";
+
 export type CatalogProductShipping = {
   shippingProfileId?: string | null;
   profileName?: string | null;
@@ -116,6 +118,8 @@ export type CatalogProductListItem = {
   baseStock: number;
   minQty: number;
   currency: string;
+  commissionType?: SwagCommissionType;
+  commissionValue?: number | null;
   shipping: CatalogProductShipping;
   createdAt: string;
   updatedAt: string;
@@ -137,6 +141,8 @@ export type CatalogProductDetail = {
   minQty: number;
   baseStock: number;
   currency: string;
+  commissionType?: SwagCommissionType;
+  commissionValue?: number | null;
   hasVariants: boolean;
   lowestPrice: number;
   highestPrice: number;
@@ -198,6 +204,8 @@ export type CreateProductInput = {
   minQty: number;
   baseStock: number;
   currency?: string;
+  commissionType?: SwagCommissionType;
+  commissionValue?: number | null;
   images: CatalogImage[];
   variantGroups: CatalogVariantGroup[];
   productCatalogVariants: ProductCatalogVariant[];

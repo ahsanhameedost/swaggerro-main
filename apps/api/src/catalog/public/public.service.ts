@@ -8,6 +8,7 @@ import type { CreatePublicOrderDto, ListPublicProductsQuery } from "../dto/publi
 import { EmailService } from "../../email/email.service";
 import { PrismaService } from "../../prisma/prisma.service";
 import { StorageService } from "../../storage/storage.service";
+import { NotificationsService } from "../../notifications/notifications.service";
 import { CatalogSharedService } from "../common/catalog-shared.service";
 
 type ResolvedCheckoutItem = {
@@ -28,7 +29,8 @@ export class CatalogPublicService extends CatalogSharedService {
   constructor(
     prisma: PrismaService,
     storage: StorageService,
-    emailService: EmailService
+    emailService: EmailService,
+    private readonly notifications: NotificationsService
   ) {
     super(prisma, storage, emailService);
   }
@@ -402,6 +404,26 @@ export class CatalogPublicService extends CatalogSharedService {
       });
       await this.emailService.sendCatalogOrderUserAckEmail(order.email, order.name);
     } catch {}
+
+    // In-app notifications: alert every super admin, and the customer if they
+    // placed the order while signed in.
+    const orderLabel = `SW-${String(order.orderNumber).padStart(3, "0")}`;
+    const totalLabel = `$${(this.decimalToNumber(order.totalPrice) ?? 0).toFixed(2)}`;
+    await this.notifications.notifyAdmins({
+      type: "catalog.order.placed",
+      title: "New order placed",
+      body: `${order.name} placed order ${orderLabel} (${totalLabel}).`,
+      link: `/dashboard/orders/${order.id}`
+    });
+    if (order.userId) {
+      await this.notifications.notify({
+        userId: order.userId,
+        type: "catalog.order.placed",
+        title: "Order received",
+        body: `We received your order ${orderLabel}. We'll review it shortly.`,
+        link: `/dashboard/orders/${order.id}`
+      });
+    }
 
     return this.serializeOrderDetail(order);
   }

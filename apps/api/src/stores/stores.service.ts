@@ -28,6 +28,7 @@ type ProductBranding = {
   logoUrl: string | null;
   logoKey: string | null;
   placement: LogoPlacement | null;
+  customPrice: number | null;
 };
 
 function slugify(value: string) {
@@ -90,16 +91,30 @@ export class StoresService {
   ) {
     await tx.storeProduct.deleteMany({ where: { storeId } });
     if (productIds.length) {
+      // Catalog base prices are the floor for any seller custom price.
+      const products = await tx.catalogProduct.findMany({
+        where: { id: { in: productIds } },
+        select: { id: true, basePrice: true }
+      });
+      const basePriceById = new Map(
+        products.map((p) => [p.id, p.basePrice != null ? Number(p.basePrice) : 0])
+      );
+
       await tx.storeProduct.createMany({
         data: productIds.map((productId, index) => {
           const b = branding?.get(productId);
+          const base = basePriceById.get(productId) ?? 0;
+          // Clamp custom price to never drop below the catalog base price.
+          const customPrice =
+            b?.customPrice != null && b.customPrice > 0 ? Math.max(b.customPrice, base) : null;
           return {
             storeId,
             productId,
             sortOrder: index,
             logoUrl: b?.logoUrl ?? null,
             logoKey: b?.logoKey ?? null,
-            placement: b?.placement ? (b.placement as Prisma.InputJsonValue) : Prisma.JsonNull
+            placement: b?.placement ? (b.placement as Prisma.InputJsonValue) : Prisma.JsonNull,
+            customPrice: customPrice != null ? new Prisma.Decimal(customPrice) : null
           };
         }),
         skipDuplicates: true
@@ -120,7 +135,8 @@ export class StoresService {
       map.set(entry.productId, {
         logoUrl: entry.logoUrl ?? null,
         logoKey: entry.logoKey ?? null,
-        placement: entry.placement ?? null
+        placement: entry.placement ?? null,
+        customPrice: entry.customPrice ?? null
       });
     }
     return map;
@@ -169,6 +185,11 @@ export class StoresService {
       baseStock: product.baseStock ?? 0,
       minQty: product.minQty,
       currency: product.currency,
+      // Swaggeroo's per-product commission (so the seller editor can show the cut).
+      commissionType: product.commissionType ?? "PERCENT",
+      commissionValue: product.commissionValue != null ? Number(product.commissionValue) : null,
+      // Seller's chosen sale price (null => uses catalog price).
+      customPrice: branding?.customPrice ?? null,
       swatches,
       // Per-seller branding overlay (composite-on-view on the storefront).
       branding: branding
@@ -214,15 +235,24 @@ export class StoresService {
 
   // Reads StoreProduct branding rows into a productId → branding map.
   private brandingFromRows(
-    rows: { productId: string; logoUrl: string | null; logoKey: string | null; placement: unknown }[]
+    rows: {
+      productId: string;
+      logoUrl: string | null;
+      logoKey: string | null;
+      placement: unknown;
+      customPrice?: Prisma.Decimal | null;
+    }[]
   ) {
     const map = new Map<string, ProductBranding>();
     for (const row of rows) {
-      if (!row.logoUrl && !row.placement) continue;
+      const customPrice = row.customPrice != null ? Number(row.customPrice) : null;
+      // Keep the row if it has any per-seller override (logo, placement or price).
+      if (!row.logoUrl && !row.placement && customPrice == null) continue;
       map.set(row.productId, {
         logoUrl: row.logoUrl,
         logoKey: row.logoKey,
-        placement: (row.placement as LogoPlacement | null) ?? null
+        placement: (row.placement as LogoPlacement | null) ?? null,
+        customPrice
       });
     }
     return map;
@@ -249,6 +279,9 @@ export class StoresService {
         primarySoft: store.themePrimarySoft,
         primaryForeground: store.themePrimaryForeground
       },
+      // Store-level default commission %, used as the fallback when a product
+      // doesn't set its own percentage commission.
+      commissionPercent: store.commissionPercent != null ? Number(store.commissionPercent) : 15,
       productCount: store._count?.products ?? store.products?.length ?? productCards.length,
       products: productCards,
       createdAt: store.createdAt instanceof Date ? store.createdAt.toISOString() : store.createdAt,
@@ -311,7 +344,7 @@ export class StoresService {
         owner: true,
         products: {
           orderBy: { sortOrder: "asc" },
-          select: { productId: true, logoUrl: true, logoKey: true, placement: true }
+          select: { productId: true, logoUrl: true, logoKey: true, placement: true, customPrice: true }
         }
       }
     });
@@ -395,7 +428,7 @@ export class StoresService {
       include: {
         products: {
           orderBy: { sortOrder: "asc" },
-          select: { productId: true, logoUrl: true, logoKey: true, placement: true }
+          select: { productId: true, logoUrl: true, logoKey: true, placement: true, customPrice: true }
         }
       }
     });
@@ -438,7 +471,7 @@ export class StoresService {
       include: {
         products: {
           orderBy: { sortOrder: "asc" },
-          select: { productId: true, logoUrl: true, logoKey: true, placement: true }
+          select: { productId: true, logoUrl: true, logoKey: true, placement: true, customPrice: true }
         }
       }
     });

@@ -19,6 +19,8 @@ export type ProductBranding = {
 // A curated store product card, plus the seller's optional logo branding.
 export type StoreProductCard = CatalogProductListItem & {
   branding: ProductBranding | null;
+  // Seller's chosen sale price (null => uses the catalog price).
+  customPrice?: number | null;
 };
 
 export type ProductBrandingInput = {
@@ -26,6 +28,8 @@ export type ProductBrandingInput = {
   logoUrl?: string | null;
   logoKey?: string | null;
   placement?: LogoPlacement | null;
+  // Seller's chosen sale price (null/omitted => catalog price).
+  customPrice?: number | null;
 };
 
 export type StoreTheme = {
@@ -48,6 +52,8 @@ export type Store = {
   logoUrl: string | null;
   logoKey: string | null;
   theme: StoreTheme;
+  // Store-level default commission %, fallback for products without their own.
+  commissionPercent?: number;
   productCount: number;
   products: StoreProductCard[];
   createdAt: string;

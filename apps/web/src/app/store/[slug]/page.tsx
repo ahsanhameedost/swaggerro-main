@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Spinner } from "@heroui/react";
@@ -14,6 +14,8 @@ import {
 } from "lucide-react";
 import { usePublicStore } from "@/queries/stores";
 import { ProductCard } from "@/components/shop/product-card";
+
+const PAGE_SIZE = 12;
 
 const VALUE_PROPS = [
   { icon: Sparkles, title: "Free proofs", body: "See a digital mockup before anything prints." },
@@ -30,6 +32,7 @@ export default function StorefrontPage() {
   const [activeCategory, setActiveCategory] = useState<string>("All");
   const [selectedColors, setSelectedColors] = useState<string[]>([]);
   const [priceMax, setPriceMax] = useState<number | null>(null);
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
   const productPrice = (p: { floorPrice?: number | null; basePrice?: number | null; lowestPrice?: number | null }) =>
     p.floorPrice ?? p.basePrice ?? p.lowestPrice ?? 0;
@@ -66,6 +69,31 @@ export default function StorefrontPage() {
       return true;
     });
   }, [store, activeCategory, selectedColors, priceMax]);
+
+  // infinite scroll — show 12, then auto-load the next 12 as the sentinel scrolls into view
+  const shownProducts = visibleProducts.slice(0, visibleCount);
+  const hasMore = visibleCount < visibleProducts.length;
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+
+  // reset to the first batch whenever the filters change
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE);
+  }, [activeCategory, selectedColors, priceMax]);
+
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el || !hasMore) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          setVisibleCount((c) => Math.min(c + PAGE_SIZE, visibleProducts.length));
+        }
+      },
+      { rootMargin: "400px" },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [hasMore, visibleProducts.length]);
 
   const toggleColor = (name: string) =>
     setSelectedColors((c) => (c.includes(name) ? c.filter((x) => x !== name) : [...c, name]));
@@ -309,16 +337,30 @@ export default function StorefrontPage() {
                 {visibleProducts.length} product{visibleProducts.length === 1 ? "" : "s"}
               </p>
               {visibleProducts.length ? (
-                <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
-                  {visibleProducts.map((product) => (
-                    <ProductCard
-                      key={product.id}
-                      product={product}
-                      branding={product.branding}
-                      storeSlug={store.slug}
-                    />
-                  ))}
-                </div>
+                <>
+                  <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
+                    {shownProducts.map((product) => (
+                      <ProductCard
+                        key={product.id}
+                        product={product}
+                        branding={product.branding}
+                        storeSlug={store.slug}
+                      />
+                    ))}
+                  </div>
+                  {hasMore ? (
+                    <div ref={sentinelRef} className="mt-10 flex items-center justify-center py-6 text-sm text-muted-foreground">
+                      <span className="inline-flex items-center gap-2">
+                        <span className="size-4 animate-spin rounded-full border-2 border-muted-foreground/30 border-t-foreground" />
+                        Loading more…
+                      </span>
+                    </div>
+                  ) : visibleProducts.length > PAGE_SIZE ? (
+                    <p className="mt-10 text-center text-sm text-muted-foreground">
+                      You&apos;ve reached the end · {visibleProducts.length} products
+                    </p>
+                  ) : null}
+                </>
               ) : (
                 <div className="flex flex-col items-center rounded-2xl border border-dashed border-border bg-card/50 px-6 py-16 text-center">
                   <PackageOpen className="size-6 text-muted-foreground" />

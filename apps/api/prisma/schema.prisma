@@ -56,6 +56,15 @@ enum CatalogPaymentStatus {
   REFUNDED
 }
 
+// How Swaggeroo takes its cut on a product sold through a seller store.
+// PERCENT: cut = rate% of the seller's sale price (capped 0-15).
+// FLAT: a fixed dollar cut defined at the product's catalog base price; it
+// scales proportionally as the seller raises their price (see commission.ts).
+enum SwagCommissionType {
+  PERCENT
+  FLAT
+}
+
 enum InventoryAvailabilityStatus {
   PENDING_RECEIPT
   PARTIALLY_RECEIVED
@@ -308,6 +317,10 @@ model CatalogProduct {
   minQty                 Int                        @default(1)
   baseStock              Int                        @default(0)
   currency               String                     @default("USD")
+  // Swaggeroo's per-product commission. When commissionValue is null the
+  // store-level Store.commissionPercent is used as the fallback.
+  commissionType         SwagCommissionType         @default(PERCENT)
+  commissionValue        Decimal?                   @db.Decimal(10, 2)
   weightOz               Decimal?                   @db.Decimal(10, 2)
   lengthIn               Decimal?                   @db.Decimal(10, 2)
   widthIn                Decimal?                   @db.Decimal(10, 2)
@@ -878,6 +891,9 @@ model SellerApplication {
   status              SellerApplicationStatus @default(NEW)
   adminNotes          String?                 @db.Text
   reviewedAt          DateTime?
+  // Seller agreement acceptance captured at submission time.
+  termsAgreedAt       DateTime?
+  termsVersion        String?
   store               Store?
   createdAt           DateTime                @default(now())
   updatedAt           DateTime                @updatedAt
@@ -982,6 +998,9 @@ model StoreProduct {
   store     Store          @relation(fields: [storeId], references: [id], onDelete: Cascade)
   product   CatalogProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
   sortOrder Int            @default(0)
+  // Seller's chosen sale price for this product. Null => use the catalog price.
+  // Must be >= the catalog base price (enforced server-side).
+  customPrice Decimal?     @db.Decimal(10, 2)
   // Per-seller logo branding overlaid on this product (composite-on-view).
   logoUrl   String?
   logoKey   String?

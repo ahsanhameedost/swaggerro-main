@@ -1,10 +1,8 @@
 "use client";
 
-import { useDeferredValue, useMemo, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import {
   Check,
-  ChevronLeft,
-  ChevronRight,
   PackageOpen,
   Search,
   SlidersHorizontal,
@@ -13,11 +11,10 @@ import {
 import { usePublicCategories, usePublicProducts } from "@/lib/queries.catalog";
 import { ProductCard } from "@/components/shop/product-card";
 import { PageHero } from "@/components/marketing/page-hero";
-import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { CatalogProductListItem } from "@/modules/catalog/products/types";
 
-const PAGE_SIZE = 9;
+const PAGE_SIZE = 12;
 
 const SORT_OPTIONS = [
   { value: "featured", label: "Featured" },
@@ -44,7 +41,7 @@ export default function ShopPage() {
   const [minPrice, setMinPrice] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
   const [sort, setSort] = useState<SortValue>("featured");
-  const [page, setPage] = useState(1);
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const deferredSearch = useDeferredValue(search);
 
   // distinct color swatches across the catalog
@@ -75,18 +72,34 @@ export default function ShopPage() {
     return list;
   }, [allProducts, category, colors, minPrice, maxPrice, deferredSearch, sort]);
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const safePage = Math.min(page, totalPages);
-  const pageItems = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+  const pageItems = filtered.slice(0, visibleCount);
+  const hasMore = visibleCount < filtered.length;
 
-  // reset to page 1 when filters change
-  const resetPage = () => setPage(1);
+  // auto-load the next batch as the sentinel scrolls into view
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el || !hasMore) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          setVisibleCount((c) => Math.min(c + PAGE_SIZE, filtered.length));
+        }
+      },
+      { rootMargin: "400px" },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [hasMore, filtered.length]);
+
+  // reset to the first batch when filters/search/sort change
+  const resetPage = () => setVisibleCount(PAGE_SIZE);
   const toggleColor = (name: string) => {
     resetPage();
     setColors((cur) => (cur.includes(name) ? cur.filter((c) => c !== name) : [...cur, name]));
   };
   const clearAll = () => {
-    setCategory(null); setColors([]); setMinPrice(""); setMaxPrice(""); setPage(1);
+    setCategory(null); setColors([]); setMinPrice(""); setMaxPrice(""); setVisibleCount(PAGE_SIZE);
   };
   const hasActive = category || colors.length || minPrice || maxPrice;
 
@@ -250,41 +263,18 @@ export default function ShopPage() {
             </div>
           )}
 
-          {/* Pagination */}
-          {totalPages > 1 ? (
-            <div className="mt-10 flex items-center justify-center gap-2">
-              <button
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={safePage <= 1}
-                className={cn(buttonVariants({ variant: "outline", size: "icon" }), "size-9 disabled:opacity-40")}
-                aria-label="Previous page"
-              >
-                <ChevronLeft className="size-4" />
-              </button>
-              {Array.from({ length: totalPages }).map((_, i) => {
-                const n = i + 1;
-                return (
-                  <button
-                    key={n}
-                    onClick={() => setPage(n)}
-                    className={cn(
-                      "flex size-9 items-center justify-center rounded-lg border text-sm font-medium transition-colors",
-                      n === safePage ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background hover:bg-muted",
-                    )}
-                  >
-                    {n}
-                  </button>
-                );
-              })}
-              <button
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                disabled={safePage >= totalPages}
-                className={cn(buttonVariants({ variant: "outline", size: "icon" }), "size-9 disabled:opacity-40")}
-                aria-label="Next page"
-              >
-                <ChevronRight className="size-4" />
-              </button>
+          {/* Infinite scroll — auto-loads the next batch as you scroll */}
+          {hasMore ? (
+            <div ref={sentinelRef} className="mt-10 flex items-center justify-center py-6 text-sm text-muted-foreground">
+              <span className="inline-flex items-center gap-2">
+                <span className="size-4 animate-spin rounded-full border-2 border-muted-foreground/30 border-t-foreground" />
+                Loading more…
+              </span>
             </div>
+          ) : filtered.length > PAGE_SIZE ? (
+            <p className="mt-10 text-center text-sm text-muted-foreground">
+              You&apos;ve reached the end · {filtered.length} products
+            </p>
           ) : null}
         </div>
       </div>

@@ -436,6 +436,9 @@ export abstract class CatalogSharedService {
       baseStock: product.baseStock,
       minQty: product.minQty,
       currency: product.currency,
+      commissionType: product.commissionType ?? "PERCENT",
+      commissionValue:
+        product.commissionValue != null ? this.decimalToNumber(product.commissionValue) : null,
       shipping: this.serializeShippingSummary(product),
       createdAt: product.createdAt.toISOString(),
       updatedAt: product.updatedAt.toISOString()
@@ -499,6 +502,8 @@ export abstract class CatalogSharedService {
       priceCents: item.minPrice,
       minQty: item.minQty,
       currency: item.currency,
+      commissionType: item.commissionType,
+      commissionValue: item.commissionValue,
       shipping: item.shipping,
       createdAt: item.createdAt,
       updatedAt: item.updatedAt
@@ -550,6 +555,9 @@ export abstract class CatalogSharedService {
       minQty: product.minQty,
       baseStock: product.baseStock,
       currency: product.currency,
+      commissionType: product.commissionType ?? "PERCENT",
+      commissionValue:
+        product.commissionValue != null ? this.decimalToNumber(product.commissionValue) : null,
       hasVariants,
       lowestPrice,
       highestPrice,

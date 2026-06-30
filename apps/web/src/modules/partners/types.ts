@@ -19,6 +19,8 @@ export type SellerApplication = {
   status: SellerApplicationStatus;
   adminNotes: string | null;
   reviewedAt: string | null;
+  termsAgreedAt: string | null;
+  termsVersion: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -38,6 +40,8 @@ export type CreateSellerApplicationInput = {
   additionalInfo?: string;
   logoUrl?: string | null;
   logoKey?: string | null;
+  termsAccepted: boolean;
+  termsVersion?: string;
 };
 
 export type AvailabilityResult = {

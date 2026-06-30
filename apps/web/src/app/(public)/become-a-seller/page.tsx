@@ -19,6 +19,8 @@ import { useSubmitSellerApplication } from "@/queries/partners";
 import { checkSellerAvailability } from "@/modules/partners/api";
 import { createCatalogImageUpload, uploadFileToPresignedUrl } from "@/modules/catalog/public/api";
 import { cn } from "@/lib/utils";
+import { SellerAgreementModal } from "@/app/components/partners/SellerAgreementModal";
+import { SELLER_AGREEMENT_VERSION } from "@/lib/seller-agreement";
 
 const INDUSTRIES = [
   "Apparel & Fashion",
@@ -124,6 +126,11 @@ export default function BecomeASellerPage() {
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+
+  // Seller Agreement gate.
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [agreementOpen, setAgreementOpen] = useState(false);
+  const [termsError, setTermsError] = useState<string | null>(null);
 
   // Live duplicate-check state for email + store URL.
   const [emailTaken, setEmailTaken] = useState(false);
@@ -290,6 +297,11 @@ export default function BecomeASellerPage() {
       addToast({ title: "Missing details", description: "Please complete the required fields.", color: "warning" });
       return;
     }
+    if (!termsAccepted) {
+      setTermsError("Please read and accept the Seller Agreement to continue.");
+      addToast({ title: "Agreement required", description: "Please accept the Seller Agreement.", color: "warning" });
+      return;
+    }
     const countryName = countries.find((c) => c.isoCode === form.countryCode)?.name ?? form.countryCode;
     try {
       await submitMutation.mutateAsync({
@@ -307,6 +319,8 @@ export default function BecomeASellerPage() {
         additionalInfo: form.additionalInfo.trim() || undefined,
         logoUrl: logo?.url ?? null,
         logoKey: logo?.key ?? null,
+        termsAccepted: true,
+        termsVersion: SELLER_AGREEMENT_VERSION,
       });
       setSubmitted(true);
       window.scrollTo({ top: 0, behavior: "smooth" });
@@ -604,6 +618,52 @@ export default function BecomeASellerPage() {
               </div>
             </div>
 
+            {/* Seller Agreement gate */}
+            <div
+              className={cn(
+                "rounded-2xl border bg-card p-4",
+                termsError ? "border-destructive/60" : "border-border",
+              )}
+            >
+              <label className="flex items-start gap-3">
+                <input
+                  type="checkbox"
+                  checked={termsAccepted}
+                  onChange={(e) => {
+                    const checked = e.target.checked;
+                    setTermsError(null);
+                    if (checked) {
+                      // Force the seller to read the contract: open it instead of
+                      // ticking immediately. They accept from inside the modal.
+                      setTermsAccepted(false);
+                      setAgreementOpen(true);
+                    } else {
+                      setTermsAccepted(false);
+                    }
+                  }}
+                  className="mt-0.5 size-4 shrink-0 rounded border-input accent-primary"
+                />
+                <span className="text-sm text-foreground">
+                  I have read and agree to the{" "}
+                  <button
+                    type="button"
+                    onClick={() => setAgreementOpen(true)}
+                    className="font-semibold text-primary underline underline-offset-2 hover:opacity-80"
+                  >
+                    Swaggeroo Seller Agreement
+                  </button>
+                  , including the commission and pricing terms (0–15% or a per-product flat fee).
+                </span>
+              </label>
+              {termsError ? (
+                <p className="mt-2 text-xs font-medium text-destructive">{termsError}</p>
+              ) : termsAccepted ? (
+                <p className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-success">
+                  <CheckCircle2 className="size-3.5" /> Agreement accepted
+                </p>
+              ) : null}
+            </div>
+
             <div className="flex items-center justify-between gap-4">
               <button
                 type="button"
@@ -614,7 +674,7 @@ export default function BecomeASellerPage() {
               </button>
               <button
                 type="submit"
-                disabled={submitMutation.isPending || uploadingLogo}
+                disabled={submitMutation.isPending || uploadingLogo || !termsAccepted}
                 className="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground shadow-brand transition hover:bg-primary/90 disabled:opacity-60"
               >
                 {submitMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : null}
@@ -624,6 +684,16 @@ export default function BecomeASellerPage() {
           </>
         )}
       </form>
+
+      <SellerAgreementModal
+        open={agreementOpen}
+        onClose={() => setAgreementOpen(false)}
+        onAccept={() => {
+          setTermsAccepted(true);
+          setTermsError(null);
+          setAgreementOpen(false);
+        }}
+      />
     </div>
   );
 }

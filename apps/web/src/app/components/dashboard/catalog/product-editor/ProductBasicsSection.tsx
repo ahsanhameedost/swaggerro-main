@@ -457,6 +457,96 @@ export function ProductBasicsSection({
                         />
                     </CardBody>
                 </Card>
+
+                <Card className="shadow-sm">
+                    <CardHeader className="flex flex-col items-start gap-1">
+                        <div className="text-lg font-semibold">Swaggeroo commission</div>
+                        <p className="text-sm text-default-500">
+                            How much Swaggeroo earns when a seller sells this product. Choose a
+                            percentage (max&nbsp;15%) or a flat amount taken at the base price.
+                        </p>
+                    </CardHeader>
+                    <CardBody className="space-y-4">
+                        <Select
+                            label="Commission type"
+                            selectedKeys={[state.commissionType]}
+                            onSelectionChange={(selection) => {
+                                const next = Array.from(selection as Set<string>)[0];
+                                if (next === "PERCENT" || next === "FLAT") {
+                                    onStateChange((current) => ({ ...current, commissionType: next }));
+                                }
+                            }}
+                        >
+                            <SelectItem key="PERCENT">Percentage of sale</SelectItem>
+                            <SelectItem key="FLAT">Flat amount per unit</SelectItem>
+                        </Select>
+
+                        <Input
+                            type="number"
+                            step={state.commissionType === "PERCENT" ? "0.1" : "0.01"}
+                            min={0}
+                            max={state.commissionType === "PERCENT" ? 15 : undefined}
+                            label={
+                                state.commissionType === "PERCENT"
+                                    ? "Commission percentage"
+                                    : "Flat commission (at base price)"
+                            }
+                            startContent={
+                                state.commissionType === "FLAT" ? (
+                                    <span className="text-default-400">$</span>
+                                ) : null
+                            }
+                            endContent={
+                                state.commissionType === "PERCENT" ? (
+                                    <span className="text-default-400">%</span>
+                                ) : null
+                            }
+                            description={
+                                state.commissionType === "PERCENT"
+                                    ? "Leave blank to use the seller store's default rate."
+                                    : "Grows proportionally if the seller raises their price."
+                            }
+                            value={state.commissionValue == null ? "" : String(state.commissionValue)}
+                            onChange={(event) => {
+                                const raw = event.target.value.trim();
+                                let num = raw ? Number(raw) : null;
+                                if (num != null && state.commissionType === "PERCENT") {
+                                    num = Math.min(15, Math.max(0, num));
+                                }
+                                if (num != null && num < 0) num = 0;
+                                onStateChange((current) => ({ ...current, commissionValue: num }));
+                            }}
+                        />
+
+                        {state.commissionValue != null && (state.basePrice ?? 0) > 0 ? (
+                            <div className="rounded-xl bg-default-100 px-3 py-2 text-sm text-default-600">
+                                {state.commissionType === "PERCENT" ? (
+                                    <>
+                                        On a ${Number(state.basePrice).toFixed(2)} sale, Swaggeroo earns{" "}
+                                        <span className="font-semibold text-foreground">
+                                            ${((Number(state.basePrice) * state.commissionValue) / 100).toFixed(2)}
+                                        </span>{" "}
+                                        and the seller keeps{" "}
+                                        <span className="font-semibold text-foreground">
+                                            ${(Number(state.basePrice) - (Number(state.basePrice) * state.commissionValue) / 100).toFixed(2)}
+                                        </span>
+                                        .
+                                    </>
+                                ) : (
+                                    <>
+                                        Swaggeroo earns{" "}
+                                        <span className="font-semibold text-foreground">
+                                            ${state.commissionValue.toFixed(2)}
+                                        </span>{" "}
+                                        per unit at the ${Number(state.basePrice).toFixed(2)} base price (
+                                        {((state.commissionValue / Number(state.basePrice)) * 100).toFixed(1)}%).
+                                    </>
+                                )}
+                            </div>
+                        ) : null}
+                    </CardBody>
+                </Card>
+
                 <ProductPricingOptionsSection
                     rows={state.pricingOptions}
                     disabled={state.productCatalogVariants.length > 0}
