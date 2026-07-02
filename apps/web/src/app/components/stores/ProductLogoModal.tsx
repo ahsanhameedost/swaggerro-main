@@ -411,8 +411,8 @@ export function ProductLogoModal({
                 <h4 className="text-sm font-semibold text-foreground">Your price &amp; earnings</h4>
                 <p className="text-xs text-muted-foreground">
                   {product.commissionType === "FLAT"
-                    ? `Swaggeroo takes a flat fee of ${formatMoney(product.commissionValue ?? 0, currency)} at the base price (scales if you raise your price).`
-                    : `Swaggeroo takes ${commission.effectivePercent}% commission on each sale.`}
+                    ? `You earn a flat ${formatMoney(product.commissionValue ?? 0, currency)} per sale (scales up as you raise your price). Swaggeroo keeps the rest.`
+                    : `You earn ${commission.effectivePercent}% of each sale as your commission. Swaggeroo keeps the rest.`}
                 </p>
               </div>
 
@@ -478,16 +478,16 @@ export function ProductLogoModal({
                   <span className="font-medium tabular-nums">{formatMoney(effectivePrice, currency)}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">
-                    Swaggeroo commission
-                    {product.commissionType === "PERCENT" ? ` (${commission.effectivePercent}%)` : ""}
-                  </span>
+                  <span className="text-muted-foreground">Swaggeroo keeps</span>
                   <span className="font-medium tabular-nums text-foreground">
-                    −{formatMoney(commission.commission, currency)}
+                    {formatMoney(commission.platformEarning, currency)}
                   </span>
                 </div>
                 <div className="flex items-center justify-between border-t border-border pt-1">
-                  <span className="font-semibold text-foreground">You earn</span>
+                  <span className="font-semibold text-foreground">
+                    You earn
+                    {product.commissionType === "PERCENT" ? ` (${commission.effectivePercent}% commission)` : " commission"}
+                  </span>
                   <span className="font-bold tabular-nums text-primary">
                     {formatMoney(commission.sellerEarning, currency)}
                   </span>

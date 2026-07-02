@@ -1,17 +1,27 @@
 /**
- * Swaggeroo commission math — the single source of truth (web side) for how the
- * platform's cut is computed on a product sold through a seller store.
+ * Swaggeroo commission math — the single source of truth (web side) for how a
+ * sale through a seller store is split between the seller and the platform.
  *
- * Two modes per product (CatalogProduct.commissionType):
- *  - PERCENT: cut = rate% of the seller's sale price (capped 0-15; store-level
- *    fallback used when no per-product value is set).
+ * The "commission" is the configured cut (percent or flat). WHO keeps it depends
+ * on who owns the product:
+ *  - PLATFORM-owned (Swaggeroo's own catalog, the current default): the seller
+ *    only earns the commission and Swaggeroo keeps the rest (the product price).
+ *  - SELLER-owned (future, once sellers may add their own products): the split
+ *    flips — the seller keeps the price and Swaggeroo takes the commission.
+ *
+ * Two commission modes per product (CatalogProduct.commissionType):
+ *  - PERCENT: cut = rate% of the sale price (capped 0-15; store-level fallback
+ *    used when no per-product value is set).
  *  - FLAT: a fixed dollar cut defined at the catalog base price that scales
- *    proportionally as the seller raises their price.
+ *    proportionally as the price rises.
  *
  * Keep this file in sync with apps/api/src/catalog/common/commission.ts.
  */
 
 export type SwagCommissionType = "PERCENT" | "FLAT";
+
+/** Who owns the product being sold — decides which side keeps the commission. */
+export type ProductOwnership = "PLATFORM" | "SELLER";
 
 export const MAX_COMMISSION_PERCENT = 15;
 
@@ -23,14 +33,18 @@ export type CommissionConfig = {
   basePrice: number;
   /** Store commission percent fallback, used for PERCENT when value is null. */
   fallbackPercent: number;
+  /** Product ownership; defaults to PLATFORM (seller earns only the commission). */
+  ownership?: ProductOwnership;
 };
 
 export type CommissionResult = {
-  /** Platform's cut on this sale, in dollars (rounded to cents). */
+  /** The commission amount on this sale, in dollars (rounded to cents). */
   commission: number;
-  /** What the seller keeps after the platform cut. */
+  /** What the seller keeps (ownership-aware). */
   sellerEarning: number;
-  /** Effective percentage of the sale price the platform took (for display). */
+  /** What the platform (Swaggeroo) keeps (ownership-aware). */
+  platformEarning: number;
+  /** Effective commission as a percentage of the sale price (for display). */
   effectivePercent: number;
 };
 
@@ -48,7 +62,7 @@ export function resolveCommissionPercent(config: Pick<CommissionConfig, "commiss
   return clamp(raw, 0, MAX_COMMISSION_PERCENT);
 }
 
-/** Compute the platform commission for a given sale price. */
+/** Compute the sale split (seller vs platform) for a given sale price. */
 export function computeCommission(salePrice: number, config: CommissionConfig): CommissionResult {
   const price = Math.max(0, salePrice || 0);
   const base = config.basePrice > 0 ? config.basePrice : price;
@@ -63,8 +77,15 @@ export function computeCommission(salePrice: number, config: CommissionConfig): 
   }
 
   commission = round2(Math.min(commission, price));
-  const sellerEarning = round2(price - commission);
+  const remainder = round2(price - commission);
   const effectivePercent = price > 0 ? round2((commission / price) * 100) : 0;
 
-  return { commission, sellerEarning, effectivePercent };
+  // PLATFORM-owned (default): the seller earns only the commission, Swaggeroo
+  // keeps the rest. SELLER-owned: the seller keeps the price, Swaggeroo takes
+  // the commission.
+  const ownership = config.ownership ?? "PLATFORM";
+  const sellerEarning = ownership === "SELLER" ? remainder : commission;
+  const platformEarning = ownership === "SELLER" ? commission : remainder;
+
+  return { commission, sellerEarning, platformEarning, effectivePercent };
 }

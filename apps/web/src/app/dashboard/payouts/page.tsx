@@ -112,7 +112,7 @@ export default function AdminPayoutsPage() {
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">Seller payouts</h1>
             <p className="text-sm text-foreground/60">
-              Each seller&apos;s earnings (sale minus commission) and what you owe them. Click Pay to record a settlement.
+              Each seller&apos;s earnings (their commission on each sale) and what you owe them. Click Pay to record a settlement.
             </p>
           </div>
         </CardBody>

@@ -64,6 +64,9 @@ const PERMISSIONS = [
   { key: "admin.users.read", description: "Read users" },
   { key: "admin.users.write", description: "Manage users" },
 
+  { key: "settings.read", description: "Read platform settings" },
+  { key: "settings.write", description: "Manage platform settings" },
+
   { key: "rbac.manage", description: "Manage RBAC" }
 ];
 
@@ -78,7 +81,11 @@ const DEFAULT_CUSTOM_ROLES = [
     name: "Manager",
     description: "Operations manager — broad catalog, orders, inventory & shipping access",
     permissionKeys: ALL_PERMISSION_KEYS.filter(
-      (key) => !key.startsWith("rbac") && key !== "admin.users.write" && !key.startsWith("seller.")
+      (key) =>
+        !key.startsWith("rbac") &&
+        key !== "admin.users.write" &&
+        !key.startsWith("seller.") &&
+        !key.startsWith("settings.")
     )
   },
   {
@@ -97,7 +104,10 @@ const DEFAULT_CUSTOM_ROLES = [
     name: "Support",
     description: "Support — read access & contact messages",
     permissionKeys: ALL_PERMISSION_KEYS.filter(
-      (key) => (key.endsWith(".read") || key.startsWith("contact")) && !key.startsWith("seller.")
+      (key) =>
+        (key.endsWith(".read") || key.startsWith("contact")) &&
+        !key.startsWith("seller.") &&
+        !key.startsWith("settings.")
     )
   }
 ];

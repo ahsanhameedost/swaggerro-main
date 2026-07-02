@@ -321,6 +321,13 @@ model CatalogProduct {
   // store-level Store.commissionPercent is used as the fallback.
   commissionType         SwagCommissionType         @default(PERCENT)
   commissionValue        Decimal?                   @db.Decimal(10, 2)
+  // Product ownership seam. null = platform (Swaggeroo) owned: the seller only
+  // earns the commission and Swaggeroo keeps the product price. When a seller is
+  // (in future) allowed to add their own products, ownerStoreId points at their
+  // store and the split flips — the seller keeps the price, Swaggeroo takes the
+  // commission. Nothing writes this yet; all current products stay platform-owned.
+  ownerStoreId           String?
+  ownerStore             Store?                     @relation("StoreOwnedProducts", fields: [ownerStoreId], references: [id], onDelete: SetNull)
   weightOz               Decimal?                   @db.Decimal(10, 2)
   lengthIn               Decimal?                   @db.Decimal(10, 2)
   widthIn                Decimal?                   @db.Decimal(10, 2)
@@ -341,6 +348,7 @@ model CatalogProduct {
   @@index([shippingProfileId])
   @@index([status])
   @@index([name])
+  @@index([ownerStoreId])
   @@map("catalog_products")
 }
 
@@ -939,11 +947,23 @@ model Store {
   products               StoreProduct[]
   orders                 CatalogOrder[]
   payouts                SellerPayout[]
+  // Products this seller owns (future: sellers adding their own catalog items).
+  ownedProducts          CatalogProduct[]   @relation("StoreOwnedProducts")
   createdAt              DateTime           @default(now())
   updatedAt              DateTime           @updatedAt
 
   @@index([status])
   @@map("stores")
+}
+
+// Simple key/value store for platform-wide toggles set by super-admins
+// (e.g. "sellers_can_add_products"). Values are stringified.
+model AppSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+
+  @@map("app_settings")
 }
 
 enum PayoutStatus {

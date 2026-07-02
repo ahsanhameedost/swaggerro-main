@@ -18,6 +18,7 @@ import { StoresModule } from "./stores/stores.module";
 import { NotificationsModule } from "./notifications/notifications.module";
 import { StoreCheckoutModule } from "./catalog/store-checkout/store-checkout.module";
 import { PayoutsModule } from "./payouts/payouts.module";
+import { SettingsModule } from "./settings/settings.module";
 
 @Module({
   imports: [
@@ -39,7 +40,8 @@ import { PayoutsModule } from "./payouts/payouts.module";
     StoresModule,
     NotificationsModule,
     StoreCheckoutModule,
-    PayoutsModule
+    PayoutsModule,
+    SettingsModule
   ],
   controllers: [HealthController]
 })

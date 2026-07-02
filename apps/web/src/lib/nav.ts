@@ -134,6 +134,13 @@ const NAV_ITEMS: NavItem[] = [
     href: "/dashboard/permissions",
     icon: "Settings",
     requiredPermissions: ["rbac.manage"]
+  },
+  {
+    key: "settings",
+    label: "Platform Settings",
+    href: "/dashboard/settings",
+    icon: "Settings2",
+    requiredPermissions: ["settings.read"]
   }
 ];
 

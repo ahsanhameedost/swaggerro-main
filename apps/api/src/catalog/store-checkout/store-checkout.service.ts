@@ -10,6 +10,7 @@ import { randomUUID } from "crypto";
 import { PrismaService } from "../../prisma/prisma.service";
 import { env } from "../../env";
 import { NotificationsService } from "../../notifications/notifications.service";
+import { computeCommission } from "../common/commission";
 import type {
   ConfirmStoreCheckoutInput,
   CreateStoreCheckoutInput
@@ -214,11 +215,26 @@ export class StoreCheckoutService {
   }
 
   // Step 2: verify the confirmed PaymentIntent, mark the order PAID, and snapshot
-  // the seller's earning (total − commission) for the payout ledger.
+  // the seller's earning for the payout ledger. For Swaggeroo-owned products the
+  // seller earns ONLY the commission (Swaggeroo keeps the product price); for
+  // seller-owned products the seller keeps the price and Swaggeroo takes the cut.
   async confirmCheckout(buyerUserId: string, input: ConfirmStoreCheckoutInput) {
     const order = await this.prisma.catalogOrder.findFirst({
       where: { id: input.orderId, userId: buyerUserId, storeId: { not: null } },
-      include: { store: true }
+      include: {
+        store: true,
+        items: {
+          include: {
+            product: {
+              select: {
+                commissionType: true,
+                commissionValue: true,
+                ownerStoreId: true
+              }
+            }
+          }
+        }
+      }
     });
     if (!order) throw new NotFoundException("Order not found");
     if (order.paymentStatus === "PAID") {
@@ -244,8 +260,28 @@ export class StoreCheckoutService {
       }
     }
 
-    const commissionPercent = order.store ? Number(order.store.commissionPercent) : 0;
-    const sellerEarningCents = Math.round(totalCents * (1 - commissionPercent / 100));
+    // Sum the seller's earning per line item using each product's own commission
+    // config (falling back to the store's percent). Ownership decides the split:
+    // platform-owned → seller keeps the commission; seller-owned → seller keeps
+    // the price. Rounds per unit, then multiplies by quantity.
+    const fallbackPercent = order.store ? Number(order.store.commissionPercent) : 0;
+    let sellerEarningCents = 0;
+    for (const item of order.items) {
+      const unit = Number(item.unitPrice);
+      const split = computeCommission(unit, {
+        commissionType: item.product.commissionType,
+        commissionValue:
+          item.product.commissionValue != null ? Number(item.product.commissionValue) : null,
+        basePrice: unit,
+        fallbackPercent,
+        ownership: item.product.ownerStoreId ? "SELLER" : "PLATFORM"
+      });
+      sellerEarningCents += Math.round(split.sellerEarning * 100) * item.quantity;
+    }
+    sellerEarningCents = Math.max(0, Math.min(sellerEarningCents, totalCents));
+    // Snapshot the seller's effective take as a percentage (for payout display).
+    const effectiveSellerPercent =
+      totalCents > 0 ? Math.round((sellerEarningCents / totalCents) * 10000) / 100 : 0;
 
     await this.prisma.catalogOrder.update({
       where: { id: order.id },
@@ -253,7 +289,7 @@ export class StoreCheckoutService {
         paymentStatus: "PAID",
         paidAt: new Date(),
         squarePaymentId: paymentId,
-        commissionPercent: new Prisma.Decimal(commissionPercent),
+        commissionPercent: new Prisma.Decimal(effectiveSellerPercent),
         sellerEarningCents
       }
     });
