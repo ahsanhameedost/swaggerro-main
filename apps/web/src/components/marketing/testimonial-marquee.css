@@ -1,0 +1,25 @@
+@keyframes tm-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    /* four identical sets; -25% == exactly one set → lands on the seam */
+    transform: translateX(-25%);
+  }
+}
+
+.tm-marquee {
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 5%, #000 95%, transparent);
+  mask-image: linear-gradient(to right, transparent, #000 5%, #000 95%, transparent);
+}
+
+.tm-track {
+  animation: tm-scroll var(--tm-duration, 60s) linear infinite;
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tm-track {
+    animation: none;
+  }
+}

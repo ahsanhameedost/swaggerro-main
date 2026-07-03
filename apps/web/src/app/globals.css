@@ -357,6 +357,11 @@ body {
   --color-navy-foreground: var(--navy-foreground);
   --color-accent-yellow: var(--accent-yellow);
   --color-accent-yellow-foreground: var(--accent-yellow-foreground);
+  /* new-home design alias: `highlight` == the amber accent */
+  --color-highlight: var(--accent-yellow);
+  --color-highlight-foreground: var(--accent-yellow-foreground);
+  /* success green — used by new-home landing components (proof/pack badges) */
+  --color-success: var(--success);
 
   /* new-design fonts site-wide: display headings -> Bricolage Grotesque, body -> Plus Jakarta */
   --font-display: var(--font-bricolage);
@@ -386,4 +391,8 @@ body {
   --brand-soft: #e8f2ff;
   --brand-emphasis: #0d1b3d;        /* navy */
   --info: #2196ff;
+  --success: #16a34a;               /* green — proof/pack "ready" badges */
 }
+
+/* Hero-rail (.hero-arch) and testimonials (.tm-*) effect classes live with
+   their components in hero-carousel.css / testimonial-marquee.css. */

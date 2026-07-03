@@ -9,6 +9,7 @@ import { PackPreview } from "@/components/landing/pack-preview";
 import { buttonVariants } from "@/components/ui/button";
 import { HOW_IT_WORKS, SUPERPOWERS } from "@/content/marketing";
 import { cn } from "@/lib/utils";
+import PricingEstimatorSection from "@/app/components/home/PricingEstimatorSection";
 
 export const metadata: Metadata = {
   title: "How it works",
@@ -78,6 +79,9 @@ export default function HowItWorksPage() {
           ))}
         </div>
       </Section>
+
+      {/* Live pricing estimator (moved here from the home page) */}
+      <PricingEstimatorSection />
 
       <CtaBand secondary={{ label: "Browse the shop", href: "/shop" }} />
     </>

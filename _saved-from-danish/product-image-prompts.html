@@ -1,0 +1,355 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Swaggeroo — Product Image Prompts</title>
+<style>
+  :root {
+    --bg: #f4f5f7;
+    --card: #ffffff;
+    --ink: #0b1020;
+    --muted: #5b6472;
+    --border: #e2e6ee;
+    --primary: #1e40af;
+    --primary-soft: #eef2fd;
+    --radius: 16px;
+    --shadow: 0 6px 16px -4px rgba(15, 23, 42, 0.1);
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: var(--sans);
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 0 20px 80px; }
+
+  header {
+    position: sticky; top: 0; z-index: 10;
+    backdrop-filter: blur(10px);
+    background: rgba(244, 245, 247, 0.85);
+    border-bottom: 1px solid var(--border);
+  }
+  .header-inner {
+    max-width: 980px; margin: 0 auto; padding: 16px 20px;
+    display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+  }
+  .brand { font-size: 20px; font-weight: 800; letter-spacing: -0.02em; }
+  .brand span { color: var(--primary); }
+  .header-actions { display: flex; align-items: center; gap: 10px; }
+
+  .intro { margin: 32px 0 8px; }
+  h1 { font-size: clamp(28px, 5vw, 40px); letter-spacing: -0.03em; margin: 0 0 8px; }
+  .sub { color: var(--muted); max-width: 70ch; margin: 0 0 18px; }
+  .note {
+    background: var(--primary-soft); border: 1px solid #d6e0fb; color: #1e3a8a;
+    border-radius: 12px; padding: 14px 16px; font-size: 14px; margin: 18px 0 0;
+  }
+  .note code { font-family: var(--mono); background: rgba(30,64,175,0.1); padding: 1px 6px; border-radius: 6px; }
+
+  h2.cat {
+    font-size: 13px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--muted);
+    margin: 44px 0 4px; display: flex; align-items: center; gap: 10px;
+  }
+  h2.cat .count { font-weight: 700; color: var(--primary); }
+  h2.cat .line { flex: 1; height: 1px; background: var(--border); }
+
+  .card {
+    background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+    box-shadow: var(--shadow); padding: 18px; margin-top: 16px;
+  }
+  .card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+  .title { font-size: 18px; font-weight: 700; letter-spacing: -0.01em; margin: 0; }
+  .file { font-family: var(--mono); font-size: 12px; color: var(--muted); margin-top: 3px; }
+  .variants { font-size: 13px; color: var(--muted); margin: 0 0 12px; }
+  .variants b { color: var(--ink); font-weight: 600; }
+
+  pre.prompt {
+    font-family: var(--mono); font-size: 13px; line-height: 1.6; white-space: pre-wrap; word-break: break-word;
+    background: #f8fafc; border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; margin: 0; color: #1f2937;
+  }
+
+  button {
+    font-family: var(--sans); font-weight: 600; font-size: 14px; cursor: pointer;
+    border-radius: 10px; border: 1px solid var(--border); background: var(--card); color: var(--ink);
+    padding: 9px 14px; transition: all 0.15s ease; white-space: nowrap;
+  }
+  button:hover { border-color: #c4cdda; }
+  button.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+  button.primary:hover { filter: brightness(0.94); }
+  button.copy { padding: 7px 12px; font-size: 13px; }
+  button.copied { background: #16a34a; border-color: #16a34a; color: #fff; }
+  .card-actions { margin-top: 12px; display: flex; justify-content: flex-end; }
+
+  .toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px);
+    background: var(--ink); color: #fff; padding: 10px 18px; border-radius: 999px; font-size: 14px; font-weight: 600;
+    opacity: 0; pointer-events: none; transition: all 0.25s ease; z-index: 50;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+<header>
+  <div class="header-inner">
+    <div class="brand">swag<span>geroo</span> · prompts</div>
+    <div class="header-actions">
+      <button class="primary" onclick="copyAll()">Copy all prompts</button>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="intro">
+    <h1>Product image generation prompts</h1>
+    <p class="sub">
+      Detailed, copy-ready prompts for generating the storefront's product photography with an
+      AI image model. Each prompt is self-contained — one click copies the full prompt, including
+      the shared studio style so the whole catalog comes out as a cohesive set.
+    </p>
+    <div class="note">
+      <b>How to use:</b> generate each at <code>1024&times;1024</code> (square), then export as JPG and save into
+      <code>public/products/&lt;slug&gt;.jpg</code> using the filename shown on each card. Keep the same background
+      and lighting across every product so the shop grid stays consistent. Products are intentionally
+      <b>blank / unbranded</b> — logos get added later in the app's mockup tool.
+    </div>
+  </div>
+
+  <!-- ============================ GLOBAL STYLE ============================ -->
+  <h2 class="cat"><span class="count">★</span> Shared style (baked into every prompt below) <span class="line"></span></h2>
+  <div class="card">
+    <div class="card-top">
+      <div>
+        <p class="title">Studio style block</p>
+        <p class="file">prepend or reuse if you tweak a prompt</p>
+      </div>
+    </div>
+    <pre class="prompt" id="style-block">Style: ultra-realistic studio product photography for a premium e-commerce catalog. Seamless very-light warm-grey background (#f4f5f7) with a soft, natural contact shadow directly beneath the product. Bright, soft, diffused lighting from the upper left; gentle highlights, no harsh glare. Product perfectly centered, upright, and filling about 82% of the frame. Shot on a 100mm macro lens at f/8 with crisp edge-to-edge focus and true-to-life color. Square 1:1 aspect ratio. Clean, minimal, modern, high-end look. No text, no logos, no watermarks, no extra props, no hands or people, no busy reflections.</pre>
+    <div class="card-actions"><button class="copy" data-target="style-block">Copy</button></div>
+  </div>
+
+  <div id="cats"></div>
+</div>
+
+<div class="toast" id="toast">Copied!</div>
+
+<script>
+// ---- Prompt data (slug -> details). STYLE is appended to each for self-contained copies. ----
+const STYLE = "Style: ultra-realistic studio product photography for a premium e-commerce catalog. Seamless very-light warm-grey background (#f4f5f7) with a soft, natural contact shadow directly beneath the product. Bright, soft, diffused lighting from the upper left; gentle highlights, no harsh glare. Product perfectly centered, upright, and filling about 82% of the frame. Shot on a 100mm macro lens at f/8 with crisp edge-to-edge focus and true-to-life color. Square 1:1 aspect ratio. Clean, minimal, modern, high-end look. No text, no logos, no watermarks, no extra props, no hands or people, no busy reflections.";
+
+const CATEGORIES = [
+  {
+    name: "Apparel",
+    items: [
+      {
+        slug: "classic-cotton-tee",
+        title: "Classic Cotton Tee",
+        variants: "Cobalt — swap for Black / White / Heather Grey",
+        body: "A blank short-sleeve crew-neck T-shirt in electric cobalt blue (#1e40af), shown on an invisible ghost mannequin, straight-on front view. Soft 5.3 oz ringspun cotton with a smooth matte knit texture, a ribbed crew collar, clean set-in sleeves, and shoulder-to-shoulder taping. The chest is completely blank — no print, no logo, no graphics. Garment is crisp, freshly pressed, and wrinkle-free, holding a natural relaxed unisex shape."
+      },
+      {
+        slug: "premium-hoodie",
+        title: "Premium Fleece Hoodie",
+        variants: "Heather Grey — swap for Cobalt / Black / White",
+        body: "A blank pullover hoodie in heather grey, shown on an invisible ghost mannequin, straight-on front view. Heavyweight 8.5 oz brushed-back fleece with a plush soft texture, a double-lined drawstring hood with flat round cords, ribbed cuffs and hem, and a roomy front kangaroo pocket. Completely unbranded — no print or logo. Full, structured shape, freshly pressed and clean."
+      },
+      {
+        slug: "quarter-zip-pullover",
+        title: "Quarter-Zip Pullover",
+        variants: "Slate — swap for Black / Cobalt / Heather Grey",
+        body: "A blank quarter-zip pullover in slate grey, shown on an invisible ghost mannequin, straight-on front view. Mid-weight performance knit with a subtle moisture-wicking sheen, a stand-up collar, a short metal zipper with a small contrast pull tab, and raglan sleeves. Completely unbranded — no logo. Smooth, crisp, professional look."
+      }
+    ]
+  },
+  {
+    name: "Drinkware",
+    items: [
+      {
+        slug: "insulated-tumbler",
+        title: "Insulated Tumbler 20oz",
+        variants: "Matte Black — swap for Cobalt / Slate / White",
+        body: "A blank 20 oz double-wall stainless-steel insulated tumbler in matte black powder-coat finish, standing upright. Tall slightly-tapered cylinder, a clear press-fit plastic lid on top, and a subtle brushed-metal base ring. Smooth seamless body with no logo, no text, no markings. Sleek, premium, condensation-free surface."
+      },
+      {
+        slug: "ceramic-mug",
+        title: "Ceramic Camp Mug",
+        variants: "Cobalt glaze — swap for White / Slate / Black",
+        body: "A blank 12 oz camp-style ceramic stoneware mug in a glossy cobalt-blue reactive glaze with subtle natural speckle, standing upright with the chunky rounded handle turned slightly to the right. Wide stable base, thick comfortable walls, a smooth glossy finish catching a soft highlight. Completely unbranded — no print, no logo."
+      }
+    ]
+  },
+  {
+    name: "Bottles",
+    items: [
+      {
+        slug: "stainless-water-bottle",
+        title: "Stainless Water Bottle",
+        variants: "Slate — swap for Cobalt / Black / Brushed Steel",
+        body: "A blank 24 oz reusable single-wall stainless-steel water bottle in slate-grey matte powder-coat finish, standing upright. Slim straight cylindrical body with a natural bamboo screw-on lid showing fine wood grain, and a thin silicone seal ring. Clean and minimal — no logo, no text, no graphics. Eco, premium feel."
+      }
+    ]
+  },
+  {
+    name: "Bags",
+    items: [
+      {
+        slug: "canvas-tote",
+        title: "Heavyweight Canvas Tote",
+        variants: "Natural canvas — swap for Black / Slate / Cobalt straps",
+        body: "A blank heavyweight 12 oz natural cotton canvas tote bag, standing upright and lightly filled so it holds a structured boxed shape with a flat bottom. Two long reinforced shoulder straps in matching canvas, visible coarse canvas weave texture, and clean stitched seams. Completely unbranded — no print, no logo. Sturdy, artisanal, everyday look."
+      },
+      {
+        slug: "laptop-backpack",
+        title: "Commuter Laptop Backpack",
+        variants: "Matte Black — swap for Slate / Cobalt accents",
+        body: "A blank commuter laptop backpack in matte black weatherproof 600D fabric, standing upright and facing the camera at a slight three-quarter angle. Clean minimalist silhouette, a top grab handle, a smooth two-way front zipper, padded contoured shoulder straps, and a subtle side water-bottle pocket. No logos, no branding. Modern, structured, professional."
+      }
+    ]
+  },
+  {
+    name: "Tech",
+    items: [
+      {
+        slug: "wireless-charging-pad",
+        title: "Wireless Charging Pad",
+        variants: "Soft-touch White — swap for Black / Slate",
+        body: "A blank round 15W wireless charging pad in soft-touch matte white, photographed from a slightly elevated three-quarter angle. A slim low-profile puck disc with a fine non-slip top surface, a tiny single LED indicator dot on the edge, and a small USB-C port on the side. No logo, no text, no phone on it. Minimal, clean, modern gadget."
+      },
+      {
+        slug: "bluetooth-speaker",
+        title: "Pocket Bluetooth Speaker",
+        variants: "Cobalt — swap for Black / Slate / White",
+        body: "A blank pocket-size portable Bluetooth speaker in electric cobalt blue, standing at a slight three-quarter angle. Compact rounded-rectangle body with a perforated metal speaker grille on the front face, a soft-touch rubberized trim, three small round control buttons on top, and a short silicone carry strap loop on the side. Completely unbranded — no logo, no text. Premium, playful, durable look."
+      }
+    ]
+  },
+  {
+    name: "Notebooks",
+    items: [
+      {
+        slug: "hardcover-notebook",
+        title: "Hardcover Notebook",
+        variants: "Slate — swap for Cobalt / Black / Kraft",
+        body: "A blank A5 hardcover notebook with a slate-grey linen-textured cover, lying flat at a slight angle, opened just a little to reveal cream dot-grid pages. A matching elastic closure band wraps the cover, a thin satin ribbon marker peeks out from the pages, and the corners are gently rounded. Completely unbranded — no print, no debossing, no logo. Understated, premium stationery."
+      },
+      {
+        slug: "bamboo-pen-set",
+        title: "Bamboo Pen Set",
+        variants: "Natural bamboo + recycled kraft box",
+        body: "A natural FSC-certified bamboo barrel rollerball pen with a smooth matte wood grain, a slim metal clip and tip, lying at a slight diagonal beside an open recycled-kraft gift box with a soft foam insert cut to fit the pen. Warm, eco, minimalist styling. Completely unbranded — no print, no logo, no text on the box."
+      }
+    ]
+  }
+];
+
+// ---- Render ----
+function fullPrompt(it) {
+  return it.body + "\n\n" + STYLE;
+}
+
+const catsEl = document.getElementById("cats");
+let idx = 0;
+CATEGORIES.forEach((cat) => {
+  const h = document.createElement("h2");
+  h.className = "cat";
+  h.innerHTML = '<span class="count">' + cat.items.length + '</span> ' + cat.name + ' <span class="line"></span>';
+  catsEl.appendChild(h);
+
+  cat.items.forEach((it) => {
+    const id = "p" + (idx++);
+    const card = document.createElement("div");
+    card.className = "card";
+    const pre = document.createElement("pre");
+    pre.className = "prompt";
+    pre.id = id;
+    pre.textContent = fullPrompt(it);
+
+    const top = document.createElement("div");
+    top.className = "card-top";
+    top.innerHTML =
+      '<div><p class="title">' + it.title + '</p>' +
+      '<p class="file">public/products/' + it.slug + '.jpg</p></div>';
+
+    const variants = document.createElement("p");
+    variants.className = "variants";
+    variants.innerHTML = "<b>Color:</b> " + it.variants;
+
+    const actions = document.createElement("div");
+    actions.className = "card-actions";
+    const btn = document.createElement("button");
+    btn.className = "copy";
+    btn.textContent = "Copy prompt";
+    btn.setAttribute("data-target", id);
+    actions.appendChild(btn);
+
+    card.appendChild(top);
+    card.appendChild(variants);
+    card.appendChild(pre);
+    card.appendChild(actions);
+    catsEl.appendChild(card);
+  });
+});
+
+// ---- Copy behavior ----
+let toastTimer;
+function toast(msg) {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove("show"), 1600);
+}
+
+async function copyText(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch (e) {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed";
+    ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.select();
+    let ok = false;
+    try { ok = document.execCommand("copy"); } catch (_) {}
+    document.body.removeChild(ta);
+    return ok;
+  }
+}
+
+document.addEventListener("click", async (e) => {
+  const btn = e.target.closest("button.copy");
+  if (!btn) return;
+  const target = document.getElementById(btn.getAttribute("data-target"));
+  if (!target) return;
+  const ok = await copyText(target.textContent);
+  if (ok) {
+    const old = btn.textContent;
+    btn.textContent = "Copied ✓";
+    btn.classList.add("copied");
+    toast("Prompt copied to clipboard");
+    setTimeout(() => { btn.textContent = old; btn.classList.remove("copied"); }, 1400);
+  } else {
+    toast("Copy failed — select and copy manually");
+  }
+});
+
+async function copyAll() {
+  const blocks = [];
+  CATEGORIES.forEach((cat) => {
+    cat.items.forEach((it) => {
+      blocks.push("### " + it.title + "  (public/products/" + it.slug + ".jpg)\n" + fullPrompt(it));
+    });
+  });
+  const ok = await copyText(blocks.join("\n\n———\n\n"));
+  toast(ok ? "All prompts copied" : "Copy failed");
+}
+</script>
+</body>
+</html>

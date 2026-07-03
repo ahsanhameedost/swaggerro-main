@@ -1,25 +1,24 @@
 import Link from "next/link";
-import Image from "next/image";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, BadgeCheck, TrendingDown, Gift, Globe, type LucideIcon } from "lucide-react";
 import { Section } from "@/components/marketing/section";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 type CtaLink = { label: string; href: string };
 
-// Tilted, overlapping product cards that fan across the right side of the band.
-const CARDS = [
-  { src: "/products/premium-hoodie.webp", alt: "Fleece hoodie", className: "left-[2%] top-[14%] w-36 -rotate-6 sm:w-44", z: "z-20" },
-  { src: "/products/insulated-tumbler.webp", alt: "Insulated tumbler", className: "right-[20%] -top-[6%] w-24 rotate-6 sm:w-28", z: "z-30" },
-  { src: "/products/canvas-tote.webp", alt: "Canvas tote", className: "left-[34%] bottom-[2%] w-32 rotate-3 sm:w-36", z: "z-10" },
-  { src: "/products/bluetooth-speaker.webp", alt: "Bluetooth speaker", className: "right-[2%] bottom-[10%] w-28 -rotate-3 sm:w-32", z: "z-20" },
-] as const;
+// Universal Swaggeroo value props shown as a benefit row in the CTA.
+const BENEFITS: { icon: LucideIcon; title: string; sub: string }[] = [
+  { icon: BadgeCheck, title: "Free proofs", sub: "on every order" },
+  { icon: TrendingDown, title: "Volume pricing", sub: "built right in" },
+  { icon: Gift, title: "Claim pages", sub: "no account needed" },
+  { icon: Globe, title: "Ships worldwide", sub: "wherever they are" },
+];
 
-/** Royal-blue call-to-action band with a fanned product-photo collage. */
+/** Membership-style call-to-action: branded card, benefit row, prominent CTA. */
 export function CtaBand({
   title = "Ready to send swag people actually keep?",
   subtitle = "Build your first pack in minutes. No contracts, no setup calls, no nonsense.",
-  primary = { label: "Build a Pack", href: "/swag-pack" },
+  primary = { label: "Open Pack Studio", href: "/studio" },
   secondary = { label: "Create an account", href: "/signup" },
 }: {
   title?: string;
@@ -29,66 +28,66 @@ export function CtaBand({
 }) {
   return (
     <Section>
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary to-[color-mix(in_oklch,var(--primary),#0d1b3d_35%)] px-6 py-12 text-primary-foreground sm:px-10 sm:py-14">
-        {/* top glow */}
+      <div className="relative overflow-hidden rounded-[2rem] border border-border bg-gradient-to-br from-brand-soft via-card to-brand-soft/60 p-8 shadow-sm sm:p-12 lg:px-16 lg:py-24">
+        {/* layered brand glows for depth */}
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-0 bg-[radial-gradient(45%_80%_at_25%_0%,rgba(255,255,255,0.18),transparent)]"
+          className="pointer-events-none absolute -top-24 -right-16 size-80 rounded-full bg-brand/15 blur-3xl"
         />
-        {/* faint dotted texture */}
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-0 bg-[radial-gradient(rgba(255,255,255,0.4)_1px,transparent_1px)] opacity-[0.06] [background-size:18px_18px]"
+          className="pointer-events-none absolute -bottom-28 -left-20 size-80 rounded-full bg-highlight/10 blur-3xl"
+        />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 bg-[radial-gradient(60%_100%_at_50%_0%,var(--brand-soft),transparent_70%)] opacity-60"
         />
 
-        <div className="relative grid items-center gap-10 lg:grid-cols-[1fr_0.82fr]">
-          {/* copy */}
+        <div className="relative grid items-center gap-10 lg:grid-cols-[1fr_auto] lg:gap-16">
+          {/* copy + benefits */}
           <div className="text-center lg:text-left">
-            <h2 className="font-display text-3xl font-bold tracking-[-0.02em] text-balance sm:text-4xl">
+            <h2 className="mx-auto max-w-2xl font-display text-3xl font-bold tracking-[-0.02em] text-balance text-foreground sm:text-4xl lg:mx-0 lg:text-5xl">
               {title}
             </h2>
-            <p className="mt-4 text-lg text-primary-foreground/85">{subtitle}</p>
-            <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row lg:justify-start lg:items-center justify-center">
-              <Link
-                href={primary.href}
-                className={cn(
-                  buttonVariants({ size: "lg" }),
-                  "h-12 gap-2 bg-background px-6 text-base text-foreground hover:bg-background/90",
-                )}
-              >
-                {primary.label} <ArrowRight className="size-4" />
-              </Link>
-              {secondary ? (
-                <Link
-                  href={secondary.href}
-                  className={cn(
-                    buttonVariants({ variant: "outline", size: "lg" }),
-                    "h-12 border-primary-foreground/30 bg-transparent px-6 text-base text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground",
-                  )}
-                >
-                  {secondary.label}
-                </Link>
-              ) : null}
-            </div>
+            <p className="mx-auto mt-4 max-w-xl text-lg leading-relaxed text-muted-foreground lg:mx-0">
+              {subtitle}
+            </p>
+            <ul className="mt-8 grid grid-cols-2 gap-x-5 gap-y-5 sm:grid-cols-4 lg:gap-x-6">
+              {BENEFITS.map(({ icon: Icon, title: t, sub }) => (
+                <li key={t} className="flex items-start gap-2.5 text-left">
+                  <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-brand-soft text-primary ring-1 ring-primary/10">
+                    <Icon className="size-4" strokeWidth={2.25} aria-hidden />
+                  </span>
+                  <span className="leading-tight">
+                    <span className="block text-sm font-semibold text-foreground">{t}</span>
+                    <span className="block text-xs text-muted-foreground">{sub}</span>
+                  </span>
+                </li>
+              ))}
+            </ul>
           </div>
 
-          {/* product collage */}
-          <div
-            aria-hidden
-            className="relative mx-auto h-56 w-full max-w-sm sm:h-64 lg:h-72 lg:max-w-none"
-          >
-            {CARDS.map((c) => (
-              <div
-                key={c.src}
-                className={cn(
-                  "absolute aspect-square overflow-hidden rounded-2xl border border-white/20 bg-white shadow-2xl ring-1 ring-black/5",
-                  c.className,
-                  c.z,
-                )}
+          {/* CTA */}
+          <div className="flex flex-col items-center gap-3">
+            <Link
+              href={primary.href}
+              className={cn(
+                buttonVariants({ size: "lg" }),
+                "h-14 w-full gap-2 px-8 text-base shadow-brand sm:w-auto",
+              )}
+            >
+              {primary.label} <ArrowRight className="size-4" />
+            </Link>
+            {secondary ? (
+              <Link
+                href={secondary.href}
+                className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
               >
-                <Image src={c.src} alt={c.alt} fill sizes="180px" className="object-cover" />
-              </div>
-            ))}
+                {secondary.label}
+              </Link>
+            ) : (
+              <span className="text-xs text-muted-foreground">No commitment — start free</span>
+            )}
           </div>
         </div>
       </div>

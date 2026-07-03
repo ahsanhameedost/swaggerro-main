@@ -16,7 +16,7 @@ import {
   DropdownItem,
   Avatar,
 } from "@heroui/react";
-import { ChevronDown, ShoppingBag } from "lucide-react";
+import { ChevronDown, Search, ShoppingBag } from "lucide-react";
 import LogoMark from "@/assets/swaggroo-logo.png";
 import Link from "next/link";
 import Image from "next/image";
@@ -32,13 +32,12 @@ type NavItem = {
   href: string;
 };
 
-// Real, live pages.
+// Primary nav — matches the new home design header.
 const NAV_ITEMS: NavItem[] = [
   { label: "Shop", href: "/shop" },
-  { label: "Pack Studio", href: "/swag-pack" },
+  { label: "Pack Studio", href: "/studio" },
+  { label: "Mockup Studio", href: "/mockup" },
   { label: "How it works", href: "/how-it-works" },
-  { label: "About", href: "/about" },
-  { label: "FAQ", href: "/faq" },
   { label: "Contact", href: "/contact" },
 ];
 
@@ -152,48 +151,26 @@ export default function HomeNavbar() {
                 </Link>
               </NavbarItem>
             ))}
-
-            {/* Coming-soon pages grouped under one dropdown */}
-            <NavbarItem>
-              <Dropdown placement="bottom-start">
-                <DropdownTrigger>
-                  <button
-                    type="button"
-                    className={`${navLinkClass} inline-flex items-center gap-1`}
-                  >
-                    More <ChevronDown className="size-4" />
-                  </button>
-                </DropdownTrigger>
-                <DropdownMenu aria-label="More pages">
-                  {COMING_SOON.map((item) => (
-                    <DropdownItem
-                      key={item.href}
-                      as={Link}
-                      href={item.href}
-                      endContent={
-                        <span className="rounded-full bg-black/5 px-2 py-0.5 text-[10px] font-semibold text-black/40">
-                          Soon
-                        </span>
-                      }
-                    >
-                      {item.label}
-                    </DropdownItem>
-                  ))}
-                </DropdownMenu>
-              </Dropdown>
-            </NavbarItem>
           </div>
         </NavbarContent>
 
         {/* ✅ Right actions only on lg+ */}
         <NavbarContent className="hidden lg:flex" justify="end">
           <NavbarItem>
-            <Link
-              href="/become-a-seller"
-              className="inline-flex items-center rounded-full border border-primary/30 bg-primary/5 px-4 py-1.5 text-sm font-semibold text-primary transition-colors hover:bg-primary/10"
-            >
-              Become a Seller
-            </Link>
+            <form role="search" action="/shop" className="relative">
+              <Search
+                className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
+                aria-hidden="true"
+              />
+              <input
+                type="search"
+                name="q"
+                placeholder="Search products…"
+                aria-label="Search products"
+                autoComplete="off"
+                className="h-9 w-52 rounded-lg border border-navy/15 bg-muted/50 pr-3 pl-9 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary focus:bg-white [&::-webkit-search-cancel-button]:hidden"
+              />
+            </form>
           </NavbarItem>
           <NavbarItem>
             <CartLink />
@@ -258,11 +235,16 @@ export default function HomeNavbar() {
                   href="/login"
                   className="text-sm font-medium text-foreground/70 transition-colors hover:text-primary"
                 >
-                  Sign In
+                  Log in
                 </Link>
               </NavbarItem>
               <NavbarItem>
-                <PrimaryButton href="/signup" className="h-10 px-5" text="Get Started" />
+                <Link
+                  href="/signup"
+                  className="inline-flex h-10 items-center justify-center rounded-lg bg-navy px-4 text-sm font-semibold text-white transition-colors hover:bg-primary"
+                >
+                  Create account
+                </Link>
               </NavbarItem>
             </>
           )}
@@ -389,11 +371,11 @@ export default function HomeNavbar() {
                     className="h-12 w-full bg-black/5 font-semibold text-black/70 hover:bg-black/10"
                     onPress={() => setIsMenuOpen(false)}
                   >
-                    Sign In
+                    Log in
                   </Button>
 
                   <div onClick={() => setIsMenuOpen(false)}>
-                    <PrimaryButton href="/signup" className="h-12 w-full" text="Get Started" />
+                    <PrimaryButton href="/signup" className="h-12 w-full" text="Create account" />
                   </div>
                 </>
               )}

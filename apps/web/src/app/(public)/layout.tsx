@@ -1,4 +1,4 @@
-import Footer from "@/app/components/home/Footer";
+import { SiteFooter } from "@/components/site/site-footer";
 import HomeNavbar from "@/app/components/home/HomeNavbar";
 
 export default function PublicLayout({ children }: { children: React.ReactNode }) {
@@ -6,7 +6,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
         <>
             <HomeNavbar />
             {children}
-            <Footer />
+            <SiteFooter />
         </>
     );
 }

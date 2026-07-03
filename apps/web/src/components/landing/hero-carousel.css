@@ -1,0 +1,13 @@
+.hero-arch {
+  /* fade the rail into the hero at both edges */
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 7%, #000 93%, transparent);
+  mask-image: linear-gradient(to right, transparent, #000 7%, #000 93%, transparent);
+}
+
+.hero-arch-card {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: var(--card-w, 200px);
+  will-change: transform;
+}
