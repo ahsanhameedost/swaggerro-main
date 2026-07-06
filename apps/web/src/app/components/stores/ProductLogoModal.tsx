@@ -9,6 +9,7 @@ import type { SwagCommissionType } from "@/modules/catalog/products/types";
 import { computeCommission } from "@/lib/commission";
 import { formatMoney } from "@/lib/money";
 import { cn } from "@/lib/utils";
+import { resolveStorageUrl } from "@/lib/storage-url";
 
 const LOGO_TYPES = ["image/png", "image/jpeg", "image/webp"] as const;
 type LogoType = (typeof LOGO_TYPES)[number];
@@ -73,7 +74,7 @@ export function ProductLogoModal({
     fallbackPercent: product.fallbackPercent,
   });
   // Existing saved logo (remote url) or a freshly picked local file.
-  const [logoUrl, setLogoUrl] = useState<string | null>(product.logoUrl);
+  const [logoUrl, setLogoUrl] = useState<string | null>(resolveStorageUrl(product.logoUrl));
   const [logoKey, setLogoKey] = useState<string | null>(null);
   const [localLogo, setLocalLogo] = useState<{ src: string; file: File } | null>(null);
   const [placement, setPlacement] = useState<LogoPlacement>(product.placement ?? DEFAULT_PLACEMENT);

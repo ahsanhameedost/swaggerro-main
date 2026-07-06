@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { usePublicProduct } from "@/lib/queries.catalog";
 import { usePublicStore } from "@/queries/stores";
+import { resolveStorageUrl } from "@/lib/storage-url";
 import { useCatalogCartStore } from "@/lib/cart-store";
 import { resolveUnitPrice, computeSavingsPercent } from "@/lib/catalog-pricing";
 import { formatMoney } from "@/lib/money";
@@ -223,7 +224,7 @@ export default function StoreProductPage() {
               {branding?.logoUrl && branding.placement ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
-                  src={branding.logoUrl}
+                  src={resolveStorageUrl(branding.logoUrl)!}
                   alt=""
                   aria-hidden
                   className="pointer-events-none absolute"

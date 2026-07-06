@@ -18,6 +18,7 @@ import {
   Truck,
 } from "lucide-react";
 import { usePublicStore } from "@/queries/stores";
+import { resolveStorageUrl } from "@/lib/storage-url";
 import { useMe } from "@/queries/auth";
 import { logout as logoutRequest } from "@/modules/auth/api";
 import { ProductCard } from "@/components/shop/product-card";
@@ -56,7 +57,7 @@ function LogoOverlay({ branding }: { branding?: ProductBranding }) {
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img
-      src={branding.logoUrl}
+      src={resolveStorageUrl(branding.logoUrl)!}
       alt=""
       aria-hidden
       className="pointer-events-none absolute"
@@ -203,7 +204,7 @@ export default function StorefrontPage() {
 
   // Swap the browser-tab favicon to the seller's, restoring it on unmount.
   useEffect(() => {
-    const url = store?.faviconUrl;
+    const url = resolveStorageUrl(store?.faviconUrl);
     if (!url) return;
     let link = document.querySelector<HTMLLinkElement>("link[rel~='icon']");
     const created = !link;

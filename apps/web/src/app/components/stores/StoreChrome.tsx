@@ -6,6 +6,7 @@ import { ArrowUpRight, LogOut, ShoppingBag } from "lucide-react";
 import { PredictiveSearch, type SearchProduct } from "@/app/components/search/PredictiveSearch";
 import { StoreMegaMenu } from "@/app/components/stores/StoreMegaMenu";
 import { cn } from "@/lib/utils";
+import { resolveStorageUrl } from "@/lib/storage-url";
 
 // Structural shape of a store product for the header search — accepts whatever
 // the store pages already have loaded without coupling to the full type.
@@ -49,7 +50,7 @@ export function StoreHeader({
         <Link href={`/store/${store.slug}`} className="flex items-center gap-3">
           {store.logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={store.logoUrl} alt={store.name} className="h-10 w-auto max-w-[180px] object-contain" />
+            <img src={resolveStorageUrl(store.logoUrl)!} alt={store.name} className="h-10 w-auto max-w-[180px] object-contain" />
           ) : (
             <span className="text-xl font-bold tracking-tight text-foreground">{store.name}</span>
           )}
@@ -120,7 +121,7 @@ export function StoreBrandHeader({
           {store.logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
-              src={store.logoUrl}
+              src={resolveStorageUrl(store.logoUrl)!}
               alt={store.name}
               className="w-auto max-w-[260px] object-contain"
               style={{ height: `${(48 * logoScale) / 100}px` }}
@@ -250,7 +251,7 @@ export function StoreBrandFooter({
             {store.logoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
-                src={store.logoUrl}
+                src={resolveStorageUrl(store.logoUrl)!}
                 alt={store.name}
                 className="w-auto max-w-[260px] object-contain"
                 style={{ height: `${(48 * logoScale) / 100}px` }}
