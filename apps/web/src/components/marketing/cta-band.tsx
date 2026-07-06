@@ -14,17 +14,21 @@ const BENEFITS: { icon: LucideIcon; title: string; sub: string }[] = [
   { icon: Globe, title: "Ships worldwide", sub: "wherever they are" },
 ];
 
+type Benefit = { icon: LucideIcon; title: string; sub?: string };
+
 /** Membership-style call-to-action: branded card, benefit row, prominent CTA. */
 export function CtaBand({
   title = "Ready to send swag people actually keep?",
   subtitle = "Build your first pack in minutes. No contracts, no setup calls, no nonsense.",
   primary = { label: "Open Pack Studio", href: "/studio" },
   secondary = { label: "Create an account", href: "/signup" },
+  benefits = BENEFITS,
 }: {
   title?: string;
   subtitle?: string;
   primary?: CtaLink;
   secondary?: CtaLink | null;
+  benefits?: Benefit[];
 }) {
   return (
     <Section>
@@ -53,14 +57,14 @@ export function CtaBand({
               {subtitle}
             </p>
             <ul className="mt-8 grid grid-cols-2 gap-x-5 gap-y-5 sm:grid-cols-4 lg:gap-x-6">
-              {BENEFITS.map(({ icon: Icon, title: t, sub }) => (
+              {benefits.map(({ icon: Icon, title: t, sub }) => (
                 <li key={t} className="flex items-start gap-2.5 text-left">
                   <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-brand-soft text-primary ring-1 ring-primary/10">
                     <Icon className="size-4" strokeWidth={2.25} aria-hidden />
                   </span>
                   <span className="leading-tight">
                     <span className="block text-sm font-semibold text-foreground">{t}</span>
-                    <span className="block text-xs text-muted-foreground">{sub}</span>
+                    {sub ? <span className="block text-xs text-muted-foreground">{sub}</span> : null}
                   </span>
                 </li>
               ))}

@@ -274,10 +274,25 @@ export class StoresService {
       heroSubcopy: store.heroSubcopy,
       logoUrl: store.logoUrl,
       logoKey: store.logoKey,
+      logoScale: store.logoScale ?? 100,
+      faviconUrl: store.faviconUrl ?? null,
+      faviconKey: store.faviconKey ?? null,
       theme: {
         primary: store.themePrimary,
         primarySoft: store.themePrimarySoft,
-        primaryForeground: store.themePrimaryForeground
+        primaryForeground: store.themePrimaryForeground,
+        accent: store.themeAccent ?? store.themePrimarySoft,
+        secondary: store.themeSecondary ?? "#0d1b3d",
+        footer: store.themeFooter ?? "#0d1b3d"
+      },
+      cta: {
+        title: store.ctaTitle ?? null,
+        subtitle: store.ctaSubtitle ?? null,
+        primaryLabel: store.ctaPrimaryLabel ?? null,
+        primaryHref: store.ctaPrimaryHref ?? null,
+        secondaryLabel: store.ctaSecondaryLabel ?? null,
+        secondaryHref: store.ctaSecondaryHref ?? null,
+        points: Array.isArray(store.ctaPoints) ? store.ctaPoints : []
       },
       // Store-level default commission %, used as the fallback when a product
       // doesn't set its own percentage commission.
@@ -289,13 +304,52 @@ export class StoresService {
     };
   }
 
-  private themeData(theme?: { primary?: string; primarySoft?: string; primaryForeground?: string }) {
+  private themeData(theme?: {
+    primary?: string;
+    primarySoft?: string;
+    primaryForeground?: string;
+    accent?: string;
+    secondary?: string;
+    footer?: string;
+  }) {
     if (!theme) return {};
     return {
       ...(theme.primary ? { themePrimary: theme.primary } : {}),
       ...(theme.primarySoft ? { themePrimarySoft: theme.primarySoft } : {}),
-      ...(theme.primaryForeground ? { themePrimaryForeground: theme.primaryForeground } : {})
+      ...(theme.primaryForeground ? { themePrimaryForeground: theme.primaryForeground } : {}),
+      ...(theme.accent ? { themeAccent: theme.accent } : {}),
+      ...(theme.secondary ? { themeSecondary: theme.secondary } : {}),
+      ...(theme.footer ? { themeFooter: theme.footer } : {})
     };
+  }
+
+  // Maps the seller-editable customization + CTA inputs to Prisma columns. Only
+  // included keys are written, so partial updates don't wipe other fields.
+  private customizationData(input: {
+    logoScale?: number;
+    faviconUrl?: string | null;
+    faviconKey?: string | null;
+    ctaTitle?: string | null;
+    ctaSubtitle?: string | null;
+    ctaPrimaryLabel?: string | null;
+    ctaPrimaryHref?: string | null;
+    ctaSecondaryLabel?: string | null;
+    ctaSecondaryHref?: string | null;
+    ctaPoints?: string[];
+  }) {
+    const data: Record<string, unknown> = {};
+    if (input.logoScale !== undefined) data.logoScale = input.logoScale;
+    if (input.faviconUrl !== undefined) data.faviconUrl = input.faviconUrl?.trim() || null;
+    if (input.faviconKey !== undefined) data.faviconKey = input.faviconKey?.trim() || null;
+    if (input.ctaTitle !== undefined) data.ctaTitle = input.ctaTitle?.trim() || null;
+    if (input.ctaSubtitle !== undefined) data.ctaSubtitle = input.ctaSubtitle?.trim() || null;
+    if (input.ctaPrimaryLabel !== undefined) data.ctaPrimaryLabel = input.ctaPrimaryLabel?.trim() || null;
+    if (input.ctaPrimaryHref !== undefined) data.ctaPrimaryHref = input.ctaPrimaryHref?.trim() || null;
+    if (input.ctaSecondaryLabel !== undefined) data.ctaSecondaryLabel = input.ctaSecondaryLabel?.trim() || null;
+    if (input.ctaSecondaryHref !== undefined) data.ctaSecondaryHref = input.ctaSecondaryHref?.trim() || null;
+    if (input.ctaPoints !== undefined)
+      data.ctaPoints = input.ctaPoints.map((p) => p.trim()).filter(Boolean).slice(0, 6);
+    return data;
   }
 
   // ---- admin ---------------------------------------------------------------
@@ -358,21 +412,22 @@ export class StoresService {
     const slug = await this.ensureUniqueSlug(input.slug || input.name);
     const productIds = await this.resolveProductIds(input.productIds ?? []);
 
+    const createData: Prisma.StoreUncheckedCreateInput = {
+      slug,
+      name: input.name.trim(),
+      companyName: input.companyName?.trim() || null,
+      status: input.status ?? "ACTIVE",
+      ownerUserId: input.ownerUserId || null,
+      heroHeadline: input.heroHeadline?.trim() || null,
+      heroSubcopy: input.heroSubcopy?.trim() || null,
+      logoUrl: input.logoUrl || null,
+      logoKey: input.logoKey || null
+    };
+    Object.assign(createData, this.themeData(input.theme));
+    Object.assign(createData, this.customizationData(input));
+
     const store = await this.prisma.$transaction(async (tx) => {
-      const created = await tx.store.create({
-        data: {
-          slug,
-          name: input.name.trim(),
-          companyName: input.companyName?.trim() || null,
-          status: input.status ?? "ACTIVE",
-          ownerUserId: input.ownerUserId || null,
-          heroHeadline: input.heroHeadline?.trim() || null,
-          heroSubcopy: input.heroSubcopy?.trim() || null,
-          logoUrl: input.logoUrl || null,
-          logoKey: input.logoKey || null,
-          ...this.themeData(input.theme)
-        }
-      });
+      const created = await tx.store.create({ data: createData });
       const branding = this.buildBrandingMap(input.productBranding, productIds);
       await this.replaceStoreProducts(tx, created.id, productIds, branding);
       return created;
@@ -400,6 +455,7 @@ export class StoresService {
     if (input.logoUrl !== undefined) data.logoUrl = input.logoUrl || null;
     if (input.logoKey !== undefined) data.logoKey = input.logoKey || null;
     Object.assign(data, this.themeData(input.theme));
+    Object.assign(data, this.customizationData(input));
 
     await this.prisma.$transaction(async (tx) => {
       await tx.store.update({ where: { id }, data });
@@ -450,6 +506,7 @@ export class StoresService {
     if (input.logoUrl !== undefined) data.logoUrl = input.logoUrl || null;
     if (input.logoKey !== undefined) data.logoKey = input.logoKey || null;
     Object.assign(data, this.themeData(input.theme));
+    Object.assign(data, this.customizationData(input));
 
     await this.prisma.$transaction(async (tx) => {
       await tx.store.update({ where: { id: store.id }, data });

@@ -17,6 +17,7 @@ import { PartnersModule } from "./partners/partners.module";
 import { StoresModule } from "./stores/stores.module";
 import { NotificationsModule } from "./notifications/notifications.module";
 import { StoreCheckoutModule } from "./catalog/store-checkout/store-checkout.module";
+import { PublicCheckoutModule } from "./catalog/public-checkout/public-checkout.module";
 import { PayoutsModule } from "./payouts/payouts.module";
 import { SettingsModule } from "./settings/settings.module";
 
@@ -40,6 +41,7 @@ import { SettingsModule } from "./settings/settings.module";
     StoresModule,
     NotificationsModule,
     StoreCheckoutModule,
+    PublicCheckoutModule,
     PayoutsModule,
     SettingsModule
   ],

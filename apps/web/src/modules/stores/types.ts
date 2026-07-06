@@ -36,6 +36,19 @@ export type StoreTheme = {
   primary: string;
   primarySoft: string;
   primaryForeground: string;
+  accent: string;
+  secondary: string;
+  footer: string;
+};
+
+export type StoreCta = {
+  title: string | null;
+  subtitle: string | null;
+  primaryLabel: string | null;
+  primaryHref: string | null;
+  secondaryLabel: string | null;
+  secondaryHref: string | null;
+  points: string[];
 };
 
 export type Store = {
@@ -51,7 +64,11 @@ export type Store = {
   heroSubcopy: string | null;
   logoUrl: string | null;
   logoKey: string | null;
+  logoScale: number;
+  faviconUrl: string | null;
+  faviconKey: string | null;
   theme: StoreTheme;
+  cta: StoreCta;
   // Store-level default commission %, fallback for products without their own.
   commissionPercent?: number;
   productCount: number;
@@ -84,7 +101,17 @@ export type UpdateStoreInput = {
   heroSubcopy?: string | null;
   logoUrl?: string | null;
   logoKey?: string | null;
+  logoScale?: number;
+  faviconUrl?: string | null;
+  faviconKey?: string | null;
   theme?: StoreThemeInput;
+  ctaTitle?: string | null;
+  ctaSubtitle?: string | null;
+  ctaPrimaryLabel?: string | null;
+  ctaPrimaryHref?: string | null;
+  ctaSecondaryLabel?: string | null;
+  ctaSecondaryHref?: string | null;
+  ctaPoints?: string[];
   productIds?: string[];
   productBranding?: ProductBrandingInput[];
 };

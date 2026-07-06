@@ -9,6 +9,12 @@ import { SettingsService } from "./settings.service";
 export class SettingsController {
   constructor(private readonly settings: SettingsService) {}
 
+  // Public flags for the storefront — no auth so anonymous shoppers can read them.
+  @Get("public")
+  async getPublic() {
+    return { settings: await this.settings.getPublic() };
+  }
+
   @Get()
   @UseGuards(AuthGuard, PermissionsGuard)
   @RequirePermissions("settings.read")

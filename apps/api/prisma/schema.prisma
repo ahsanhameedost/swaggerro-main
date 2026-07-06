@@ -935,6 +935,21 @@ model Store {
   themePrimary           String             @default("#1e40af")
   themePrimarySoft       String             @default("#eef2fd")
   themePrimaryForeground String             @default("#ffffff")
+  // Extra brand controls the seller manages themselves.
+  themeAccent            String             @default("#eef2fd") // section backgrounds + light-section hovers
+  themeSecondary         String             @default("#0d1b3d") // secondary button color
+  themeFooter            String             @default("#0d1b3d") // footer background (Swaggeroo navy by default)
+  logoScale              Int                @default(100) // logo size %, 60–200
+  faviconUrl             String?
+  faviconKey             String?
+  // Seller-editable storefront CTA band. When ctaTitle is empty the default copy shows.
+  ctaTitle               String?
+  ctaSubtitle            String?            @db.Text
+  ctaPrimaryLabel        String?
+  ctaPrimaryHref         String?
+  ctaSecondaryLabel      String?
+  ctaSecondaryHref       String?
+  ctaPoints              String[]           @default([])
   // Platform commission taken from each sale (admin-set, per-seller).
   commissionPercent      Decimal            @default(15) @db.Decimal(5, 2)
   // Seller payout / bank details (where the admin sends their earnings).

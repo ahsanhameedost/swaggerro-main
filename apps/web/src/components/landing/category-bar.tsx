@@ -77,10 +77,12 @@ export function CategoryBar({ categories }: { categories: Category[] }) {
         </Form>
 
         {/* category cells — one connected, single-row grid: flush square cells
-            with divider lines, equal-width on desktop, scrollable on mobile */}
+            with divider lines, equal-width on desktop, scrollable on mobile.
+            Show the first 6 categories, then an "All categories" catch-all so the
+            row stays clean no matter how many categories exist. */}
         <div className="overflow-x-auto overflow-y-hidden rounded-lg border border-border bg-card shadow-sm lg:flex-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <div className="flex w-max divide-x divide-border lg:w-full">
-            {categories.map((c) => (
+            {categories.slice(0, 6).map((c) => (
               <Cell key={c.id} href={`/shop?category=${c.slug}`} icon={ICONS[c.slug] ?? Sparkles}>
                 {c.name}
               </Cell>

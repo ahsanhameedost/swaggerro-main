@@ -11,9 +11,26 @@ const themeSchema = z
   .object({
     primary: hexColor.optional(),
     primarySoft: hexColor.optional(),
-    primaryForeground: hexColor.optional()
+    primaryForeground: hexColor.optional(),
+    accent: hexColor.optional(),
+    secondary: hexColor.optional(),
+    footer: hexColor.optional()
   })
   .optional();
+
+// Seller-editable storefront customization (logo size, favicon, CTA band).
+const customizationFields = {
+  logoScale: z.coerce.number().int().min(60).max(200).optional(),
+  faviconUrl: z.string().url().max(2048).optional().nullable(),
+  faviconKey: z.string().max(500).optional().nullable(),
+  ctaTitle: z.string().trim().max(160).optional().nullable(),
+  ctaSubtitle: z.string().trim().max(600).optional().nullable(),
+  ctaPrimaryLabel: z.string().trim().max(60).optional().nullable(),
+  ctaPrimaryHref: z.string().trim().max(2048).optional().nullable(),
+  ctaSecondaryLabel: z.string().trim().max(60).optional().nullable(),
+  ctaSecondaryHref: z.string().trim().max(2048).optional().nullable(),
+  ctaPoints: z.array(z.string().trim().max(80)).max(6).optional()
+} as const;
 
 const slugSchema = z
   .string()
@@ -64,6 +81,7 @@ export const createStoreSchema = z.object({
   logoUrl: z.string().url().max(2048).optional().nullable(),
   logoKey: z.string().max(500).optional().nullable(),
   theme: themeSchema,
+  ...customizationFields,
   productIds: z.array(z.string().trim()).max(500).optional(),
   productBranding: z.array(productBrandingSchema).max(500).optional()
 });
@@ -80,6 +98,7 @@ export const updateOwnStoreSchema = z.object({
   logoUrl: z.string().url().max(2048).optional().nullable(),
   logoKey: z.string().max(500).optional().nullable(),
   theme: themeSchema,
+  ...customizationFields,
   productIds: z.array(z.string().trim()).max(500).optional(),
   productBranding: z.array(productBrandingSchema).max(500).optional()
 });

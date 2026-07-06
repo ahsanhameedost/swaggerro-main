@@ -36,6 +36,13 @@ export default function ShopPage() {
   const allProducts = useMemo(() => data?.items ?? [], [data]);
 
   const [search, setSearch] = useState("");
+  // Seed the search box from a `?q=` param (e.g. the home page's catalog search
+  // submits here) so arriving with a query actually filters. Read after mount to
+  // avoid an SSR/hydration mismatch.
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search).get("q");
+    if (q) setSearch(q);
+  }, []);
   const [category, setCategory] = useState<string | null>(null);
   const [colors, setColors] = useState<string[]>([]);
   const [minPrice, setMinPrice] = useState("");

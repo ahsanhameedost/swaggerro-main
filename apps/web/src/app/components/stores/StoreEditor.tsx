@@ -46,6 +46,24 @@ export function StoreEditor({
   const [primary, setPrimary] = useState(store.theme.primary);
   const [primarySoft, setPrimarySoft] = useState(store.theme.primarySoft);
   const [primaryForeground, setPrimaryForeground] = useState(store.theme.primaryForeground);
+  const [accent, setAccent] = useState(store.theme.accent);
+  const [secondary, setSecondary] = useState(store.theme.secondary);
+  const [footerColor, setFooterColor] = useState(store.theme.footer);
+  const [logoScale, setLogoScale] = useState(store.logoScale ?? 100);
+  const [favicon, setFavicon] = useState<{ url: string | null; key: string | null }>({
+    url: store.faviconUrl,
+    key: store.faviconKey,
+  });
+  const [uploadingFavicon, setUploadingFavicon] = useState(false);
+  const faviconInputRef = useRef<HTMLInputElement | null>(null);
+  // Seller-editable CTA band.
+  const [ctaTitle, setCtaTitle] = useState(store.cta?.title ?? "");
+  const [ctaSubtitle, setCtaSubtitle] = useState(store.cta?.subtitle ?? "");
+  const [ctaPrimaryLabel, setCtaPrimaryLabel] = useState(store.cta?.primaryLabel ?? "");
+  const [ctaPrimaryHref, setCtaPrimaryHref] = useState(store.cta?.primaryHref ?? "");
+  const [ctaSecondaryLabel, setCtaSecondaryLabel] = useState(store.cta?.secondaryLabel ?? "");
+  const [ctaSecondaryHref, setCtaSecondaryHref] = useState(store.cta?.secondaryHref ?? "");
+  const [ctaPoints, setCtaPoints] = useState((store.cta?.points ?? []).join("\n"));
   const [productIds, setProductIds] = useState<string[]>(store.products.map((p) => p.id));
   const [productSearch, setProductSearch] = useState("");
   const [uploadingLogo, setUploadingLogo] = useState(false);
@@ -149,6 +167,30 @@ export function StoreEditor({
     }
   };
 
+  const handleFavicon = async (file: File) => {
+    if (!ACCEPTED.includes(file.type as (typeof ACCEPTED)[number])) {
+      addToast({ title: "Unsupported file", description: "Use JPG, PNG, or WEBP.", color: "warning" });
+      return;
+    }
+    if (file.size > MAX_BYTES) {
+      addToast({ title: "File too large", description: "Favicon must be 5MB or smaller.", color: "warning" });
+      return;
+    }
+    setUploadingFavicon(true);
+    try {
+      const upload = await createCatalogImageUpload("projects", {
+        filename: file.name,
+        contentType: file.type as "image/jpeg" | "image/png" | "image/webp",
+      });
+      await uploadFileToPresignedUrl(upload.uploadUrl, file);
+      setFavicon({ url: upload.publicUrl, key: upload.key });
+    } catch (error: any) {
+      addToast({ title: "Upload failed", description: error?.message ?? "", color: "danger" });
+    } finally {
+      setUploadingFavicon(false);
+    }
+  };
+
   const submit = async () => {
     if (!name.trim()) {
       addToast({ title: "Store name is required", color: "warning" });
@@ -161,7 +203,21 @@ export function StoreEditor({
       heroSubcopy: heroSubcopy.trim() || null,
       logoUrl: logo.url,
       logoKey: logo.key,
-      theme: { primary, primarySoft, primaryForeground },
+      logoScale,
+      faviconUrl: favicon.url,
+      faviconKey: favicon.key,
+      theme: { primary, primarySoft, primaryForeground, accent, secondary, footer: footerColor },
+      ctaTitle: ctaTitle.trim() || null,
+      ctaSubtitle: ctaSubtitle.trim() || null,
+      ctaPrimaryLabel: ctaPrimaryLabel.trim() || null,
+      ctaPrimaryHref: ctaPrimaryHref.trim() || null,
+      ctaSecondaryLabel: ctaSecondaryLabel.trim() || null,
+      ctaSecondaryHref: ctaSecondaryHref.trim() || null,
+      ctaPoints: ctaPoints
+        .split("\n")
+        .map((p) => p.trim())
+        .filter(Boolean)
+        .slice(0, 6),
       productIds,
       // Send per-product overrides (logo and/or custom price) for curated products.
       productBranding: productIds
@@ -293,6 +349,67 @@ export function StoreEditor({
               </button>
             )}
           </div>
+
+          {/* Logo size */}
+          <div className="mt-5">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-foreground">Logo size</span>
+              <span className="text-xs tabular-nums text-muted-foreground">{logoScale}%</span>
+            </div>
+            <input
+              type="range"
+              min={60}
+              max={200}
+              step={5}
+              value={logoScale}
+              onChange={(e) => setLogoScale(Number(e.target.value))}
+              className="mt-2 w-full accent-[color:var(--primary,#1e40af)]"
+            />
+          </div>
+
+          {/* Favicon */}
+          <div className="mt-5">
+            <span className="text-sm font-medium text-foreground">Favicon</span>
+            <input
+              ref={faviconInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) void handleFavicon(file);
+                e.target.value = "";
+              }}
+            />
+            <div className="mt-2 flex items-center gap-3">
+              <div className="flex size-10 items-center justify-center overflow-hidden rounded-lg border border-border bg-muted/40">
+                {favicon.url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={favicon.url} alt="Favicon" className="h-full w-full object-contain p-0.5" />
+                ) : (
+                  <span className="text-[10px] text-muted-foreground">ico</span>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => faviconInputRef.current?.click()}
+                disabled={uploadingFavicon}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm font-medium transition hover:bg-muted"
+              >
+                {uploadingFavicon ? <Loader2 className="size-4 animate-spin" /> : null}
+                {favicon.url ? "Replace" : "Upload"}
+              </button>
+              {favicon.url ? (
+                <button
+                  type="button"
+                  onClick={() => setFavicon({ url: null, key: null })}
+                  className="text-sm text-muted-foreground hover:text-destructive"
+                >
+                  Remove
+                </button>
+              ) : null}
+            </div>
+          </div>
         </div>
 
         <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
@@ -301,18 +418,89 @@ export function StoreEditor({
             <ColorRow label="Primary" value={primary} onChange={setPrimary} />
             <ColorRow label="Primary soft (tint)" value={primarySoft} onChange={setPrimarySoft} />
             <ColorRow label="On-primary text" value={primaryForeground} onChange={setPrimaryForeground} />
+            <ColorRow label="Accent (section backgrounds)" value={accent} onChange={setAccent} />
+            <ColorRow label="Secondary button" value={secondary} onChange={setSecondary} />
+            <ColorRow label="Footer color" value={footerColor} onChange={setFooterColor} />
           </div>
-          <div
-            className="mt-4 flex items-center justify-between rounded-xl px-4 py-3 text-sm font-semibold"
-            style={{ backgroundColor: primary, color: primaryForeground }}
-          >
-            Preview button
-            <span
-              className="rounded-full px-2 py-0.5 text-xs"
-              style={{ backgroundColor: primarySoft, color: primary }}
-            >
-              tag
+          <div className="mt-4 space-y-2">
+            <div className="flex items-center gap-2">
+              <span
+                className="flex flex-1 items-center justify-between rounded-xl px-4 py-3 text-sm font-semibold"
+                style={{ backgroundColor: primary, color: primaryForeground }}
+              >
+                Primary button
+                <span className="rounded-full px-2 py-0.5 text-xs" style={{ backgroundColor: primarySoft, color: primary }}>
+                  tag
+                </span>
+              </span>
+              <span className="rounded-xl px-4 py-3 text-sm font-semibold text-white" style={{ backgroundColor: secondary }}>
+                Secondary
+              </span>
+            </div>
+            <div className="rounded-xl px-4 py-3 text-sm text-foreground" style={{ backgroundColor: accent }}>
+              Section background sample
+            </div>
+            <div className="rounded-xl px-4 py-3 text-sm text-white" style={{ backgroundColor: footerColor }}>
+              Footer sample
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Storefront CTA */}
+      <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+        <h2 className="font-display text-lg font-bold">Call to action</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          The banner near the bottom of your storefront. Leave the title empty to use the default copy.
+        </p>
+        <div className="mt-4 grid gap-4">
+          <label className="block">
+            <span className="text-sm font-medium text-foreground">Title</span>
+            <input
+              className={cn(inputClass, "mt-1.5")}
+              value={ctaTitle}
+              onChange={(e) => setCtaTitle(e.target.value)}
+              placeholder="Ready to kit out your team?"
+            />
+          </label>
+          <label className="block">
+            <span className="text-sm font-medium text-foreground">Description</span>
+            <textarea
+              className="mt-1.5 w-full resize-none rounded-xl border border-input bg-background px-3 py-2.5 text-sm outline-none focus-visible:border-ring"
+              rows={2}
+              value={ctaSubtitle}
+              onChange={(e) => setCtaSubtitle(e.target.value)}
+            />
+          </label>
+          <label className="block">
+            <span className="text-sm font-medium text-foreground">
+              Key points <span className="text-muted-foreground">(one per line, up to 6)</span>
             </span>
+            <textarea
+              className="mt-1.5 w-full resize-none rounded-xl border border-input bg-background px-3 py-2.5 text-sm outline-none focus-visible:border-ring"
+              rows={4}
+              value={ctaPoints}
+              onChange={(e) => setCtaPoints(e.target.value)}
+              placeholder={"Free proofs\nVolume pricing\nShips worldwide"}
+            />
+          </label>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="block">
+              <span className="text-sm font-medium text-foreground">Primary button label</span>
+              <input className={cn(inputClass, "mt-1.5")} value={ctaPrimaryLabel} onChange={(e) => setCtaPrimaryLabel(e.target.value)} placeholder="Shop the collection" />
+            </label>
+            <label className="block">
+              <span className="text-sm font-medium text-foreground">Primary button link</span>
+              <input className={cn(inputClass, "mt-1.5")} value={ctaPrimaryHref} onChange={(e) => setCtaPrimaryHref(e.target.value)} placeholder={`/store/${store.slug}`} />
+            </label>
+            <label className="block">
+              <span className="text-sm font-medium text-foreground">Secondary button label</span>
+              <input className={cn(inputClass, "mt-1.5")} value={ctaSecondaryLabel} onChange={(e) => setCtaSecondaryLabel(e.target.value)} placeholder="Build a pack" />
+            </label>
+            <label className="block">
+              <span className="text-sm font-medium text-foreground">Secondary button link</span>
+              <input className={cn(inputClass, "mt-1.5")} value={ctaSecondaryHref} onChange={(e) => setCtaSecondaryHref(e.target.value)} placeholder="/studio" />
+            </label>
           </div>
         </div>
       </div>

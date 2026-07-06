@@ -4,12 +4,22 @@ import { apiFetch } from "@/lib/api";
 // "true"/"false".
 export type SettingsMap = {
   sellers_can_add_products: string;
+  preview_logo_gate: string;
 };
 
 export type SettingKey = keyof SettingsMap;
 
+// Flags safe to read without auth (served by GET /settings/public).
+export type PublicSettingsMap = {
+  preview_logo_gate: string;
+};
+
 export async function getSettings() {
   return apiFetch<{ settings: SettingsMap }>("/settings", { method: "GET" });
+}
+
+export async function getPublicSettings() {
+  return apiFetch<{ settings: PublicSettingsMap }>("/settings/public", { method: "GET" });
 }
 
 export async function updateSetting(key: SettingKey, value: string) {

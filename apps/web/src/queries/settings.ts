@@ -1,14 +1,29 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { getSettings, updateSetting, type SettingKey } from "@/modules/settings/api";
+import {
+  getPublicSettings,
+  getSettings,
+  updateSetting,
+  type SettingKey,
+} from "@/modules/settings/api";
 
 const settingsKeys = {
   all: ["settings"] as const,
+  public: ["settings", "public"] as const,
 };
 
 export function useSettings() {
   return useQuery({
     queryKey: settingsKeys.all,
     queryFn: getSettings,
+  });
+}
+
+// Public storefront flags — readable by anonymous shoppers.
+export function usePublicSettings() {
+  return useQuery({
+    queryKey: settingsKeys.public,
+    queryFn: getPublicSettings,
+    staleTime: 5 * 60 * 1000,
   });
 }
 

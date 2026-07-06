@@ -19,6 +19,8 @@ import { usePublicStore } from "@/queries/stores";
 import { useCatalogCartStore } from "@/lib/cart-store";
 import { resolveUnitPrice, computeSavingsPercent } from "@/lib/catalog-pricing";
 import { formatMoney } from "@/lib/money";
+import { AddedToCartDrawer, type AddedToCartLine } from "@/app/components/catalog/AddedToCartDrawer";
+import { StoreBrandHeader, StoreBrandFooter } from "@/app/components/stores/StoreChrome";
 import { cn } from "@/lib/utils";
 
 export default function StoreProductPage() {
@@ -32,11 +34,20 @@ export default function StoreProductPage() {
   const { data, isLoading, isError, error } = usePublicProduct(productSlug ?? "", !!productSlug);
   const product = data?.product;
 
+  const categories = useMemo(() => {
+    if (!store) return [] as string[];
+    const set = new Set<string>();
+    store.products.forEach((p) => p.category?.name && set.add(p.category.name));
+    return Array.from(set);
+  }, [store]);
+
   const addBulkItem = useCatalogCartStore((s) => s.addBulkItem);
 
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>({});
   const [quantity, setQuantity] = useState(1);
   const [imageIndex, setImageIndex] = useState(0);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [addedLine, setAddedLine] = useState<AddedToCartLine | null>(null);
 
   // The seller's logo branding for THIS product (composite-on-view overlay).
   const branding = useMemo(
@@ -130,8 +141,17 @@ export default function StoreProductPage() {
       storeId: store.id,
       storeSlug: store.slug,
     });
-    addToast({ title: "Added to cart", description: `${product.name} is in your cart.`, color: "success" });
-    router.push(`/store/${store.slug}/checkout`);
+    // Direct add-to-cart store flow — show the right-side drawer with a direct
+    // checkout action instead of jumping straight to the checkout page.
+    setAddedLine({
+      name: product.name,
+      imageUrl: activeImage?.url ?? product.images[0]?.url ?? null,
+      variantName: variantLabel,
+      quantity,
+      unitLabel: formatMoney(unit, product.currency),
+      totalLabel: formatMoney(subtotal, product.currency),
+    });
+    setDrawerOpen(true);
   };
 
   if (storeLoading || isLoading) {
@@ -172,22 +192,7 @@ export default function StoreProductPage() {
 
   return (
     <div style={themeVars} className="swag-redesign flex min-h-screen flex-col bg-background">
-      {/* White-label header */}
-      <header className="sticky top-0 z-40 border-b border-border/60 bg-background/80 backdrop-blur-md">
-        <div className="mx-auto flex h-16 max-w-site items-center justify-between gap-4 px-6">
-          <Link href={`/store/${store.slug}`} className="flex items-center gap-3">
-            {store.logoUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={store.logoUrl} alt={store.name} className="h-10 w-auto max-w-[180px] object-contain" />
-            ) : (
-              <span className="text-xl font-bold tracking-tight text-foreground">{store.name}</span>
-            )}
-          </Link>
-          <Link href={`/store/${store.slug}/checkout`} className="text-sm font-medium text-muted-foreground hover:text-foreground">
-            Cart →
-          </Link>
-        </div>
-      </header>
+      <StoreBrandHeader store={store} products={store.products} logoScale={store.logoScale} />
 
       <main className="mx-auto w-full max-w-site flex-1 px-6 py-8">
         {/* breadcrumb */}
@@ -362,6 +367,18 @@ export default function StoreProductPage() {
           </div>
         </div>
       </main>
+
+      <StoreBrandFooter store={store} categories={categories} logoScale={store.logoScale} footerColor={store.theme.footer} />
+
+      <AddedToCartDrawer
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        line={addedLine}
+        primaryLabel="Checkout"
+        onPrimary={() => router.push(`/store/${store.slug}/checkout`)}
+        secondaryLabel="Continue shopping"
+        note="Secure checkout · powered by Swaggeroo"
+      />
     </div>
   );
 }

@@ -10,17 +10,25 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
+  Lock,
   PackageOpen,
   Sparkles,
   TrendingDown,
   Truck,
 } from "lucide-react";
 import { usePublicProduct } from "@/lib/queries.catalog";
+import { usePublicSettings } from "@/queries/settings";
 import { useCatalogCartStore } from "@/lib/cart-store";
 import { resolveUnitPrice, computeSavingsPercent } from "@/lib/catalog-pricing";
 import { formatMoney } from "@/lib/money";
 import { getImprintMethods } from "@/lib/imprint";
+import { AddedToCartDrawer, type AddedToCartLine } from "@/app/components/catalog/AddedToCartDrawer";
 import { cn } from "@/lib/utils";
+
+// Below (and including) this quantity the B2C gate applies: no logo preview, and
+// "Add to cart" goes straight to a direct pay-now checkout. Above it, shoppers
+// unlock logo preview and the standard quote flow.
+const PREVIEW_LOGO_GATE_THRESHOLD = 5;
 
 export default function ProductDetailPage() {
   const params = useParams<{ slug: string }>();
@@ -29,12 +37,22 @@ export default function ProductDetailPage() {
   const { data, isLoading, isError, error } = usePublicProduct(slug ?? "", !!slug);
   const product = data?.product;
 
+  const { data: publicSettings } = usePublicSettings();
+  // Gate defaults ON until settings load / when unset.
+  const gateEnabled = publicSettings?.settings.preview_logo_gate !== "false";
+
   const addBulkItem = useCatalogCartStore((s) => s.addBulkItem);
 
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>({});
   const [quantity, setQuantity] = useState(1);
   const [methodKey, setMethodKey] = useState<string>("");
   const [imageIndex, setImageIndex] = useState(0);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [addedLine, setAddedLine] = useState<AddedToCartLine | null>(null);
+
+  // Direct-buy (B2C) mode: gate on AND quantity at/below the threshold. In this
+  // mode logo preview is hidden and add-to-cart opens the direct pay-now drawer.
+  const directBuyMode = gateEnabled && quantity <= PREVIEW_LOGO_GATE_THRESHOLD;
 
   const variantGroups = product?.variantGroups ?? [];
   const hasVariants = (product?.productCatalogVariants.length ?? 0) > 0;
@@ -131,6 +149,22 @@ export default function ProductDetailPage() {
       pricingOptions: activePricing,
       quantity,
     });
+
+    if (directBuyMode) {
+      // Small B2C order — show the right-side drawer offering direct checkout.
+      setAddedLine({
+        name: product.name,
+        imageUrl: activeImage?.url ?? product.images[0]?.url ?? null,
+        variantName: variantLabel,
+        quantity,
+        unitLabel: formatMoney(unit, product.currency),
+        totalLabel: formatMoney(total, product.currency),
+      });
+      setDrawerOpen(true);
+      return;
+    }
+
+    // Larger order — keep the existing quote/cart flow.
     addToast({ title: "Added to cart", description: `${product.name} is in your cart.`, color: "success" });
     router.push("/cart");
   };
@@ -311,12 +345,25 @@ export default function ProductDetailPage() {
             <button onClick={handleAddToCart} disabled={!canAdd}
               className="mt-4 w-full rounded-xl py-3 font-semibold text-white disabled:opacity-50"
               style={{ backgroundImage: "var(--primary-gradient)" }}>
-              Add to Cart
+              {directBuyMode ? "Add to Cart · Buy now" : "Add to Cart"}
             </button>
-            <Link href={`/mockup?product=${product.slug}`} className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-card py-2.5 text-sm font-semibold hover:border-primary/40">
-              <Sparkles className="size-4 text-primary" /> Preview your logo
-            </Link>
-            <p className="mt-2 text-center text-xs text-muted-foreground">Free proofs before anything prints · cancel anytime before approval</p>
+
+            {directBuyMode ? (
+              // Gate active for small orders — logo preview is locked until 6+.
+              <div className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-muted/40 py-2.5 text-sm font-medium text-muted-foreground">
+                <Lock className="size-4" /> Add {PREVIEW_LOGO_GATE_THRESHOLD + 1}+ to preview your logo
+              </div>
+            ) : (
+              <Link href={`/mockup?product=${product.slug}`} className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-card py-2.5 text-sm font-semibold hover:border-primary/40">
+                <Sparkles className="size-4 text-primary" /> Preview your logo
+              </Link>
+            )}
+
+            <p className="mt-2 text-center text-xs text-muted-foreground">
+              {directBuyMode
+                ? "Fast checkout for small orders · no proof needed"
+                : "Free proofs before anything prints · cancel anytime before approval"}
+            </p>
             {hasVariants && !matchedVariant ? <p className="mt-2 text-center text-xs text-warning">Select all options to add to cart.</p> : null}
           </div>
 
@@ -338,6 +385,16 @@ export default function ProductDetailPage() {
           ) : null}
         </div>
       </div>
+
+      <AddedToCartDrawer
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        line={addedLine}
+        primaryLabel="Checkout"
+        onPrimary={() => router.push("/checkout")}
+        secondaryLabel="Continue shopping"
+        note="Fast checkout for small orders · no proof needed"
+      />
     </div>
   );
 }

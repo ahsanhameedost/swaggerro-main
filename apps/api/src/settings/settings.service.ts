@@ -1,6 +1,12 @@
 import { Injectable } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
-import { SETTING_DEFAULTS, type SettingKey, type SettingsMap } from "./settings.dto";
+import {
+  PUBLIC_SETTING_KEYS,
+  SETTING_DEFAULTS,
+  type PublicSettingsMap,
+  type SettingKey,
+  type SettingsMap
+} from "./settings.dto";
 
 @Injectable()
 export class SettingsService {
@@ -32,5 +38,13 @@ export class SettingsService {
   async getBoolean(key: SettingKey): Promise<boolean> {
     const map = await this.getAll();
     return map[key] === "true";
+  }
+
+  // Only the whitelisted public flags — safe to serve to anonymous shoppers.
+  async getPublic(): Promise<PublicSettingsMap> {
+    const all = await this.getAll();
+    const map = {} as PublicSettingsMap;
+    for (const key of PUBLIC_SETTING_KEYS) map[key] = all[key];
+    return map;
   }
 }

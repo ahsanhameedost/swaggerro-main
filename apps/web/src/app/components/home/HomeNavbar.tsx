@@ -16,7 +16,7 @@ import {
   DropdownItem,
   Avatar,
 } from "@heroui/react";
-import { ChevronDown, Search, ShoppingBag } from "lucide-react";
+import { ChevronDown, ShoppingBag } from "lucide-react";
 import LogoMark from "@/assets/swaggroo-logo.png";
 import Link from "next/link";
 import Image from "next/image";
@@ -26,15 +26,18 @@ import PrimaryButton from "../PrimaryButton";
 import { useMe } from "@/queries/auth";
 import { logout as logoutRequest } from "@/modules/auth/api";
 import { useCatalogCartStore, useCartHydrated } from "@/lib/cart-store";
+import { usePublicProducts } from "@/lib/queries.catalog";
+import { PredictiveSearch, type SearchProduct } from "@/app/components/search/PredictiveSearch";
+import { ShopMegaMenu } from "@/app/components/home/ShopMegaMenu";
 
 type NavItem = {
   label: string;
   href: string;
 };
 
-// Primary nav — matches the new home design header.
+// Primary nav — matches the new home design header. "Shop" is handled by the
+// ShopMegaMenu; the rest are simple links.
 const NAV_ITEMS: NavItem[] = [
-  { label: "Shop", href: "/shop" },
   { label: "Pack Studio", href: "/studio" },
   { label: "Mockup Studio", href: "/mockup" },
   { label: "How it works", href: "/how-it-works" },
@@ -55,6 +58,22 @@ export default function HomeNavbar() {
   const queryClient = useQueryClient();
 
   const { data: user, isLoading } = useMe();
+
+  // Catalog is small — fetch all for the predictive search dropdown.
+  const { data: productData } = usePublicProducts({ page: 1, pageSize: 48 });
+  const searchProducts: SearchProduct[] = React.useMemo(
+    () =>
+      (productData?.items ?? []).map((p) => ({
+        id: p.id,
+        name: p.name,
+        slug: p.slug,
+        imageUrl: p.imageUrl ?? null,
+        categoryName: p.category?.name ?? null,
+        price: p.floorPrice ?? p.basePrice ?? p.lowestPrice ?? null,
+        currency: p.currency ?? "USD",
+      })),
+    [productData],
+  );
 
   const cartHydrated = useCartHydrated();
   const bulkItems = useCatalogCartStore((state) => state.bulkItems);
@@ -143,7 +162,10 @@ export default function HomeNavbar() {
 
         {/* ✅ Desktop nav only on lg+ */}
         <NavbarContent className="hidden lg:flex" justify="center">
-          <div className="flex items-center gap-8 lg:gap-10">
+          <div className="flex items-center gap-6 lg:gap-8">
+            <NavbarItem>
+              <ShopMegaMenu />
+            </NavbarItem>
             {NAV_ITEMS.map((item) => (
               <NavbarItem key={item.label}>
                 <Link href={item.href} className={navLinkClass}>
@@ -151,26 +173,27 @@ export default function HomeNavbar() {
                 </Link>
               </NavbarItem>
             ))}
+            <NavbarItem>
+              <Link
+                href="/become-a-seller"
+                className="inline-flex items-center rounded-full border border-primary/30 bg-primary/5 px-3.5 py-1.5 text-sm font-semibold text-primary transition-colors hover:bg-primary/10"
+              >
+                Become a Seller
+              </Link>
+            </NavbarItem>
           </div>
         </NavbarContent>
 
         {/* ✅ Right actions only on lg+ */}
         <NavbarContent className="hidden lg:flex" justify="end">
           <NavbarItem>
-            <form role="search" action="/shop" className="relative">
-              <Search
-                className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
-                aria-hidden="true"
-              />
-              <input
-                type="search"
-                name="q"
-                placeholder="Search products…"
-                aria-label="Search products"
-                autoComplete="off"
-                className="h-9 w-52 rounded-lg border border-navy/15 bg-muted/50 pr-3 pl-9 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary focus:bg-white [&::-webkit-search-cancel-button]:hidden"
-              />
-            </form>
+            <PredictiveSearch
+              products={searchProducts}
+              productHref={(p) => `/shop/${p.slug}`}
+              allResultsHref={(q) => `/shop?q=${encodeURIComponent(q)}`}
+              className="w-60"
+              inputClassName="h-9 rounded-lg border-navy/15 bg-muted/50 focus:border-primary focus:bg-white"
+            />
           </NavbarItem>
           <NavbarItem>
             <CartLink />
