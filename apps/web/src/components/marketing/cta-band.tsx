@@ -22,12 +22,17 @@ export function CtaBand({
   subtitle = "Build your first pack in minutes. No contracts, no setup calls, no nonsense.",
   primary = { label: "Open Pack Studio", href: "/studio" },
   secondary = { label: "Create an account", href: "/signup" },
+  // "link" (default) renders the secondary action as a subtle text link; "button"
+  // renders it as a filled/outlined secondary-colored button (used on white-label
+  // stores so the seller's Secondary brand color shows here too).
+  secondaryVariant = "link",
   benefits = BENEFITS,
 }: {
   title?: string;
   subtitle?: string;
   primary?: CtaLink;
   secondary?: CtaLink | null;
+  secondaryVariant?: "link" | "button";
   benefits?: Benefit[];
 }) {
   return (
@@ -83,12 +88,21 @@ export function CtaBand({
               {primary.label} <ArrowRight className="size-4" />
             </Link>
             {secondary ? (
-              <Link
-                href={secondary.href}
-                className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
-              >
-                {secondary.label}
-              </Link>
+              secondaryVariant === "button" ? (
+                <Link
+                  href={secondary.href}
+                  className="inline-flex h-14 w-full items-center justify-center gap-2 rounded-xl border border-secondary bg-background px-8 text-base font-semibold text-secondary transition-colors hover:bg-secondary hover:text-secondary-foreground sm:w-auto"
+                >
+                  {secondary.label}
+                </Link>
+              ) : (
+                <Link
+                  href={secondary.href}
+                  className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
+                >
+                  {secondary.label}
+                </Link>
+              )
             ) : (
               <span className="text-xs text-muted-foreground">No commitment — start free</span>
             )}

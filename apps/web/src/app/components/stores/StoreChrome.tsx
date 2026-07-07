@@ -31,6 +31,8 @@ export type StoreChromeInfo = {
   name: string;
   companyName?: string | null;
   logoUrl?: string | null;
+  // Optional separate footer logo. Falls back to logoUrl when not set.
+  footerLogoUrl?: string | null;
   heroSubcopy?: string | null;
 };
 
@@ -210,6 +212,8 @@ export function StoreBrandFooter({
   const wordmark = (store.companyName ?? store.name).toUpperCase();
   const linkClass = "text-sm text-white/70 transition-colors duration-200 hover:text-white";
   const storeHref = `/store/${store.slug}`;
+  // Footer uses its own logo when set, otherwise falls back to the header logo.
+  const footerLogo = resolveStorageUrl(store.footerLogoUrl ?? store.logoUrl);
 
   const onMarkMove = (e: MouseEvent<HTMLDivElement>) => {
     const el = mark.current;
@@ -248,10 +252,10 @@ export function StoreBrandFooter({
       <div className="relative mx-auto max-w-site px-6 pt-20">
         <div className="grid gap-x-8 gap-y-12 sm:grid-cols-2 lg:grid-cols-[1.5fr_repeat(3,1fr)]">
           <div className="max-w-xs">
-            {store.logoUrl ? (
+            {footerLogo ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
-                src={resolveStorageUrl(store.logoUrl)!}
+                src={footerLogo}
                 alt={store.name}
                 className="w-auto max-w-[260px] object-contain"
                 style={{ height: `${(48 * logoScale) / 100}px` }}

@@ -942,6 +942,9 @@ model Store {
   logoScale              Int                @default(100) // logo size %, 60–200
   faviconUrl             String?
   faviconKey             String?
+  // Optional separate logo for the footer. When null the header logo is used.
+  footerLogoUrl          String?
+  footerLogoKey          String?
   // Seller-editable storefront CTA band. When ctaTitle is empty the default copy shows.
   ctaTitle               String?
   ctaSubtitle            String?            @db.Text

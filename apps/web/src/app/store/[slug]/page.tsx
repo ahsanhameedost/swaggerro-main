@@ -251,6 +251,7 @@ export default function StorefrontPage() {
     "--brand-soft": store.theme.accent,
     "--accent": store.theme.accent,
     "--secondary": store.theme.secondary,
+    "--secondary-foreground": "#ffffff",
     "--primary-foreground": store.theme.primaryForeground,
     "--brand-foreground": store.theme.primaryForeground,
     "--accent-foreground": store.theme.primary,
@@ -398,7 +399,7 @@ export default function StorefrontPage() {
                       className={`block w-full rounded-lg px-3 py-1.5 text-left text-sm transition ${
                         activeCategory === cat
                           ? "bg-brand-soft font-medium text-primary"
-                          : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                          : "text-muted-foreground hover:bg-secondary/10 hover:text-secondary"
                       }`}
                     >
                       {cat}
@@ -558,6 +559,7 @@ export default function StorefrontPage() {
                 ? { label: store.cta.secondaryLabel, href: store.cta.secondaryHref || "/studio" }
                 : null
             }
+            secondaryVariant="button"
             benefits={
               store.cta.points.length ? store.cta.points.map((p) => ({ icon: Check, title: p })) : undefined
             }
@@ -619,7 +621,7 @@ function HeroSlider({ store }: { store: NonNullable<ReturnType<typeof usePublicS
           </a>
           <Link
             href="/studio"
-            className="inline-flex h-12 items-center justify-center gap-1.5 rounded-lg border border-border bg-background px-6 text-base font-medium transition-all hover:bg-muted hover:text-foreground"
+            className="inline-flex h-12 items-center justify-center gap-1.5 rounded-lg border border-secondary bg-background px-6 text-base font-medium text-secondary transition-all hover:bg-secondary hover:text-secondary-foreground"
           >
             Build a pack
           </Link>

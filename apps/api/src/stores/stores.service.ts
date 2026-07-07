@@ -277,6 +277,8 @@ export class StoresService {
       logoScale: store.logoScale ?? 100,
       faviconUrl: store.faviconUrl ?? null,
       faviconKey: store.faviconKey ?? null,
+      footerLogoUrl: store.footerLogoUrl ?? null,
+      footerLogoKey: store.footerLogoKey ?? null,
       theme: {
         primary: store.themePrimary,
         primarySoft: store.themePrimarySoft,
@@ -329,6 +331,8 @@ export class StoresService {
     logoScale?: number;
     faviconUrl?: string | null;
     faviconKey?: string | null;
+    footerLogoUrl?: string | null;
+    footerLogoKey?: string | null;
     ctaTitle?: string | null;
     ctaSubtitle?: string | null;
     ctaPrimaryLabel?: string | null;
@@ -341,6 +345,8 @@ export class StoresService {
     if (input.logoScale !== undefined) data.logoScale = input.logoScale;
     if (input.faviconUrl !== undefined) data.faviconUrl = input.faviconUrl?.trim() || null;
     if (input.faviconKey !== undefined) data.faviconKey = input.faviconKey?.trim() || null;
+    if (input.footerLogoUrl !== undefined) data.footerLogoUrl = input.footerLogoUrl?.trim() || null;
+    if (input.footerLogoKey !== undefined) data.footerLogoKey = input.footerLogoKey?.trim() || null;
     if (input.ctaTitle !== undefined) data.ctaTitle = input.ctaTitle?.trim() || null;
     if (input.ctaSubtitle !== undefined) data.ctaSubtitle = input.ctaSubtitle?.trim() || null;
     if (input.ctaPrimaryLabel !== undefined) data.ctaPrimaryLabel = input.ctaPrimaryLabel?.trim() || null;

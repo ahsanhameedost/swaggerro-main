@@ -16,6 +16,7 @@
   /* Brand palette */
   --primary: #2196ff;          /* Primary Blue — buttons, links, interactive */
   --secondary: #0d1b3d;        /* Deep Navy */
+  --secondary-foreground: #ffffff; /* text/icon color on secondary surfaces */
   --primary-gradient: linear-gradient(90deg, #2196ff 0%, #1782ed 100%);
   --container-max: 90rem;
   --container-pad: clamp(1rem, 4vw, 2rem);
@@ -331,6 +332,11 @@ body {
   /* unify primary on the app brand blue so new sections match the kept ones */
   --color-primary: var(--primary);
   --color-primary-foreground: #ffffff;
+
+  /* Secondary — seller-customizable on white-label stores. Exposes bg-secondary /
+     text-secondary / border-secondary utilities driven by the per-store --secondary. */
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
 
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);

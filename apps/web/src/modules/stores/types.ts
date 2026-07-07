@@ -67,6 +67,9 @@ export type Store = {
   logoScale: number;
   faviconUrl: string | null;
   faviconKey: string | null;
+  // Optional separate footer logo. When null the header logo is used in the footer.
+  footerLogoUrl: string | null;
+  footerLogoKey: string | null;
   theme: StoreTheme;
   cta: StoreCta;
   // Store-level default commission %, fallback for products without their own.
@@ -104,6 +107,8 @@ export type UpdateStoreInput = {
   logoScale?: number;
   faviconUrl?: string | null;
   faviconKey?: string | null;
+  footerLogoUrl?: string | null;
+  footerLogoKey?: string | null;
   theme?: StoreThemeInput;
   ctaTitle?: string | null;
   ctaSubtitle?: string | null;

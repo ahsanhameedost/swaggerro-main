@@ -56,6 +56,8 @@ export default function StoreCheckoutPage() {
     "--ring": store.theme.primary,
     "--brand-soft": store.theme.primarySoft,
     "--accent": store.theme.primarySoft,
+    "--secondary": store.theme.secondary,
+    "--secondary-foreground": "#ffffff",
     "--primary-foreground": store.theme.primaryForeground,
   } as React.CSSProperties;
 

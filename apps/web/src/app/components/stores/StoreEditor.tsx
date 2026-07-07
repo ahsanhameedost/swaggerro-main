@@ -56,6 +56,13 @@ export function StoreEditor({
   });
   const [uploadingFavicon, setUploadingFavicon] = useState(false);
   const faviconInputRef = useRef<HTMLInputElement | null>(null);
+  // Optional separate footer logo. Empty => the header logo is used in the footer.
+  const [footerLogo, setFooterLogo] = useState<{ url: string | null; key: string | null }>({
+    url: store.footerLogoUrl,
+    key: store.footerLogoKey,
+  });
+  const [uploadingFooterLogo, setUploadingFooterLogo] = useState(false);
+  const footerLogoInputRef = useRef<HTMLInputElement | null>(null);
   // Seller-editable CTA band.
   const [ctaTitle, setCtaTitle] = useState(store.cta?.title ?? "");
   const [ctaSubtitle, setCtaSubtitle] = useState(store.cta?.subtitle ?? "");
@@ -167,6 +174,30 @@ export function StoreEditor({
     }
   };
 
+  const handleFooterLogo = async (file: File) => {
+    if (!ACCEPTED.includes(file.type as (typeof ACCEPTED)[number])) {
+      addToast({ title: "Unsupported file", description: "Use JPG, PNG, or WEBP.", color: "warning" });
+      return;
+    }
+    if (file.size > MAX_BYTES) {
+      addToast({ title: "File too large", description: "Logo must be 5MB or smaller.", color: "warning" });
+      return;
+    }
+    setUploadingFooterLogo(true);
+    try {
+      const upload = await createCatalogImageUpload("projects", {
+        filename: file.name,
+        contentType: file.type as "image/jpeg" | "image/png" | "image/webp",
+      });
+      await uploadFileToPresignedUrl(upload.uploadUrl, file);
+      setFooterLogo({ url: upload.publicUrl, key: upload.key });
+    } catch (error: any) {
+      addToast({ title: "Upload failed", description: error?.message ?? "", color: "danger" });
+    } finally {
+      setUploadingFooterLogo(false);
+    }
+  };
+
   const handleFavicon = async (file: File) => {
     if (!ACCEPTED.includes(file.type as (typeof ACCEPTED)[number])) {
       addToast({ title: "Unsupported file", description: "Use JPG, PNG, or WEBP.", color: "warning" });
@@ -206,6 +237,8 @@ export function StoreEditor({
       logoScale,
       faviconUrl: favicon.url,
       faviconKey: favicon.key,
+      footerLogoUrl: footerLogo.url,
+      footerLogoKey: footerLogo.key,
       theme: { primary, primarySoft, primaryForeground, accent, secondary, footer: footerColor },
       ctaTitle: ctaTitle.trim() || null,
       ctaSubtitle: ctaSubtitle.trim() || null,
@@ -403,6 +436,53 @@ export function StoreEditor({
                 <button
                   type="button"
                   onClick={() => setFavicon({ url: null, key: null })}
+                  className="text-sm text-muted-foreground hover:text-destructive"
+                >
+                  Remove
+                </button>
+              ) : null}
+            </div>
+          </div>
+
+          {/* Footer logo (optional) — falls back to the header logo when empty */}
+          <div className="mt-5">
+            <span className="text-sm font-medium text-foreground">Footer logo</span>
+            <p className="text-xs text-muted-foreground">
+              Optional. Leave empty to reuse your header logo in the footer.
+            </p>
+            <input
+              ref={footerLogoInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) void handleFooterLogo(file);
+                e.target.value = "";
+              }}
+            />
+            <div className="mt-2 flex items-center gap-3">
+              <div className="flex size-14 items-center justify-center overflow-hidden rounded-lg border border-border bg-muted/40">
+                {footerLogo.url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={footerLogo.url} alt="Footer logo" className="h-full w-full object-contain p-1" />
+                ) : (
+                  <span className="text-[10px] text-muted-foreground">header</span>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => footerLogoInputRef.current?.click()}
+                disabled={uploadingFooterLogo}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm font-medium transition hover:bg-muted"
+              >
+                {uploadingFooterLogo ? <Loader2 className="size-4 animate-spin" /> : null}
+                {footerLogo.url ? "Replace" : "Upload"}
+              </button>
+              {footerLogo.url ? (
+                <button
+                  type="button"
+                  onClick={() => setFooterLogo({ url: null, key: null })}
                   className="text-sm text-muted-foreground hover:text-destructive"
                 >
                   Remove

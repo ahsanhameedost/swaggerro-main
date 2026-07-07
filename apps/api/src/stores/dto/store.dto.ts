@@ -23,6 +23,8 @@ const customizationFields = {
   logoScale: z.coerce.number().int().min(60).max(200).optional(),
   faviconUrl: z.string().url().max(2048).optional().nullable(),
   faviconKey: z.string().max(500).optional().nullable(),
+  footerLogoUrl: z.string().url().max(2048).optional().nullable(),
+  footerLogoKey: z.string().max(500).optional().nullable(),
   ctaTitle: z.string().trim().max(160).optional().nullable(),
   ctaSubtitle: z.string().trim().max(600).optional().nullable(),
   ctaPrimaryLabel: z.string().trim().max(60).optional().nullable(),
