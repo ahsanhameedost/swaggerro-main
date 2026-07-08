@@ -21,11 +21,11 @@ import {
   TableHeader,
   TableRow
 } from "@heroui/react";
-import { KeyRound, Plus, Search, Trash2 } from "lucide-react";
+import { KeyRound, Pencil, Plus, Search, Trash2 } from "lucide-react";
 import { addToast } from "@heroui/toast";
 import { useMe } from "@/queries/auth";
 import { useUsers } from "@/lib/queries.catalog";
-import { useCreateEmployee, useDeleteUser, useEmployeeRoles } from "@/queries/users";
+import { useCreateEmployee, useDeleteUser, useEmployeeRoles, useUpdateEmployee } from "@/queries/users";
 import { resetUserPassword } from "@/modules/users/api";
 import type { AppUserListItem } from "@/modules/users/types";
 import { EmployeeFormModal } from "@/app/components/dashboard/employees/EmployeeFormModal";
@@ -48,8 +48,11 @@ export default function UsersPage() {
   const { data: users = [], isLoading, isError, error, refetch } = useUsers({ search: deferredSearch });
 
   const [formOpen, setFormOpen] = useState(false);
+  // When set, the form modal is editing this existing user; when null it creates.
+  const [editTarget, setEditTarget] = useState<AppUserListItem | null>(null);
   const { data: roles = [] } = useEmployeeRoles(canWrite);
   const createMutation = useCreateEmployee();
+  const updateMutation = useUpdateEmployee();
 
   // Reset-password modal state.
   const [resetTarget, setResetTarget] = useState<AppUserListItem | null>(null);
@@ -72,6 +75,11 @@ export default function UsersPage() {
     }
   };
 
+  const closeForm = () => {
+    setFormOpen(false);
+    setEditTarget(null);
+  };
+
   const handleSave = async (values: {
     firstName: string;
     lastName: string;
@@ -80,21 +88,37 @@ export default function UsersPage() {
     password?: string | null;
     roleId: string;
   }) => {
-    if (!values.password) {
-      throw new Error("Password is required");
+    if (editTarget) {
+      // Editing an existing user (any role, incl. customers) — e.g. to change
+      // their role. Password is optional; only sent when the admin typed one.
+      await updateMutation.mutateAsync({
+        id: editTarget.id,
+        input: {
+          firstName: values.firstName,
+          lastName: values.lastName,
+          email: values.email,
+          phone: values.phone ?? null,
+          password: values.password ?? null,
+          roleId: values.roleId
+        }
+      });
+      addToast({ title: "User updated", description: "The account was updated.", color: "success" });
+    } else {
+      if (!values.password) {
+        throw new Error("Password is required");
+      }
+      await createMutation.mutateAsync({
+        firstName: values.firstName,
+        lastName: values.lastName,
+        email: values.email,
+        phone: values.phone ?? null,
+        password: values.password,
+        roleId: values.roleId
+      });
+      addToast({ title: "User created", description: "The account was created.", color: "success" });
     }
 
-    await createMutation.mutateAsync({
-      firstName: values.firstName,
-      lastName: values.lastName,
-      email: values.email,
-      phone: values.phone ?? null,
-      password: values.password,
-      roleId: values.roleId
-    });
-
-    addToast({ title: "User created", description: "The account was created.", color: "success" });
-    setFormOpen(false);
+    closeForm();
     await refetch();
   };
 
@@ -141,7 +165,10 @@ export default function UsersPage() {
             <Button
               color="primary"
               startContent={<Plus className="size-4" />}
-              onPress={() => setFormOpen(true)}
+              onPress={() => {
+                setEditTarget(null);
+                setFormOpen(true);
+              }}
             >
               Add user
             </Button>
@@ -238,6 +265,17 @@ export default function UsersPage() {
                               <Button
                                 size="sm"
                                 variant="flat"
+                                startContent={<Pencil className="size-3.5" />}
+                                onPress={() => {
+                                  setEditTarget(user);
+                                  setFormOpen(true);
+                                }}
+                              >
+                                Edit
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="flat"
                                 startContent={<KeyRound className="size-3.5" />}
                                 onPress={() => {
                                   setResetTarget(user);
@@ -277,10 +315,10 @@ export default function UsersPage() {
 
       <EmployeeFormModal
         isOpen={formOpen}
-        employee={null}
+        employee={editTarget}
         roles={roles}
-        isSubmitting={createMutation.isPending}
-        onClose={() => setFormOpen(false)}
+        isSubmitting={editTarget ? updateMutation.isPending : createMutation.isPending}
+        onClose={closeForm}
         onSave={handleSave}
       />
 

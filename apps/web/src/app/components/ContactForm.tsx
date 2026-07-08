@@ -103,7 +103,7 @@ export default function ContactForm() {
 
           <Input
             label="Phone"
-            placeholder="+92 300 1234567"
+            placeholder="+1 555 123 4567"
             startContent={<Phone className="size-4" />}
             isInvalid={!!errors.phone}
             errorMessage={errors.phone?.message}

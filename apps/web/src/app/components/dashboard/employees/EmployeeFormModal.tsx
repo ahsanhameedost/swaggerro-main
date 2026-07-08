@@ -119,7 +119,7 @@ export function EmployeeFormModal({
       <ModalContent>
         {() => (
           <>
-            <ModalHeader>{isEdit ? "Update employee" : "Create employee"}</ModalHeader>
+            <ModalHeader>{isEdit ? "Update user" : "Create user"}</ModalHeader>
             <ModalBody>
               <form id="employee-form" className="grid gap-4 md:grid-cols-2" onSubmit={submit}>
                 <Input
@@ -207,7 +207,7 @@ export function EmployeeFormModal({
                 isDisabled={!hasRoles}
                 style={{ backgroundImage: "var(--primary-gradient)" }}
               >
-                {isEdit ? "Save changes" : "Create employee"}
+                {isEdit ? "Save changes" : "Create user"}
               </Button>
             </ModalFooter>
           </>

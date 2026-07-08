@@ -61,16 +61,16 @@ export class UsersService {
   }
 
   async listAssignableRoles(authUser: AuthUser) {
-    // The self-signup Customer role is never manually assignable. SUPER_ADMIN is
-    // only assignable by an existing SUPER_ADMIN — lower admins (e.g. ADMIN /
-    // MANAGER) can create staff but cannot mint super admins.
-    const excluded = [CUSTOMER_ROLE_NAME];
+    // Customer (the self-signup role) IS assignable so an admin can create
+    // customers and change anyone's role to/from Customer. SUPER_ADMIN stays
+    // gated: only an existing SUPER_ADMIN can assign it.
+    const excluded: string[] = [];
     if (authUser.role !== SUPER_ADMIN_ROLE_NAME) {
       excluded.push(SUPER_ADMIN_ROLE_NAME);
     }
 
     const roles = await this.prisma.role.findMany({
-      where: { name: { notIn: excluded } },
+      where: excluded.length ? { name: { notIn: excluded } } : {},
       orderBy: { name: "asc" },
       select: {
         id: true,
@@ -126,8 +126,14 @@ export class UsersService {
       select: { id: true, email: true, role: { select: { name: true } } }
     });
 
-    if (!employee || SYSTEM_ROLE_NAMES.has(employee.role.name)) {
-      throw new NotFoundException("Employee not found");
+    if (!employee) {
+      throw new NotFoundException("User not found");
+    }
+    // Only a super admin may edit a super admin account. Everyone else with
+    // write access can edit any other user (including customers) — e.g. to
+    // change their role.
+    if (employee.role.name === SUPER_ADMIN_ROLE_NAME && authUser.role !== SUPER_ADMIN_ROLE_NAME) {
+      throw new ForbiddenException("Only a super admin can edit a super admin.");
     }
 
     const email = input.email.trim().toLowerCase();
@@ -390,8 +396,8 @@ export class UsersService {
       select: { id: true, name: true }
     });
 
-    if (!role || role.name === CUSTOMER_ROLE_NAME) {
-      throw new BadRequestException("Select a valid internal role");
+    if (!role) {
+      throw new BadRequestException("Select a valid role");
     }
 
     // Only an existing super admin may create/assign the SUPER_ADMIN role.

@@ -141,7 +141,7 @@ function SignupContent() {
 
         <Input
           label="Phone"
-          placeholder="+92..."
+          placeholder="+1..."
           startContent={<Phone className="size-4 text-foreground/45" />}
           isInvalid={!!errors.phone}
           errorMessage={errors.phone?.message}
