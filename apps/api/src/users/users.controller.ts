@@ -97,4 +97,10 @@ export class UsersController {
   async deleteEmployee(@Param("id") id: string) {
     return await this.users.deleteEmployee(id);
   }
+
+  @Delete(":id")
+  @RequirePermissions("admin.users.write")
+  async deleteUser(@Param("id") id: string, @Req() req: FastifyRequest & { user?: AuthUser }) {
+    return await this.users.deleteUser(id, req.user!);
+  }
 }

@@ -69,15 +69,32 @@ export class UsersService {
       excluded.push(SUPER_ADMIN_ROLE_NAME);
     }
 
-    return this.prisma.role.findMany({
+    const roles = await this.prisma.role.findMany({
       where: { name: { notIn: excluded } },
       orderBy: { name: "asc" },
       select: {
         id: true,
         name: true,
-        description: true
+        description: true,
+        _count: { select: { users: true } }
       }
     });
+
+    // Collapse roles that render to the same display name (e.g. legacy duplicates
+    // "DESIGNER" and "Designer"), so the assignable-role dropdown never shows the
+    // same role twice. Prefer the copy that actually has users attached.
+    const canonical = new Map<string, (typeof roles)[number]>();
+    for (const role of roles) {
+      const key = role.name.trim().toUpperCase();
+      const current = canonical.get(key);
+      if (!current || role._count.users > current._count.users) {
+        canonical.set(key, role);
+      }
+    }
+
+    return Array.from(canonical.values())
+      .map(({ _count, ...role }) => role)
+      .sort((a, b) => a.name.localeCompare(b.name));
   }
 
   async createEmployee(input: CreateEmployeeDto, authUser: AuthUser) {
@@ -159,6 +176,54 @@ export class UsersService {
         where: { id }
       });
     });
+
+    return { ok: true };
+  }
+
+  // Delete ANY user (customer, staff, seller, …) from the Users admin. Guards
+  // against removing yourself or the last super admin, and surfaces a clear error
+  // when the account is still linked to records that block deletion.
+  async deleteUser(id: string, authUser: AuthUser) {
+    const target = await this.prisma.user.findUnique({
+      where: { id },
+      select: { id: true, role: { select: { name: true } } }
+    });
+    if (!target) {
+      throw new NotFoundException("User not found");
+    }
+    if (target.id === authUser.sub) {
+      throw new BadRequestException("You can't delete your own account.");
+    }
+    if (target.role.name === SUPER_ADMIN_ROLE_NAME) {
+      if (authUser.role !== SUPER_ADMIN_ROLE_NAME) {
+        throw new ForbiddenException("Only a super admin can delete a super admin.");
+      }
+      const superAdmins = await this.prisma.user.count({
+        where: { role: { name: SUPER_ADMIN_ROLE_NAME } }
+      });
+      if (superAdmins <= 1) {
+        throw new BadRequestException("You can't delete the last super admin.");
+      }
+    }
+
+    try {
+      await this.prisma.$transaction(async (tx) => {
+        // Detach nullable references that don't cascade so the row can be removed.
+        await tx.catalogOrder.updateMany({
+          where: { assignedEmployeeId: id },
+          data: { assignedEmployeeId: null }
+        });
+        await tx.user.delete({ where: { id } });
+      });
+    } catch (error) {
+      // FK constraint (e.g. the user created shipments, which are Restrict).
+      if ((error as { code?: string }).code === "P2003") {
+        throw new ConflictException(
+          "This user is linked to records that can't be removed (e.g. shipments they created), so the account can't be deleted."
+        );
+      }
+      throw error;
+    }
 
     return { ok: true };
   }

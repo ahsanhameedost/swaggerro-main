@@ -46,6 +46,12 @@ export async function deleteEmployee(id: string) {
   });
 }
 
+export async function deleteUser(id: string) {
+  return apiFetch<{ ok: true }>(`/users/${id}`, {
+    method: "DELETE"
+  });
+}
+
 export async function resetUserPassword(id: string, newPassword: string) {
   return apiFetch<{ ok: true }>(`/users/${id}/reset-password`, {
     method: "POST",

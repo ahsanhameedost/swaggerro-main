@@ -21,11 +21,11 @@ import {
   TableHeader,
   TableRow
 } from "@heroui/react";
-import { KeyRound, Plus, Search } from "lucide-react";
+import { KeyRound, Plus, Search, Trash2 } from "lucide-react";
 import { addToast } from "@heroui/toast";
 import { useMe } from "@/queries/auth";
 import { useUsers } from "@/lib/queries.catalog";
-import { useCreateEmployee, useEmployeeRoles } from "@/queries/users";
+import { useCreateEmployee, useDeleteUser, useEmployeeRoles } from "@/queries/users";
 import { resetUserPassword } from "@/modules/users/api";
 import type { AppUserListItem } from "@/modules/users/types";
 import { EmployeeFormModal } from "@/app/components/dashboard/employees/EmployeeFormModal";
@@ -55,6 +55,22 @@ export default function UsersPage() {
   const [resetTarget, setResetTarget] = useState<AppUserListItem | null>(null);
   const [newPw, setNewPw] = useState("");
   const [resetting, setResetting] = useState(false);
+
+  // Delete-user modal state.
+  const [deleteTarget, setDeleteTarget] = useState<AppUserListItem | null>(null);
+  const deleteMutation = useDeleteUser();
+
+  const submitDelete = async () => {
+    if (!deleteTarget) return;
+    try {
+      await deleteMutation.mutateAsync(deleteTarget.id);
+      addToast({ title: "User deleted", description: `${deleteTarget.email} was removed.`, color: "success" });
+      setDeleteTarget(null);
+      await refetch();
+    } catch (err: any) {
+      addToast({ title: "Delete failed", description: err?.message ?? "Try again.", color: "danger" });
+    }
+  };
 
   const handleSave = async (values: {
     firstName: string;
@@ -218,17 +234,30 @@ export default function UsersPage() {
                     ...(canWrite
                       ? [
                           <TableCell key="act">
-                            <Button
-                              size="sm"
-                              variant="flat"
-                              startContent={<KeyRound className="size-3.5" />}
-                              onPress={() => {
-                                setResetTarget(user);
-                                setNewPw("");
-                              }}
-                            >
-                              Reset password
-                            </Button>
+                            <div className="flex items-center gap-2">
+                              <Button
+                                size="sm"
+                                variant="flat"
+                                startContent={<KeyRound className="size-3.5" />}
+                                onPress={() => {
+                                  setResetTarget(user);
+                                  setNewPw("");
+                                }}
+                              >
+                                Reset password
+                              </Button>
+                              {user.id !== me?.id ? (
+                                <Button
+                                  size="sm"
+                                  variant="flat"
+                                  color="danger"
+                                  startContent={<Trash2 className="size-3.5" />}
+                                  onPress={() => setDeleteTarget(user)}
+                                >
+                                  Delete
+                                </Button>
+                              ) : null}
+                            </div>
                           </TableCell>,
                         ]
                       : []),
@@ -279,6 +308,34 @@ export default function UsersPage() {
             </Button>
             <Button color="primary" isLoading={resetting} onPress={submitReset}>
               Set password
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      <Modal isOpen={!!deleteTarget} onClose={() => setDeleteTarget(null)}>
+        <ModalContent>
+          <ModalHeader className="flex flex-col gap-1">
+            Delete user
+            <span className="text-sm font-normal text-foreground/60">{deleteTarget?.email}</span>
+          </ModalHeader>
+          <ModalBody>
+            <p className="text-sm text-foreground/60">
+              This permanently deletes{" "}
+              <span className="font-medium text-foreground">
+                {[deleteTarget?.firstName, deleteTarget?.lastName].filter(Boolean).join(" ") ||
+                  deleteTarget?.email}
+              </span>{" "}
+              ({deleteTarget ? formatRoleName(deleteTarget.role.name) : ""}). This can&apos;t be
+              undone. Their orders stay but are unassigned from them.
+            </p>
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="light" onPress={() => setDeleteTarget(null)}>
+              Cancel
+            </Button>
+            <Button color="danger" isLoading={deleteMutation.isPending} onPress={submitDelete}>
+              Delete user
             </Button>
           </ModalFooter>
         </ModalContent>
