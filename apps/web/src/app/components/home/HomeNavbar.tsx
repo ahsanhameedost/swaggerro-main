@@ -38,7 +38,7 @@ type NavItem = {
 // Primary nav — matches the new home design header. "Shop" is handled by the
 // ShopMegaMenu; the rest are simple links.
 const NAV_ITEMS: NavItem[] = [
-  { label: "Pack Studio", href: "/studio" },
+  { label: "Pack Studio", href: "/swag-pack" },
   { label: "Mockup Studio", href: "/mockup" },
   { label: "How it works", href: "/how-it-works" },
   { label: "Contact", href: "/contact" },

@@ -15,9 +15,8 @@ const COLS: Array<{ title: string; links: FooterLink[] }> = [
     title: "Order",
     links: [
       { label: "Shop", href: "/shop" },
-      { label: "Pack Studio", href: "/studio" },
+      { label: "Pack Studio", href: "/swag-pack" },
       { label: "Mockup Studio", href: "/mockup" },
-      { label: "Build a Pack", href: "/swag-pack" },
     ],
   },
   {

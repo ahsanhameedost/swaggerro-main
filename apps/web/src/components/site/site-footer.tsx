@@ -14,7 +14,7 @@ const COLUMNS: { heading: string; links: { label: string; href: string }[] }[] =
     heading: "shop",
     links: [
       { label: "All products", href: "/shop" },
-      { label: "Pack Studio", href: "/studio" },
+      { label: "Pack Studio", href: "/swag-pack" },
       { label: "Mockup Studio", href: "/mockup" },
     ],
   },
@@ -73,7 +73,7 @@ export function SiteFooter() {
         duration: 0.7,
         ease: "power3.out",
         stagger: 0.09,
-        scrollTrigger: { trigger: el, start: "top 82%" },
+        scrollTrigger: { trigger: el, start: "top 90%", once: true },
       });
 
       // Hairline draws in from the left.
@@ -82,7 +82,7 @@ export function SiteFooter() {
         transformOrigin: "left center",
         duration: 1,
         ease: "power2.out",
-        scrollTrigger: { trigger: line.current, start: "top 94%" },
+        scrollTrigger: { trigger: line.current, start: "top 96%", once: true },
       });
 
       // Giant wordmark: letters fade + rise into place, staggered (no clip, so
@@ -93,7 +93,7 @@ export function SiteFooter() {
         duration: 1,
         ease: "power3.out",
         stagger: 0.05,
-        scrollTrigger: { trigger: mark.current, start: "top 92%" },
+        scrollTrigger: { trigger: mark.current, start: "top 96%", once: true },
       });
 
       // …and the whole wordmark drifts gently as the footer scrolls past (parallax).
@@ -113,7 +113,35 @@ export function SiteFooter() {
       );
     }, root);
 
-    return () => ctx.revert();
+    // ScrollTrigger measures positions at mount — but images/fonts/lazy content
+    // above the footer often load *after* that, shifting the footer down. If we
+    // don't re-measure, the reveal triggers never fire and the footer stays at
+    // opacity:0 (a blank navy block). Refresh once layout settles.
+    const refresh = () => ScrollTrigger.refresh();
+    const raf = requestAnimationFrame(refresh);
+    window.addEventListener("load", refresh);
+    if (document.fonts?.ready) document.fonts.ready.then(refresh).catch(() => {});
+
+    // Failsafe: whatever happens with ScrollTrigger timing, the footer must never
+    // be left invisible. After layout should have settled, force-reveal anything
+    // still hidden.
+    const failsafe = window.setTimeout(() => {
+      el.querySelectorAll<HTMLElement>("[data-reveal], .footer-letter").forEach((n) => {
+        if (parseFloat(getComputedStyle(n).opacity || "1") < 0.05) {
+          gsap.set(n, { clearProps: "opacity,transform,y,yPercent" });
+        }
+      });
+      if (line.current && line.current.getBoundingClientRect().width < 1) {
+        gsap.set(line.current, { clearProps: "transform,scaleX" });
+      }
+    }, 1600);
+
+    return () => {
+      window.removeEventListener("load", refresh);
+      cancelAnimationFrame(raf);
+      window.clearTimeout(failsafe);
+      ctx.revert();
+    };
   }, []);
 
   // Track the cursor over the wordmark so the spotlight mask follows it.
