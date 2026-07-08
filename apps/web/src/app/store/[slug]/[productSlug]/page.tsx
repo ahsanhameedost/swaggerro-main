@@ -50,11 +50,14 @@ export default function StoreProductPage() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [addedLine, setAddedLine] = useState<AddedToCartLine | null>(null);
 
-  // The seller's logo branding for THIS product (composite-on-view overlay).
-  const branding = useMemo(
-    () => store?.products.find((p) => p.slug === productSlug)?.branding ?? null,
+  // This product's entry in the store (carries the seller's logo branding and
+  // their chosen custom sale price).
+  const storeProduct = useMemo(
+    () => store?.products.find((p) => p.slug === productSlug) ?? null,
     [store, productSlug]
   );
+  const branding = storeProduct?.branding ?? null;
+  const customPrice = storeProduct?.customPrice ?? null;
 
   const variantGroups = product?.variantGroups ?? [];
   const hasVariants = (product?.productCatalogVariants.length ?? 0) > 0;
@@ -80,13 +83,21 @@ export default function StoreProductPage() {
     );
   }, [product, hasVariants, selectedOptions, variantGroups.length]);
 
-  const bulkEnabled = product?.bulkPricingEnabled !== false;
+  const catalogBasePrice = matchedVariant?.price ?? product?.basePrice ?? 0;
+  // When the seller set a custom price it is a flat sale price: it overrides the
+  // catalog price and disables Swaggeroo's volume tiers, and is never charged
+  // below base. This mirrors the store checkout exactly so what the buyer sees
+  // here is what they are actually charged.
+  const hasCustomPrice = customPrice != null && customPrice > 0;
+  const bulkEnabled = product?.bulkPricingEnabled !== false && !hasCustomPrice;
   const activePricing = bulkEnabled
     ? matchedVariant?.pricingOptions?.length
       ? matchedVariant.pricingOptions
       : product?.pricingOptions ?? []
     : [];
-  const activeBasePrice = matchedVariant?.price ?? product?.basePrice ?? 0;
+  const activeBasePrice = hasCustomPrice
+    ? Math.max(customPrice!, catalogBasePrice)
+    : catalogBasePrice;
   const activeStock = matchedVariant?.stock ?? product?.baseStock ?? 0;
 
   const unit = resolveUnitPrice(activeBasePrice, quantity, activePricing);

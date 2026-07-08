@@ -54,11 +54,15 @@ export class StoreCheckoutService {
   async createCheckout(buyerUserId: string, input: CreateStoreCheckoutInput) {
     const store = await this.prisma.store.findFirst({
       where: { slug: input.storeSlug, status: "ACTIVE" },
-      include: { products: { select: { productId: true } } }
+      include: { products: { select: { productId: true, customPrice: true } } }
     });
     if (!store) throw new NotFoundException("Store not found");
 
     const allowed = new Set(store.products.map((p) => p.productId));
+    // The seller's chosen sale price per product (null => sell at catalog price).
+    const customPriceById = new Map(
+      store.products.map((p) => [p.productId, p.customPrice != null ? Number(p.customPrice) : null])
+    );
     const productIds = Array.from(new Set(input.items.map((i) => i.productId)));
     const products = await this.prisma.catalogProduct.findMany({
       where: { id: { in: productIds } },
@@ -104,10 +108,15 @@ export class StoreCheckoutService {
         if (variant.pricingOptions?.length) pricingOptions = variant.pricingOptions;
       }
       // Apply volume tiers unless bulk pricing is disabled for this product.
-      const unit =
+      const tierUnit =
         product.bulkPricingEnabled === false
           ? baseUnit
           : this.resolveUnitPrice(baseUnit, item.quantity, pricingOptions);
+      // If the seller set a custom price it becomes the flat sale price (the
+      // markup above base is split with the seller — see confirmCheckout). It is
+      // always kept at or above base so it never undercuts the catalog price.
+      const custom = customPriceById.get(item.productId);
+      const unit = custom != null && custom > 0 ? Math.max(custom, baseUnit) : tierUnit;
       if (!Number.isFinite(unit) || unit <= 0) {
         throw new BadRequestException(`"${product.name}" is not purchasable`);
       }
@@ -227,11 +236,11 @@ export class StoreCheckoutService {
           include: {
             product: {
               select: {
-                commissionType: true,
-                commissionValue: true,
+                basePrice: true,
                 ownerStoreId: true
               }
-            }
+            },
+            productCatalogVariant: { select: { price: true } }
           }
         }
       }
@@ -260,20 +269,22 @@ export class StoreCheckoutService {
       }
     }
 
-    // Sum the seller's earning per line item using each product's own commission
-    // config (falling back to the store's percent). Ownership decides the split:
-    // platform-owned → seller keeps the commission; seller-owned → seller keeps
-    // the price. Rounds per unit, then multiplies by quantity.
-    const fallbackPercent = order.store ? Number(order.store.commissionPercent) : 0;
+    // Sum the seller's earning per line item under the markup-split model: the
+    // seller earns 50% of whatever they charged above the catalog base price (0
+    // when sold at base). The base reference is the variant's price when the item
+    // is a variant, otherwise the product's base price. Rounds per unit, then
+    // multiplies by quantity.
     let sellerEarningCents = 0;
     for (const item of order.items) {
-      const unit = Number(item.unitPrice);
-      const split = computeCommission(unit, {
-        commissionType: item.product.commissionType,
-        commissionValue:
-          item.product.commissionValue != null ? Number(item.product.commissionValue) : null,
-        basePrice: unit,
-        fallbackPercent,
+      const chargedUnit = Number(item.unitPrice);
+      const baseRef =
+        item.productCatalogVariant?.price != null
+          ? Number(item.productCatalogVariant.price)
+          : item.product.basePrice != null
+            ? Number(item.product.basePrice)
+            : chargedUnit;
+      const split = computeCommission(chargedUnit, {
+        basePrice: baseRef,
         ownership: item.product.ownerStoreId ? "SELLER" : "PLATFORM"
       });
       sellerEarningCents += Math.round(split.sellerEarning * 100) * item.quantity;

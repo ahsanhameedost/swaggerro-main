@@ -411,9 +411,9 @@ export function ProductLogoModal({
               <div>
                 <h4 className="text-sm font-semibold text-foreground">Your price &amp; earnings</h4>
                 <p className="text-xs text-muted-foreground">
-                  {product.commissionType === "FLAT"
-                    ? `You earn a flat ${formatMoney(product.commissionValue ?? 0, currency)} per sale (scales up as you raise your price). Swaggeroo keeps the rest.`
-                    : `You earn ${commission.effectivePercent}% of each sale as your commission. Swaggeroo keeps the rest.`}
+                  You keep 50% of whatever you charge above the{" "}
+                  {formatMoney(basePrice, currency)} base price. At the base price you earn
+                  nothing — raise your price to earn.
                 </p>
               </div>
 
@@ -487,7 +487,7 @@ export function ProductLogoModal({
                 <div className="flex items-center justify-between border-t border-border pt-1">
                   <span className="font-semibold text-foreground">
                     You earn
-                    {product.commissionType === "PERCENT" ? ` (${commission.effectivePercent}% commission)` : " commission"}
+                    {commission.effectivePercent > 0 ? ` (${commission.effectivePercent}% of your markup)` : ""}
                   </span>
                   <span className="font-bold tabular-nums text-primary">
                     {formatMoney(commission.sellerEarning, currency)}
