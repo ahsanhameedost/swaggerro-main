@@ -608,7 +608,8 @@ function HeroSlider({ store }: { store: NonNullable<ReturnType<typeof usePublicS
 
       {/* Curved auto-scrolling product rail (home-style arch) */}
       <div className="mt-10 w-full sm:mt-12">
-        <StoreHeroRail slug={store.slug} products={store.products} />
+        
+        <StoreHeroRail slug={store.slug} products={store.products.map((p) => ({ ...p, imageUrl: p.imageUrl ?? null }))} />
       </div>
 
       <div className="mx-auto max-w-site px-6 pt-2 pb-14 text-center">
