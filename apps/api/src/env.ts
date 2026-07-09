@@ -58,6 +58,9 @@ const schema = z.object({
   // publishable key is also exposed to the client via the payment-intent route.
   STRIPE_SECRET_KEY: z.string().optional(),
   STRIPE_PUBLISHABLE_KEY: z.string().optional(),
+  // Signing secret for the Stripe webhook endpoint (from the Stripe dashboard).
+  // Optional so the API still boots without webhooks configured.
+  STRIPE_WEBHOOK_SECRET: z.string().optional(),
 
   // When true, order payments are mocked as successful instead of calling the
   // payment provider. For local/testing only — never enable in production.

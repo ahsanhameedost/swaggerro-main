@@ -38,6 +38,12 @@ export async function updateCatalogOrderStatus(id: string, status: CatalogOrderS
   });
 }
 
+export async function refundCatalogOrder(id: string) {
+  return apiFetch<{ orderId: string; paymentStatus: "REFUNDED" }>(`/payments/orders/${id}/refund`, {
+    method: "POST"
+  });
+}
+
 export async function assignCatalogOrderEmployee(id: string, assignedEmployeeId: string | null) {
   return apiFetch<CatalogOrderResponse>(`/catalog/orders/${id}/assignment`, {
     method: "PATCH",

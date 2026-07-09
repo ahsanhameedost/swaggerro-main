@@ -11,7 +11,9 @@ async function bootstrap() {
   const app = await NestFactory.create<NestFastifyApplication>(
     AppModule,
     new FastifyAdapter(),
-    { logger: ["error", "warn", "log", "debug"] },
+    // rawBody: expose the unparsed request buffer (req.rawBody) so the Stripe
+    // webhook can verify its signature against the exact payload bytes.
+    { logger: ["error", "warn", "log", "debug"], rawBody: true },
   );
 
   await app.register(helmet, { global: true });

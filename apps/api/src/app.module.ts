@@ -19,6 +19,7 @@ import { NotificationsModule } from "./notifications/notifications.module";
 import { StoreCheckoutModule } from "./catalog/store-checkout/store-checkout.module";
 import { PublicCheckoutModule } from "./catalog/public-checkout/public-checkout.module";
 import { PayoutsModule } from "./payouts/payouts.module";
+import { PaymentsModule } from "./payments/payments.module";
 import { SettingsModule } from "./settings/settings.module";
 
 @Module({
@@ -43,6 +44,7 @@ import { SettingsModule } from "./settings/settings.module";
     StoreCheckoutModule,
     PublicCheckoutModule,
     PayoutsModule,
+    PaymentsModule,
     SettingsModule
   ],
   controllers: [HealthController]

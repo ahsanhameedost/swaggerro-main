@@ -23,6 +23,7 @@ import {
   useCatalogOrder,
   useUpdateCatalogOrderItemDesign,
   useUpdateCatalogOrderStatus,
+  useRefundCatalogOrder,
   useAssignCatalogOrderEmployee,
   useEmployees
 } from "@/lib/queries.catalog";
@@ -338,6 +339,7 @@ export default function OrderDetailsPage() {
   const canRead = hasAnyPermission(user, ["catalog.orders.read", "orders.assigned.read", "orders.self.read"]);
 
   const statusMutation = useUpdateCatalogOrderStatus();
+  const refundMutation = useRefundCatalogOrder();
   const assignMutation = useAssignCatalogOrderEmployee();
   const { data: employees = [] } = useEmployees("", canAssign);
   const canPlanShipping = hasAnyPermission(user, [
@@ -440,6 +442,33 @@ export default function OrderDetailsPage() {
                 {isCustomer ? "Plan shipping & storage" : "Open shipping planner"}
               </Button>
             </Link>
+            {!isCustomer && canManageStatus && order.paymentStatus === "PAID" ? (
+              <Button
+                variant="bordered"
+                color="danger"
+                isLoading={refundMutation.isPending}
+                onPress={async () => {
+                  if (
+                    !window.confirm(
+                      "Refund this order? This refunds the customer's payment in Stripe and marks the order refunded."
+                    )
+                  )
+                    return;
+                  try {
+                    await refundMutation.mutateAsync(order.id);
+                    addToast({ title: "Order refunded", color: "success" });
+                  } catch (e: any) {
+                    addToast({
+                      title: "Refund failed",
+                      description: e?.message ?? "Unable to refund this order.",
+                      color: "danger"
+                    });
+                  }
+                }}
+              >
+                Refund
+              </Button>
+            ) : null}
             <Link href="/dashboard/orders">
               <Button variant="bordered">Back to orders</Button>
             </Link>

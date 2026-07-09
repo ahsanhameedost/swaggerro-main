@@ -7,6 +7,7 @@ import {
   getCatalogOrder,
   getCatalogOrderStats,
   listCatalogOrders,
+  refundCatalogOrder,
   requestCatalogOrderItemRevision,
   updateCatalogOrderItemDesign,
   updateCatalogOrderStatus
@@ -63,6 +64,20 @@ export function useUpdateCatalogOrderStatus() {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["catalog", "orders"] }),
         queryClient.invalidateQueries({ queryKey: ["catalog", "orders", "detail", variables.id] })
+      ]);
+    }
+  });
+}
+
+export function useRefundCatalogOrder() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) => refundCatalogOrder(id),
+    onSuccess: async (_, id) => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["catalog", "orders"] }),
+        queryClient.invalidateQueries({ queryKey: ["catalog", "orders", "detail", id] })
       ]);
     }
   });
