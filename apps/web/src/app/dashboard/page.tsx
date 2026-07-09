@@ -11,6 +11,7 @@ import {
   PackageCheck,
   Palette,
   ShoppingCart,
+  Store,
   Wallet
 } from "lucide-react";
 import { useMe } from "@/queries/auth";
@@ -49,13 +50,33 @@ const STATUS_HEX: Record<string, string> = {
 
 type AccentColor = "emerald" | "blue" | "amber" | "violet" | "rose" | "sky";
 
-const ACCENT: Record<AccentColor, { soft: string; text: string; bar: string }> = {
-  emerald: { soft: "bg-emerald-500/10", text: "text-emerald-600", bar: "bg-emerald-500" },
-  blue: { soft: "bg-blue-500/10", text: "text-blue-600", bar: "bg-blue-500" },
-  amber: { soft: "bg-amber-500/10", text: "text-amber-600", bar: "bg-amber-500" },
-  violet: { soft: "bg-violet-500/10", text: "text-violet-600", bar: "bg-violet-500" },
-  rose: { soft: "bg-rose-500/10", text: "text-rose-600", bar: "bg-rose-500" },
-  sky: { soft: "bg-sky-500/10", text: "text-sky-600", bar: "bg-sky-500" }
+// Each accent drives a soft gradient icon tile plus a matching hover border so
+// the cards read as one system across every role's dashboard view.
+const ACCENT: Record<AccentColor, { icon: string; hover: string }> = {
+  emerald: {
+    icon: "bg-gradient-to-br from-emerald-400 to-emerald-600",
+    hover: "hover:border-emerald-400/60"
+  },
+  blue: {
+    icon: "bg-gradient-to-br from-blue-400 to-blue-600",
+    hover: "hover:border-blue-400/60"
+  },
+  amber: {
+    icon: "bg-gradient-to-br from-amber-400 to-amber-600",
+    hover: "hover:border-amber-400/60"
+  },
+  violet: {
+    icon: "bg-gradient-to-br from-violet-400 to-violet-600",
+    hover: "hover:border-violet-400/60"
+  },
+  rose: {
+    icon: "bg-gradient-to-br from-rose-400 to-rose-600",
+    hover: "hover:border-rose-400/60"
+  },
+  sky: {
+    icon: "bg-gradient-to-br from-sky-400 to-sky-600",
+    hover: "hover:border-sky-400/60"
+  }
 };
 
 function DonutChart({
@@ -156,7 +177,8 @@ function StatCard({
   icon,
   trend,
   hint,
-  color = "blue"
+  color = "blue",
+  href
 }: {
   label: string;
   value: string;
@@ -164,19 +186,31 @@ function StatCard({
   trend?: number | null;
   hint?: string;
   color?: AccentColor;
+  href?: string;
 }) {
   const accent = ACCENT[color];
-  return (
-    <Card className="overflow-hidden border border-divider shadow-sm transition-shadow hover:shadow-md">
-      <div className={`h-1 w-full ${accent.bar}`} />
+  const card = (
+    <Card
+      className={[
+        "group relative h-full overflow-hidden border border-divider shadow-sm transition-all duration-200",
+        accent.hover,
+        href ? "cursor-pointer hover:-translate-y-1 hover:shadow-lg" : "hover:shadow-md"
+      ].join(" ")}
+    >
       <CardBody className="space-y-3 p-5">
-        <div className="flex items-center justify-between">
+        <div className="flex items-start justify-between">
           <div
-            className={`flex h-11 w-11 items-center justify-center rounded-2xl ${accent.soft} ${accent.text}`}
+            className={`flex h-12 w-12 items-center justify-center rounded-2xl text-white shadow-sm ${accent.icon}`}
           >
             {icon}
           </div>
-          {trend !== undefined && <TrendChip value={trend} />}
+          {trend !== undefined ? (
+            <TrendChip value={trend} />
+          ) : href ? (
+            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-default-100 text-foreground/40 transition-all group-hover:bg-default-200 group-hover:text-foreground/70">
+              <ArrowUpRight className="h-4 w-4" />
+            </span>
+          ) : null}
         </div>
         <div>
           <div className="text-sm text-foreground/60">{label}</div>
@@ -185,6 +219,14 @@ function StatCard({
         </div>
       </CardBody>
     </Card>
+  );
+
+  return href ? (
+    <Link href={href} className="block h-full">
+      {card}
+    </Link>
+  ) : (
+    card
   );
 }
 
@@ -208,7 +250,9 @@ export default function DashboardPage() {
   const isAssignedTeamView = hasPermission(user, "orders.assigned.read") && !canReadAllOrders;
   const isCustomer =
     hasPermission(user, "orders.self.read") && !canReadAllOrders && !isAssignedTeamView;
-  const showSales = !isCustomer;
+  // Revenue/sales widgets require true all-orders access. Assigned-team users
+  // (e.g. Designers) and customers must never see platform revenue figures.
+  const showSales = canReadAllOrders;
 
   const recentOrders = recent?.items ?? [];
   const attention = stats?.needsAttention;
@@ -231,11 +275,13 @@ export default function DashboardPage() {
               Welcome back{user.firstName ? `, ${user.firstName}` : ""}
             </h1>
             <p className="text-sm text-foreground/60">
-              {isCustomer
-                ? "Track your submitted orders and approve designs as they move through the mockup flow."
+              {showSales
+                ? "Here's how sales and fulfillment are tracking across your store."
                 : isAssignedTeamView
-                  ? "Review your assigned orders, design jobs, and shipment requests from one place."
-                  : "Here's how sales and fulfillment are tracking across your store."}
+                  ? "Track the orders assigned to you and keep every design job moving."
+                  : isCustomer
+                    ? "Track your submitted orders and approve designs as they move through the mockup flow."
+                    : "Manage your store, products, and payouts from your seller dashboard."}
             </p>
           </div>
           {isFetching && <Spinner size="sm" />}
@@ -250,6 +296,7 @@ export default function DashboardPage() {
               icon={<CircleDollarSign className="h-5 w-5" />}
               trend={stats?.revenueTrend ?? null}
               hint="From orders marked paid"
+              href="/dashboard/orders"
             />
             <StatCard
               color="blue"
@@ -258,6 +305,7 @@ export default function DashboardPage() {
               icon={<ShoppingCart className="h-5 w-5" />}
               trend={stats?.ordersTrend ?? null}
               hint="All time"
+              href="/dashboard/orders"
             />
             <StatCard
               color="amber"
@@ -265,6 +313,7 @@ export default function DashboardPage() {
               value={formatMoney(stats?.outstanding ?? 0)}
               icon={<Wallet className="h-5 w-5" />}
               hint="Approved/awaiting payment"
+              href="/dashboard/orders?status=APPROVED"
             />
             <StatCard
               color="violet"
@@ -272,22 +321,70 @@ export default function DashboardPage() {
               value={formatMoney(stats?.avgOrderValue ?? 0)}
               icon={<ClipboardList className="h-5 w-5" />}
               hint="Across paid orders"
+              href="/dashboard/orders"
             />
           </div>
-        ) : (
-          <div className="grid gap-4 md:grid-cols-3">
+        ) : isAssignedTeamView ? (
+          // Designer / assigned-team view — assigned work counts only, never revenue.
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <StatCard
               color="blue"
-              label="My orders"
+              label="Assigned orders"
               value={String(stats?.totalOrders ?? 0)}
               icon={<ShoppingCart className="h-5 w-5" />}
+              hint="Assigned to you"
+              href="/dashboard/orders"
+            />
+            <StatCard
+              color="amber"
+              label="Pending review"
+              value={String(attention?.pendingReview ?? 0)}
+              icon={<Clock className="h-5 w-5" />}
+              hint="Waiting to start"
+              href="/dashboard/orders?status=PENDING_REVIEW"
             />
             <StatCard
               color="violet"
               label="In design"
               value={String(attention?.inDesign ?? 0)}
               icon={<Palette className="h-5 w-5" />}
-              hint="Awaiting design approval"
+              hint="Currently working"
+              href="/dashboard/designs"
+            />
+            <StatCard
+              color="emerald"
+              label="Ready to deliver"
+              value={String(attention?.readyToOrder ?? 0)}
+              icon={<PackageCheck className="h-5 w-5" />}
+              hint="Designs completed"
+              href="/dashboard/designs"
+            />
+          </div>
+        ) : isCustomer ? (
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <StatCard
+              color="blue"
+              label="My orders"
+              value={String(stats?.totalOrders ?? 0)}
+              icon={<ShoppingCart className="h-5 w-5" />}
+              hint="Submitted requests"
+              href="/dashboard/orders"
+            />
+            <StatCard
+              color="violet"
+              label="In design"
+              value={String(attention?.inDesign ?? 0)}
+              icon={<Palette className="h-5 w-5" />}
+              hint="Awaiting your approval"
+              href="/dashboard/designs"
+            />
+            <StatCard
+              color="emerald"
+              label="Total spent"
+              value={formatMoney(stats?.paidRevenue ?? 0)}
+              icon={<CircleDollarSign className="h-5 w-5" />}
+              hint="Across paid orders"
+              href="/dashboard/orders"
             />
             <StatCard
               color="amber"
@@ -295,8 +392,32 @@ export default function DashboardPage() {
               value={formatMoney(stats?.outstanding ?? 0)}
               icon={<Wallet className="h-5 w-5" />}
               hint="Awaiting payment"
+              href="/dashboard/orders?status=APPROVED"
             />
           </div>
+        ) : (
+          // Seller (or any role without order access) — point them to their store.
+          <Card className="border border-divider shadow-sm">
+            <CardBody className="flex flex-col items-start gap-4 p-6 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-4">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-400 to-sky-600 text-white shadow-sm">
+                  <Store className="h-5 w-5" />
+                </div>
+                <div>
+                  <div className="text-lg font-semibold">Your store dashboard</div>
+                  <div className="text-sm text-foreground/60">
+                    Manage products, orders, and payouts for your white-label store.
+                  </div>
+                </div>
+              </div>
+              <Link
+                href="/seller"
+                className="rounded-full bg-foreground px-5 py-2 text-sm font-medium text-background transition-opacity hover:opacity-90"
+              >
+                Open store dashboard
+              </Link>
+            </CardBody>
+          </Card>
         )}
 
         {showSales && (
@@ -355,136 +476,101 @@ export default function DashboardPage() {
 
         {showSales && (
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <AttentionCard
+            <StatCard
               color="amber"
               icon={<Clock className="h-5 w-5" />}
               label="Pending review"
-              value={attention?.pendingReview ?? 0}
-              href="/dashboard/orders"
+              value={String(attention?.pendingReview ?? 0)}
+              href="/dashboard/orders?status=PENDING_REVIEW"
             />
-            <AttentionCard
+            <StatCard
               color="violet"
               icon={<Palette className="h-5 w-5" />}
               label="In design"
-              value={attention?.inDesign ?? 0}
+              value={String(attention?.inDesign ?? 0)}
               href="/dashboard/designs"
             />
-            <AttentionCard
+            <StatCard
               color="emerald"
               icon={<PackageCheck className="h-5 w-5" />}
               label="Ready to order"
-              value={attention?.readyToOrder ?? 0}
+              value={String(attention?.readyToOrder ?? 0)}
               href="/dashboard/orders"
             />
-            <AttentionCard
+            <StatCard
               color="sky"
               icon={<Wallet className="h-5 w-5" />}
               label="Awaiting payment"
-              value={attention?.unpaid ?? 0}
-              href="/dashboard/orders"
+              value={String(attention?.unpaid ?? 0)}
+              href="/dashboard/orders?status=APPROVED"
             />
           </div>
         )}
 
-        <Card className="border border-divider shadow-sm">
-          <CardHeader className="flex items-center justify-between p-6 pb-2">
-            <div>
-              <div className="text-lg font-semibold">Recent orders</div>
-              <div className="text-sm text-foreground/60">
-                {isCustomer
-                  ? "Your latest submitted requests."
-                  : isAssignedTeamView
-                    ? "Latest requests currently assigned to you."
-                    : "Latest requests visible to your permissions."}
-              </div>
-            </div>
-            <Link href="/dashboard/orders" className="text-sm text-primary hover:underline">
-              View all
-            </Link>
-          </CardHeader>
-          <CardBody className="space-y-3 p-6 pt-3">
-            {recentOrders.length ? (
-              recentOrders.map((order) => (
-                <div
-                  key={order.id}
-                  className="flex flex-col gap-3 rounded-2xl border border-divider p-4 lg:flex-row lg:items-center lg:justify-between"
-                >
-                  <div className="space-y-1">
-                    <div className="font-semibold">
-                      {order.project?.swagPackName || order.project?.name || `Order #${order.id}`}
-                    </div>
-                    <div className="text-sm text-foreground/60">
-                      {showSales ? `${buildUserDisplayName(order.customer)} · ` : ""}
-                      {new Date(order.createdAt).toLocaleDateString()}
-                    </div>
-                  </div>
-
-                  <div className="flex flex-wrap items-center gap-3">
-                    {showSales && (
-                      <span className="text-sm font-semibold">{formatMoney(order.totalDue)}</span>
-                    )}
-                    <Chip
-                      size="sm"
-                      variant="flat"
-                      color={order.paymentStatus === "PAID" ? "success" : "default"}
-                    >
-                      {STATUS_LABELS[order.status] ?? order.status}
-                    </Chip>
-                    <Chip size="sm" variant="flat" color={order.allItemsReadyToOrder ? "success" : "warning"}>
-                      {order.allItemsReadyToOrder ? "Ready" : "In design"}
-                    </Chip>
-                    <Link
-                      href={`/dashboard/orders/${order.id}`}
-                      className="text-sm text-primary hover:underline"
-                    >
-                      View
-                    </Link>
-                  </div>
+        {canReadOrders && (
+          <Card className="border border-divider shadow-sm">
+            <CardHeader className="flex items-center justify-between p-6 pb-2">
+              <div>
+                <div className="text-lg font-semibold">Recent orders</div>
+                <div className="text-sm text-foreground/60">
+                  {isCustomer
+                    ? "Your latest submitted requests."
+                    : isAssignedTeamView
+                      ? "Latest requests currently assigned to you."
+                      : "Latest requests visible to your permissions."}
                 </div>
-              ))
-            ) : (
-              <div className="text-sm text-foreground/60">
-                {canReadOrders
-                  ? "No orders are available yet."
-                  : "Your account does not have order access."}
               </div>
-            )}
-          </CardBody>
-        </Card>
+              <Link href="/dashboard/orders" className="text-sm text-primary hover:underline">
+                View all
+              </Link>
+            </CardHeader>
+            <CardBody className="space-y-3 p-6 pt-3">
+              {recentOrders.length ? (
+                recentOrders.map((order) => (
+                  <div
+                    key={order.id}
+                    className="flex flex-col gap-3 rounded-2xl border border-divider p-4 transition-colors hover:border-foreground/20 lg:flex-row lg:items-center lg:justify-between"
+                  >
+                    <div className="space-y-1">
+                      <div className="font-semibold">
+                        {order.project?.swagPackName || order.project?.name || `Order #${order.id}`}
+                      </div>
+                      <div className="text-sm text-foreground/60">
+                        {showSales ? `${buildUserDisplayName(order.customer)} · ` : ""}
+                        {new Date(order.createdAt).toLocaleDateString()}
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-3">
+                      {showSales && (
+                        <span className="text-sm font-semibold">{formatMoney(order.totalDue)}</span>
+                      )}
+                      <Chip
+                        size="sm"
+                        variant="flat"
+                        color={order.paymentStatus === "PAID" ? "success" : "default"}
+                      >
+                        {STATUS_LABELS[order.status] ?? order.status}
+                      </Chip>
+                      <Chip size="sm" variant="flat" color={order.allItemsReadyToOrder ? "success" : "warning"}>
+                        {order.allItemsReadyToOrder ? "Ready" : "In design"}
+                      </Chip>
+                      <Link
+                        href={`/dashboard/orders/${order.id}`}
+                        className="text-sm text-primary hover:underline"
+                      >
+                        View
+                      </Link>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="text-sm text-foreground/60">No orders are available yet.</div>
+              )}
+            </CardBody>
+          </Card>
+        )}
       </div>
     </main>
-  );
-}
-
-function AttentionCard({
-  icon,
-  label,
-  value,
-  href,
-  color
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: number;
-  href: string;
-  color: AccentColor;
-}) {
-  const accent = ACCENT[color];
-  return (
-    <Link href={href}>
-      <Card className="border border-divider shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md">
-        <CardBody className="flex flex-row items-center gap-3 p-5">
-          <div
-            className={`flex h-11 w-11 items-center justify-center rounded-2xl ${accent.soft} ${accent.text}`}
-          >
-            {icon}
-          </div>
-          <div>
-            <div className="text-xl font-bold">{value}</div>
-            <div className="text-xs text-foreground/60">{label}</div>
-          </div>
-        </CardBody>
-      </Card>
-    </Link>
   );
 }

@@ -94,7 +94,12 @@ const DEFAULT_CUSTOM_ROLES = [
     permissionKeys: ALL_PERMISSION_KEYS.filter(
       (key) =>
         key.startsWith("design") ||
-        (key.startsWith("catalog.") && key.endsWith(".read")) ||
+        // Catalog read for mockups — but NOT catalog.orders.* which grants
+        // all-team order + revenue visibility. Designers reach orders only via
+        // their assigned/self scopes below, never platform revenue.
+        (key.startsWith("catalog.") &&
+          key.endsWith(".read") &&
+          !key.startsWith("catalog.orders")) ||
         key.startsWith("orders") ||
         key === "profile.read" ||
         key === "profile.update"

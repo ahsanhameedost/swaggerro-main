@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useDeferredValue, useMemo, useState } from "react";
 import {
   Button,
@@ -49,8 +50,14 @@ export default function OrdersPage() {
   const isAssignedTeamView =
     hasPermission(user, "orders.assigned.read") && !hasPermission(user, "catalog.orders.read");
 
+  // Dashboard stat cards deep-link here with ?status=… to pre-filter the list.
+  const searchParams = useSearchParams();
+  const initialStatus = searchParams.get("status") ?? "";
+
   const [search, setSearch] = useState("");
-  const [status, setStatus] = useState("");
+  const [status, setStatus] = useState(
+    ORDER_STATUSES.includes(initialStatus as (typeof ORDER_STATUSES)[number]) ? initialStatus : ""
+  );
   const [assignedEmployeeId, setAssignedEmployeeId] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(15);
