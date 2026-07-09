@@ -61,6 +61,7 @@ type FormState = {
   industry: string;
   countryCode: string;
   stateName: string;
+  postalCode: string;
   slug: string;
   website: string;
   additionalInfo: string;
@@ -76,6 +77,7 @@ const EMPTY: FormState = {
   industry: "",
   countryCode: "",
   stateName: "",
+  postalCode: "",
   slug: "",
   website: "",
   additionalInfo: "",
@@ -314,6 +316,7 @@ export default function BecomeASellerPage() {
         industry: form.industry.trim(),
         country: countryName,
         state: form.stateName.trim() || undefined,
+        postalCode: form.postalCode.trim() || undefined,
         desiredSlug: form.slug.trim() || undefined,
         website: form.website.trim() || undefined,
         additionalInfo: form.additionalInfo.trim() || undefined,
@@ -479,9 +482,12 @@ export default function BecomeASellerPage() {
                 <input className={inputClass} value={form.website} onChange={(e) => set("website", e.target.value)} placeholder="https://company.com" />
               </Field>
             </div>
-            <div className="mt-4">
+            <div className="mt-4 grid gap-4 sm:grid-cols-[1fr_200px]">
               <Field label="Company address" required error={errors.companyAddress}>
                 <input className={inputClass} value={form.companyAddress} onChange={(e) => set("companyAddress", e.target.value)} placeholder="123 Market St, San Francisco, CA" />
+              </Field>
+              <Field label="ZIP / postal code" error={errors.postalCode}>
+                <input className={inputClass} value={form.postalCode} onChange={(e) => set("postalCode", e.target.value)} placeholder="94103" />
               </Field>
             </div>
 

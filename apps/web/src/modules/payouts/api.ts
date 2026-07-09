@@ -51,8 +51,30 @@ export type UpdatePayoutDetailsInput = Partial<{
   payoutDetails: string | null;
 }>;
 
+export type SellerOrderRow = {
+  id: string;
+  orderNumber: number;
+  customerName: string;
+  customerEmail: string;
+  status: string;
+  paymentStatus: string;
+  totalCents: number;
+  sellerEarningCents: number;
+  itemCount: number;
+  createdAt: string;
+};
+
+export type SellerOrdersResponse = {
+  summary: { totalOrders: number; paidOrders: number; earningCents: number };
+  orders: SellerOrderRow[];
+};
+
 export async function getSellerPayouts() {
   return apiFetch<SellerPayoutSummary>("/payouts/me", { method: "GET" });
+}
+
+export async function getSellerOrders() {
+  return apiFetch<SellerOrdersResponse>("/payouts/me/orders", { method: "GET" });
 }
 
 export async function updatePayoutDetails(input: UpdatePayoutDetailsInput) {

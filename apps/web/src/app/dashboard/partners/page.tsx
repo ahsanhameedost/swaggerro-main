@@ -154,6 +154,10 @@ function DetailModal({
                 <Detail label="Industry" value={application.industry} />
                 <Detail label="Country / region" value={application.country} />
                 <Detail
+                  label="State / postal code"
+                  value={[application.state, application.postalCode].filter(Boolean).join(" · ") || "—"}
+                />
+                <Detail
                   label="Website"
                   value={
                     application.website ? (

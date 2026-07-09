@@ -209,6 +209,55 @@ export class PayoutsService {
     };
   }
 
+  // Store-scoped order list for the seller — only orders placed through their
+  // own storefront, with their commission earning per order.
+  async sellerOrders(userId: string) {
+    const store = await this.prisma.store.findUnique({
+      where: { ownerUserId: userId },
+      select: { id: true }
+    });
+    if (!store) throw new NotFoundException("You do not have a store yet");
+
+    const orders = await this.prisma.catalogOrder.findMany({
+      where: { storeId: store.id },
+      orderBy: { createdAt: "desc" },
+      take: 100,
+      select: {
+        id: true,
+        orderNumber: true,
+        name: true,
+        email: true,
+        status: true,
+        paymentStatus: true,
+        totalPrice: true,
+        sellerEarningCents: true,
+        createdAt: true,
+        _count: { select: { items: true } }
+      }
+    });
+
+    const paidOrders = orders.filter((o) => o.paymentStatus === "PAID");
+    return {
+      summary: {
+        totalOrders: orders.length,
+        paidOrders: paidOrders.length,
+        earningCents: paidOrders.reduce((sum, o) => sum + (o.sellerEarningCents ?? 0), 0)
+      },
+      orders: orders.map((o) => ({
+        id: o.id,
+        orderNumber: o.orderNumber,
+        customerName: o.name,
+        customerEmail: o.email,
+        status: o.status,
+        paymentStatus: o.paymentStatus,
+        totalCents: Math.round(Number(o.totalPrice) * 100),
+        sellerEarningCents: o.sellerEarningCents ?? 0,
+        itemCount: o._count.items,
+        createdAt: o.createdAt
+      }))
+    };
+  }
+
   async sellerUpdateDetails(userId: string, input: UpdatePayoutDetailsInput) {
     const store = await this.prisma.store.findUnique({ where: { ownerUserId: userId }, select: { id: true } });
     if (!store) throw new NotFoundException("You do not have a store yet");

@@ -36,6 +36,13 @@ export const createSellerApplicationSchema = z.object({
     .optional()
     .or(z.literal(""))
     .transform((value) => (value ? value : undefined)),
+  postalCode: z
+    .string()
+    .trim()
+    .max(20)
+    .optional()
+    .or(z.literal(""))
+    .transform((value) => (value ? value : undefined)),
   // Desired storefront URL slug (e.g. "acme-corp" → swaggeroo.com/store/acme-corp).
   // Optional: if omitted we derive it from the company name during onboarding.
   desiredSlug: z

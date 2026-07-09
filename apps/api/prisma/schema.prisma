@@ -891,6 +891,7 @@ model SellerApplication {
   industry            String
   country             String
   state               String?
+  postalCode          String?
   desiredSlug         String?
   logoUrl             String?
   logoKey             String?

@@ -18,7 +18,7 @@ import {
   Textarea
 } from "@heroui/react";
 import { addToast } from "@heroui/toast";
-import { Download, UploadCloud } from "lucide-react";
+import { CheckCircle2, Download, UploadCloud } from "lucide-react";
 import { useMe } from "@/queries/auth";
 import {
   useApproveCatalogOrderItem,
@@ -230,6 +230,37 @@ function CustomerDesignView({ orders }: { orders: CatalogOrder[] }) {
                 >
                   Download PDF
                 </Button>
+                {order.items.some((i) => i.designPhase === "REVIEW_FINAL_DESIGN") ? (
+                  <Button
+                    color="primary"
+                    startContent={<CheckCircle2 className="size-4" />}
+                    isLoading={approveMutation.isPending}
+                    onPress={async () => {
+                      const finalItems = order.items.filter(
+                        (i) => i.designPhase === "REVIEW_FINAL_DESIGN"
+                      );
+                      try {
+                        for (const it of finalItems) {
+                          await approveMutation.mutateAsync({
+                            orderId: order.id,
+                            itemId: it.id,
+                            stage: "FINAL"
+                          });
+                        }
+                        addToast({ title: "All final designs approved", color: "success" });
+                      } catch (e: any) {
+                        addToast({
+                          title: "Approval failed",
+                          description: e?.message ?? "Unable to approve final designs.",
+                          color: "danger"
+                        });
+                      }
+                    }}
+                    style={{ backgroundImage: "var(--primary-gradient)" }}
+                  >
+                    Approve All Final Design
+                  </Button>
+                ) : null}
                 <Link href={`/dashboard/orders/${order.id}`}>
                   <Button variant="bordered">View order</Button>
                 </Link>

@@ -35,6 +35,13 @@ export class PayoutsController {
     return this.payouts.sellerSummary(req.user!.sub);
   }
 
+  @Get("me/orders")
+  @UseGuards(AuthGuard, PermissionsGuard)
+  @RequirePermissions("seller.store.read")
+  async myOrders(@Req() req: FastifyRequest & { user?: AuthUser }) {
+    return this.payouts.sellerOrders(req.user!.sub);
+  }
+
   @Patch("me/details")
   @UseGuards(AuthGuard, PermissionsGuard)
   @RequirePermissions("seller.store.write")

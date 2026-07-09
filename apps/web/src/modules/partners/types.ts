@@ -11,6 +11,7 @@ export type SellerApplication = {
   industry: string;
   country: string;
   state: string | null;
+  postalCode: string | null;
   desiredSlug: string | null;
   logoUrl: string | null;
   logoKey: string | null;
@@ -35,6 +36,7 @@ export type CreateSellerApplicationInput = {
   industry: string;
   country: string;
   state?: string;
+  postalCode?: string;
   desiredSlug?: string;
   website?: string;
   additionalInfo?: string;

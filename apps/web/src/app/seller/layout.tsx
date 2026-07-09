@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
-import { ExternalLink, LayoutGrid, LogOut, Settings, Store, Wallet } from "lucide-react";
+import { ExternalLink, LayoutGrid, LogOut, Settings, ShoppingBag, Store, Wallet } from "lucide-react";
 import { logout as logoutRequest } from "@/modules/auth/api";
 import { useMe } from "@/queries/auth";
 import { useMyStore } from "@/queries/stores";
@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 
 const NAV = [
   { href: "/seller", label: "Storefront", icon: LayoutGrid, exact: true },
+  { href: "/seller/orders", label: "Orders", icon: ShoppingBag, exact: false },
   { href: "/seller/payouts", label: "Payouts", icon: Wallet, exact: false },
   { href: "/seller/settings", label: "Account settings", icon: Settings, exact: false },
 ];

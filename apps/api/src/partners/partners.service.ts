@@ -47,6 +47,7 @@ export class PartnersService {
         industry: input.industry.trim(),
         country: input.country.trim(),
         state: input.state?.trim() || null,
+        postalCode: input.postalCode?.trim() || null,
         desiredSlug: input.desiredSlug ? normalizeSlug(input.desiredSlug) || null : null,
         website: input.website?.trim() || null,
         additionalInfo: input.additionalInfo?.trim() || null,
@@ -258,6 +259,7 @@ export class PartnersService {
     industry: string;
     country: string;
     state?: string | null;
+    postalCode?: string | null;
     desiredSlug?: string | null;
     logoUrl: string | null;
     logoKey: string | null;
@@ -282,6 +284,7 @@ export class PartnersService {
       industry: item.industry,
       country: item.country,
       state: item.state ?? null,
+      postalCode: item.postalCode ?? null,
       desiredSlug: item.desiredSlug ?? null,
       logoUrl: item.logoUrl,
       logoKey: item.logoKey,

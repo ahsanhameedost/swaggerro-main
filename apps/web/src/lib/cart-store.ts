@@ -171,7 +171,11 @@ export const useCatalogCartStore = create<CatalogCartStore>()(
         })),
       removeSwagPackItem: (key) =>
         set((state) => ({
-          swagPackItems: state.swagPackItems.filter((item) => getItemKey(item) !== key)
+          swagPackItems: state.swagPackItems.filter((item) => getItemKey(item) !== key),
+          // Logo placement is designed in the Mockup Studio against a specific
+          // pack product, so once any product is removed the placement may be
+          // stale — clear it (the uploaded logo file is kept for re-preview).
+          branding: { ...state.branding, mockupUrl: null, note: null }
         })),
       setSwagPackPackaging: (item) =>
         set({
