@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Logger } from "@nestjs/common";
 import { InjectQueue } from "@nestjs/bullmq";
 import { Queue } from "bullmq";
 import { PrismaService } from "../prisma/prisma.service";
@@ -33,6 +33,8 @@ export type EventEmail = {
  */
 @Injectable()
 export class NotificationEventsService {
+  private readonly logger = new Logger(NotificationEventsService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly notifications: NotificationsService,
@@ -56,11 +58,19 @@ export class NotificationEventsService {
     });
 
     if (!input.email) return;
-    const user = await this.prisma.user.findUnique({
-      where: { id: input.userId },
-      select: { email: true, firstName: true }
-    });
-    if (user?.email) await this.enqueueEmail(user.email, user.firstName, input.email);
+    // Email delivery is best-effort — never let a queue/Redis hiccup break the
+    // action that triggered the event (the in-app notification is already saved).
+    try {
+      const user = await this.prisma.user.findUnique({
+        where: { id: input.userId },
+        select: { email: true, firstName: true }
+      });
+      if (user?.email) await this.enqueueEmail(user.email, user.firstName, input.email);
+    } catch (err) {
+      this.logger.error(
+        `failed to queue email for user=${input.userId}: ${(err as Error).message}`
+      );
+    }
   }
 
   async dispatchToAdmins(input: {
@@ -78,19 +88,28 @@ export class NotificationEventsService {
     });
 
     if (!input.email) return;
-    const admins = await this.prisma.user.findMany({
-      where: { role: { name: "SUPER_ADMIN" } },
-      select: { email: true, firstName: true }
-    });
-    for (const admin of admins) {
-      if (admin.email) await this.enqueueEmail(admin.email, admin.firstName, input.email);
+    try {
+      const admins = await this.prisma.user.findMany({
+        where: { role: { name: "SUPER_ADMIN" } },
+        select: { email: true, firstName: true }
+      });
+      for (const admin of admins) {
+        if (admin.email) await this.enqueueEmail(admin.email, admin.firstName, input.email);
+      }
+    } catch (err) {
+      this.logger.error(`failed to queue admin emails: ${(err as Error).message}`);
     }
   }
 
   // Send a branded email to an explicit address (recipient may not be a user,
   // e.g. a guest checkout email or the configured admin inbox).
   async dispatchEmail(to: string, firstName: string | null, email: EventEmail) {
-    if (to) await this.enqueueEmail(to, firstName, email);
+    if (!to) return;
+    try {
+      await this.enqueueEmail(to, firstName, email);
+    } catch (err) {
+      this.logger.error(`failed to queue email to=${to}: ${(err as Error).message}`);
+    }
   }
 
   private async enqueueEmail(to: string, firstName: string | null, email: EventEmail) {
