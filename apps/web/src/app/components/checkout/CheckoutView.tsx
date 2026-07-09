@@ -52,6 +52,7 @@ export interface CheckoutViewProps {
   authed: boolean;
   prefillName?: string;
   prefillEmail?: string;
+  prefillPhone?: string;
   backHref: string;
   backLabel: string;
   browseHref: string;
@@ -114,7 +115,7 @@ export function CheckoutView(props: CheckoutViewProps) {
 
   const [name, setName] = useState(props.prefillName ?? "");
   const [email, setEmail] = useState(props.prefillEmail ?? "");
-  const [phone, setPhone] = useState("");
+  const [phone, setPhone] = useState(props.prefillPhone ?? "");
   const [company, setCompany] = useState("");
   const [street, setStreet] = useState("");
   const [apt, setApt] = useState("");
@@ -132,7 +133,8 @@ export function CheckoutView(props: CheckoutViewProps) {
   useEffect(() => {
     if (props.prefillName) setName((c) => c || props.prefillName!);
     if (props.prefillEmail) setEmail((c) => c || props.prefillEmail!);
-  }, [props.prefillName, props.prefillEmail]);
+    if (props.prefillPhone) setPhone((c) => c || props.prefillPhone!);
+  }, [props.prefillName, props.prefillEmail, props.prefillPhone]);
 
   const composeAddress = () => {
     const line = [
@@ -227,6 +229,15 @@ export function CheckoutView(props: CheckoutViewProps) {
             >
               Sign in
             </Link>
+            <p className="mt-4 text-sm text-muted-foreground">
+              New here?{" "}
+              <Link
+                href={signInHref.replace("/login", "/signup")}
+                className="font-semibold text-primary hover:underline"
+              >
+                Create an account
+              </Link>
+            </p>
           </div>
         </div>
       </div>

@@ -71,6 +71,7 @@ export default function StoreCheckoutPage() {
           authed={!!me}
           prefillName={me ? [me.firstName, me.lastName].filter(Boolean).join(" ") : ""}
           prefillEmail={me?.email ?? ""}
+          prefillPhone={me?.phone ?? ""}
           backHref={`/store/${store.slug}`}
           backLabel={`Back to ${store.name}`}
           browseHref={`/store/${store.slug}`}

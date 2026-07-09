@@ -58,9 +58,20 @@ export default function ProductDetailPage() {
   const hasVariants = (product?.productCatalogVariants.length ?? 0) > 0;
   const imprintMethods = useMemo(() => getImprintMethods(product?.category?.slug), [product?.category?.slug]);
 
+  // B2C rule: screen print is not offered below 6 units (setup cost only makes
+  // sense at volume). Hide it whenever quantity < 6.
+  const availableImprintMethods = useMemo(
+    () => imprintMethods.filter((m) => !(quantity < 6 && m.key === "screen_print")),
+    [imprintMethods, quantity],
+  );
+
   useEffect(() => {
-    if (imprintMethods.length) setMethodKey((k) => k || imprintMethods[0].key);
-  }, [imprintMethods]);
+    if (!availableImprintMethods.length) return;
+    // Keep the current pick if still offered, otherwise fall back to the first.
+    setMethodKey((k) =>
+      availableImprintMethods.some((m) => m.key === k) ? k : availableImprintMethods[0].key,
+    );
+  }, [availableImprintMethods]);
 
   useEffect(() => {
     if (!product) return;
@@ -278,11 +289,11 @@ export default function ProductDetailPage() {
             </div>
           ))}
 
-          {imprintMethods.length ? (
+          {availableImprintMethods.length ? (
             <div className="mt-6">
               <p className="text-sm font-semibold text-foreground">Imprint method</p>
               <div className="mt-2 grid grid-cols-2 gap-2">
-                {imprintMethods.map((m) => (
+                {availableImprintMethods.map((m) => (
                   <button key={m.key} type="button" onClick={() => setMethodKey(m.key)}
                     className={cn("rounded-xl border px-3 py-2.5 text-left transition", methodKey === m.key ? "border-primary bg-brand-soft" : "border-border hover:border-foreground/30")}>
                     <span className="block text-sm font-medium text-foreground">{m.name}</span>

@@ -31,6 +31,12 @@ function variantLabel(variant: ProductCatalogVariant | null) {
   return values.length ? values.join(" / ") : null;
 }
 
+// Link a cart line item back to the page it was added from — the store PDP for
+// white-label items, otherwise the global shop PDP.
+function productHref(item: { slug: string; storeSlug?: string | null }) {
+  return item.storeSlug ? `/store/${item.storeSlug}/${item.slug}` : `/shop/${item.slug}`;
+}
+
 function toPackagingCartItem(
   product: CatalogProductDetail,
   variant: ProductCatalogVariant | null
@@ -206,16 +212,24 @@ export default function CartPage() {
                         key={getCartItemKey(item)}
                         className="grid gap-4 px-5 py-6 lg:grid-cols-[140px_minmax(0,1fr)_160px]"
                       >
-                        <div className="flex h-32 items-center justify-center overflow-hidden rounded-2xl bg-zinc-50">
+                        <Link
+                          href={productHref(item)}
+                          className="flex h-32 items-center justify-center overflow-hidden rounded-2xl bg-zinc-50 transition-opacity hover:opacity-90"
+                        >
                           {item.imageUrl ? (
                             <Image removeWrapper src={item.imageUrl} alt={item.name} className="h-full w-full object-cover" />
                           ) : (
                             <div className="text-lg font-semibold text-black/35">{item.name.slice(0, 2).toUpperCase()}</div>
                           )}
-                        </div>
+                        </Link>
 
                         <div className="space-y-3">
-                          <div className="text-xl font-semibold text-black">{item.name}</div>
+                          <Link
+                            href={productHref(item)}
+                            className="text-xl font-semibold text-black hover:text-primary hover:underline"
+                          >
+                            {item.name}
+                          </Link>
                           <div className="text-sm text-black/55">
                             Color: {item.variantName || "Standard"}
                           </div>
@@ -326,9 +340,11 @@ export default function CartPage() {
 
                       <div className="flex flex-wrap gap-4">
                         {summary.swagPackItems.map((item) => (
-                          <div
+                          <Link
                             key={`swag-${getCartItemKey(item)}`}
-                            className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-2xl bg-zinc-50"
+                            href={productHref(item)}
+                            title={item.name}
+                            className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-2xl bg-zinc-50 transition-opacity hover:opacity-90"
                           >
                             {item.imageUrl ? (
                               <Image removeWrapper src={item.imageUrl} alt={item.name} className="h-full w-full object-cover" />
@@ -337,7 +353,7 @@ export default function CartPage() {
                                 {item.name.slice(0, 2).toUpperCase()}
                               </div>
                             )}
-                          </div>
+                          </Link>
                         ))}
                       </div>
                     </div>

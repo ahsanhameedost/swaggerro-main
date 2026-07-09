@@ -666,9 +666,14 @@ export function StoreEditor({
                       role="button"
                       tabIndex={0}
                       onClick={(e) => {
-                        // Toggle selection without opening the popup.
                         e.stopPropagation();
-                        toggleProduct(product.id);
+                        // Adding via "+" opens the same logo-preview popup as
+                        // clicking the card; the "✓" state toggles off to remove.
+                        if (isSelected) {
+                          toggleProduct(product.id);
+                        } else {
+                          openBranding(product);
+                        }
                       }}
                       className={cn(
                         "absolute right-2 top-2 flex size-7 items-center justify-center rounded-full border shadow-sm transition",

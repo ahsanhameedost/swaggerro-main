@@ -354,6 +354,17 @@ export class CatalogOrdersService extends CatalogSharedService {
           customerName: order.name
         });
       } catch {}
+
+      // In-app notification so the designer sees the assignment immediately,
+      // without relying on email delivery. (notify() is fire-and-forget.)
+      const orderLabel = `SW-${String(order.orderNumber).padStart(3, "0")}`;
+      await this.notifications.notify({
+        userId: employee.id,
+        type: "design.assigned",
+        title: "New design assigned",
+        body: `You've been assigned to order ${orderLabel} for ${order.name}.`,
+        link: `/dashboard/orders/${order.id}`
+      });
     }
 
     const updated = await this.prisma.catalogOrder.update({

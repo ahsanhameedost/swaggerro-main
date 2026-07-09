@@ -204,6 +204,8 @@ function CustomerDesignView({ orders }: { orders: CatalogOrder[] }) {
   const approveMutation = useApproveCatalogOrderItem();
   const revisionMutation = useRequestCatalogOrderItemRevision();
   const [revisionTarget, setRevisionTarget] = useState<{ orderId: string; item: CatalogOrderItem } | null>(null);
+  // Click-to-enlarge lightbox for approved/mockup design images.
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
 
   return (
     <>
@@ -243,18 +245,25 @@ function CustomerDesignView({ orders }: { orders: CatalogOrder[] }) {
                 return (
                   <div key={item.id} className="rounded-3xl border border-divider p-5">
                     <div className="grid gap-5 xl:grid-cols-[180px_minmax(0,1fr)]">
-                      <div className="flex h-[180px] items-center justify-center overflow-hidden rounded-3xl bg-default-100">
-                        {getPreferredDesignImage(item) ? (
+                      {getPreferredDesignImage(item) ? (
+                        <button
+                          type="button"
+                          onClick={() => setLightboxSrc(getPreferredDesignImage(item)!)}
+                          className="group flex h-[180px] cursor-zoom-in items-center justify-center overflow-hidden rounded-3xl bg-default-100"
+                          aria-label={`Enlarge ${item.productName} design`}
+                        >
                           <Image
                             removeWrapper
                             src={getPreferredDesignImage(item)!}
                             alt={item.productName}
-                            className="h-full w-full object-contain"
+                            className="h-full w-full object-contain transition-transform duration-200 group-hover:scale-105"
                           />
-                        ) : (
-                          <div className="text-sm text-foreground/55">Mockup in progress</div>
-                        )}
-                      </div>
+                        </button>
+                      ) : (
+                        <div className="flex h-[180px] items-center justify-center overflow-hidden rounded-3xl bg-default-100 text-sm text-foreground/55">
+                          Mockup in progress
+                        </div>
+                      )}
 
                       <div className="space-y-4">
                         <div className="flex flex-wrap items-start justify-between gap-3">
@@ -414,6 +423,23 @@ function CustomerDesignView({ orders }: { orders: CatalogOrder[] }) {
           }
         }}
       />
+
+      <Modal isOpen={!!lightboxSrc} onOpenChange={(open) => (!open ? setLightboxSrc(null) : undefined)} size="4xl">
+        <ModalContent>
+          {() => (
+            <ModalBody className="flex items-center justify-center p-2">
+              {lightboxSrc ? (
+                <Image
+                  removeWrapper
+                  src={lightboxSrc}
+                  alt="Design preview"
+                  className="max-h-[80vh] w-auto object-contain"
+                />
+              ) : null}
+            </ModalBody>
+          )}
+        </ModalContent>
+      </Modal>
     </>
   );
 }

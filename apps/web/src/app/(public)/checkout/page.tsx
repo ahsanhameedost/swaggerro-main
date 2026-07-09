@@ -32,6 +32,7 @@ export default function PublicCheckoutPage() {
         authed={!!me}
         prefillName={me ? [me.firstName, me.lastName].filter(Boolean).join(" ") : ""}
         prefillEmail={me?.email ?? ""}
+        prefillPhone={me?.phone ?? ""}
         backHref="/shop"
         backLabel="Back to shop"
         browseHref="/shop"
