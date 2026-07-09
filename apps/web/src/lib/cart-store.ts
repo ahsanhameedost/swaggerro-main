@@ -26,6 +26,10 @@ type CartItemBase = {
 export type BulkCartItem = CartItemBase & {
   quantity: number;
   isPackaging?: false;
+  // Decoration chosen on the product page: a one-time setup fee per line, carried
+  // so the cart/checkout can show and charge it. Absent = no imprint selected.
+  setupFee?: number;
+  imprintMethodName?: string | null;
 };
 
 export type SwagPackCartItem = CartItemBase & {

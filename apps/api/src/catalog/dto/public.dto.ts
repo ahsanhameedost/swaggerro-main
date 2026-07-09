@@ -12,7 +12,9 @@ export const listPublicProductsQuerySchema = z.object({
 const bulkOrderItemSchema = z.object({
   productId: z.string().trim().min(1),
   productCatalogVariantId: z.string().trim().optional().nullable(),
-  quantity: z.coerce.number().int().min(1)
+  quantity: z.coerce.number().int().min(1),
+  // One-time imprint/setup fee (frontend imprint config), added to the line.
+  setupFee: z.coerce.number().min(0).max(100000).optional()
 });
 
 const swagPackOrderItemSchema = z.object({

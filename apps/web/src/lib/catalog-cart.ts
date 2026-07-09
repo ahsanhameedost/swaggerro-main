@@ -86,10 +86,13 @@ export function buildBulkPricedItems(items: BulkCartItem[]) {
     const matchedTier = findMatchingPricingOption(item.quantity, item.pricingOptions);
     const tier = describeTier(matchedTier);
     const discountPerUnit = Math.max(0, (item.basePrice ?? unitPrice) - unitPrice);
+    // Setup fee is a one-time decoration charge per line, added on top of units.
+    const setupFee = Math.max(0, item.setupFee ?? 0);
     return {
       ...item,
       unitPrice,
-      totalPrice: unitPrice * item.quantity,
+      setupFee,
+      totalPrice: unitPrice * item.quantity + setupFee,
       label: tier.label,
       qtyFrom: tier.qtyFrom,
       savingsPercent: computeSavingsPercent(item.basePrice, unitPrice),

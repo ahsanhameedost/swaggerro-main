@@ -2,6 +2,7 @@ export type PublicBulkOrderItemInput = {
   productId: string;
   productCatalogVariantId?: string | null;
   quantity: number;
+  setupFee?: number;
 };
 
 export type PublicSwagPackItemInput = {

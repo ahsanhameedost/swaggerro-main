@@ -4,6 +4,7 @@ export type StoreCheckoutItemInput = {
   productId: string;
   productCatalogVariantId?: string | null;
   quantity: number;
+  setupFee?: number;
 };
 
 export type CreateStoreCheckoutInput = {

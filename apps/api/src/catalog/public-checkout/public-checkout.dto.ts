@@ -3,7 +3,10 @@ import { z } from "zod";
 export const publicCheckoutItemSchema = z.object({
   productId: z.string().trim().min(1),
   productCatalogVariantId: z.string().trim().min(1).optional().nullable(),
-  quantity: z.number().int().min(1).max(100000)
+  quantity: z.number().int().min(1).max(100000),
+  // One-time imprint/setup fee chosen on the product page (imprint config is
+  // frontend-only), added on top of the unit price for this line.
+  setupFee: z.number().min(0).max(100000).optional()
 });
 
 // Direct pay-now purchase from the global (non-store) Swaggeroo shop. Used by the

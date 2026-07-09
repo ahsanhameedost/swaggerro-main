@@ -120,8 +120,12 @@ export class StoreCheckoutService {
       if (!Number.isFinite(unit) || unit <= 0) {
         throw new BadRequestException(`"${product.name}" is not purchasable`);
       }
-      const lineTotal = unit * item.quantity;
-      totalCents += Math.round(unit * 100) * item.quantity;
+      // One-time setup/imprint fee for this line. It is a platform decoration
+      // charge, so it is added to the order total but NOT to the seller earning
+      // split (which is computed from unitPrice at confirm time).
+      const setup = Math.max(0, item.setupFee ?? 0);
+      const lineTotal = unit * item.quantity + setup;
+      totalCents += Math.round(unit * 100) * item.quantity + Math.round(setup * 100);
       orderItems.push({
         productId: product.id,
         productCatalogVariantId: variantId,

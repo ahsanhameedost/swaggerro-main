@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { usePublicProduct } from "@/lib/queries.catalog";
 import { usePublicSettings } from "@/queries/settings";
-import { useCatalogCartStore } from "@/lib/cart-store";
+import { getCartItemKey, useCatalogCartStore } from "@/lib/cart-store";
 import { resolveUnitPrice, computeSavingsPercent } from "@/lib/catalog-pricing";
 import { formatMoney } from "@/lib/money";
 import { getImprintMethods } from "@/lib/imprint";
@@ -42,6 +42,8 @@ export default function ProductDetailPage() {
   const gateEnabled = publicSettings?.settings.preview_logo_gate !== "false";
 
   const addBulkItem = useCatalogCartStore((s) => s.addBulkItem);
+  const bulkItems = useCatalogCartStore((s) => s.bulkItems);
+  const updateBulkQuantity = useCatalogCartStore((s) => s.updateBulkQuantity);
 
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>({});
   const [quantity, setQuantity] = useState(1);
@@ -66,19 +68,20 @@ export default function ProductDetailPage() {
   );
 
   useEffect(() => {
-    if (!availableImprintMethods.length) return;
-    // Keep the current pick if still offered, otherwise fall back to the first.
-    setMethodKey((k) =>
-      availableImprintMethods.some((m) => m.key === k) ? k : availableImprintMethods[0].key,
-    );
-  }, [availableImprintMethods]);
-
-  useEffect(() => {
     if (!product) return;
     setSelectedOptions({});
     setQuantity(1);
     setImageIndex(0);
+    // Default the imprint method once when the product loads; the user can then
+    // toggle it off (clicking a selected method again deselects it).
+    setMethodKey(getImprintMethods(product.category?.slug)[0]?.key ?? "");
   }, [product?.id]);
+
+  useEffect(() => {
+    // If the selected method is no longer offered (e.g. screen print under 6),
+    // clear it rather than silently forcing a different method on the user.
+    setMethodKey((k) => (k && !availableImprintMethods.some((m) => m.key === k) ? "" : k));
+  }, [availableImprintMethods]);
 
   const matchedVariant = useMemo(() => {
     if (!product || !hasVariants) return null;
@@ -94,11 +97,40 @@ export default function ProductDetailPage() {
     );
   }, [product, hasVariants, selectedOptions, variantGroups.length]);
 
+  // Reflect any existing cart line for this exact product + variant so revisiting
+  // shows the chosen quantity and updates it, instead of silently stacking.
+  const existingCartItem = useMemo(() => {
+    if (!product) return null;
+    const variantId = matchedVariant?.id ?? null;
+    return (
+      bulkItems.find(
+        (i) =>
+          !i.storeId &&
+          i.productId === product.id &&
+          (i.productCatalogVariantId ?? null) === variantId,
+      ) ?? null
+    );
+  }, [bulkItems, product?.id, matchedVariant?.id]);
+
+  useEffect(() => {
+    if (existingCartItem) setQuantity(existingCartItem.quantity);
+    // Only re-sync when the matched cart line changes (variant switch), not on
+    // every keystroke of the quantity field.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [existingCartItem?.productId, existingCartItem?.productCatalogVariantId]);
+
   const bulkEnabled = product?.bulkPricingEnabled !== false;
   const activePricing = bulkEnabled
     ? (matchedVariant?.pricingOptions?.length ? matchedVariant.pricingOptions : product?.pricingOptions ?? [])
     : [];
-  const activeBasePrice = matchedVariant?.price ?? product?.basePrice ?? 0;
+  // Never surface $0.00 as a purchasable price: prefer the matched variant, then
+  // the product base price, then the product's "from" (lowest) price.
+  const activeBasePrice =
+    matchedVariant?.price && matchedVariant.price > 0
+      ? matchedVariant.price
+      : product?.basePrice && product.basePrice > 0
+        ? product.basePrice
+        : product?.lowestPrice || product?.minPrice || 0;
   // B2C: no minimum order — customers can buy a single unit or many. Volume
   // tiers still apply at higher quantities, they're just not enforced as a floor.
   const activeMinQty = 1;
@@ -145,21 +177,30 @@ export default function ProductDetailPage() {
     const variantLabel = matchedVariant
       ? matchedVariant.title ?? matchedVariant.selectedOptions.map((o) => o.label).join(" / ")
       : null;
-    addBulkItem({
-      productId: product.id,
-      slug: product.slug,
-      name: product.name,
-      imageUrl: activeImage?.url ?? product.images[0]?.url ?? null,
-      productCatalogVariantId: matchedVariant?.id ?? null,
-      variantName: variantLabel,
-      basePrice: activeBasePrice,
-      compareAtPrice: product.compareAtPrice ?? null,
-      stock: activeStock,
-      minQty: activeMinQty,
-      currency: product.currency,
-      pricingOptions: activePricing,
-      quantity,
-    });
+
+    if (existingCartItem) {
+      // Already in the cart — set the quantity to the chosen value rather than
+      // stacking, so 6 → revisit → 5 means 5, not 11.
+      updateBulkQuantity(getCartItemKey(existingCartItem), quantity);
+    } else {
+      addBulkItem({
+        productId: product.id,
+        slug: product.slug,
+        name: product.name,
+        imageUrl: activeImage?.url ?? product.images[0]?.url ?? null,
+        productCatalogVariantId: matchedVariant?.id ?? null,
+        variantName: variantLabel,
+        basePrice: activeBasePrice,
+        compareAtPrice: product.compareAtPrice ?? null,
+        stock: activeStock,
+        minQty: activeMinQty,
+        currency: product.currency,
+        pricingOptions: activePricing,
+        quantity,
+        setupFee,
+        imprintMethodName: method?.name ?? null,
+      });
+    }
 
     if (directBuyMode) {
       // Small B2C order — show the right-side drawer offering direct checkout.
@@ -176,7 +217,11 @@ export default function ProductDetailPage() {
     }
 
     // Larger order — keep the existing quote/cart flow.
-    addToast({ title: "Added to cart", description: `${product.name} is in your cart.`, color: "success" });
+    addToast({
+      title: existingCartItem ? "Cart updated" : "Added to cart",
+      description: `${product.name} is in your cart.`,
+      color: "success",
+    });
     router.push("/cart");
   };
 
@@ -291,10 +336,15 @@ export default function ProductDetailPage() {
 
           {availableImprintMethods.length ? (
             <div className="mt-6">
-              <p className="text-sm font-semibold text-foreground">Imprint method</p>
+              <p className="text-sm font-semibold text-foreground">
+                Imprint method{" "}
+                <span className="font-normal text-muted-foreground">
+                  — optional, click again to remove
+                </span>
+              </p>
               <div className="mt-2 grid grid-cols-2 gap-2">
                 {availableImprintMethods.map((m) => (
-                  <button key={m.key} type="button" onClick={() => setMethodKey(m.key)}
+                  <button key={m.key} type="button" onClick={() => setMethodKey((k) => (k === m.key ? "" : m.key))}
                     className={cn("rounded-xl border px-3 py-2.5 text-left transition", methodKey === m.key ? "border-primary bg-brand-soft" : "border-border hover:border-foreground/30")}>
                     <span className="block text-sm font-medium text-foreground">{m.name}</span>
                     <span className="block text-xs text-muted-foreground">{formatMoney(m.setupFee)} setup</span>
@@ -356,7 +406,11 @@ export default function ProductDetailPage() {
             <button onClick={handleAddToCart} disabled={!canAdd}
               className="mt-4 w-full rounded-xl py-3 font-semibold text-white disabled:opacity-50"
               style={{ backgroundImage: "var(--primary-gradient)" }}>
-              {directBuyMode ? "Add to Cart · Buy now" : "Add to Cart"}
+              {existingCartItem
+                ? "Update cart"
+                : directBuyMode
+                  ? "Add to Cart · Buy now"
+                  : "Add to Cart"}
             </button>
 
             {directBuyMode ? (

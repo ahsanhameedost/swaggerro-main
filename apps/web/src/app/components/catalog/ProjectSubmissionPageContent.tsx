@@ -264,7 +264,8 @@ export function ProjectSubmissionPageContent() {
         bulkItems: summary.bulkItems.map((item) => ({
           productId: item.productId,
           productCatalogVariantId: item.productCatalogVariantId ?? null,
-          quantity: item.quantity
+          quantity: item.quantity,
+          setupFee: item.setupFee ?? 0
         })),
         swagPack: summary.hasSwagPack
           ? {

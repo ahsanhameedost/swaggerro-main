@@ -206,6 +206,7 @@ export class CatalogPublicService extends CatalogSharedService {
         pricingQuantity: item.quantity,
         requestedQuantity: item.quantity,
         quantityPerPack: null,
+        setupFee: (item as { setupFee?: number }).setupFee ?? 0,
         // B2C: allow single-unit purchases — no minimum-order floor on bulk items.
         enforceMinQty: false,
         requirePackagingProduct: false,
@@ -439,6 +440,7 @@ export class CatalogPublicService extends CatalogSharedService {
     pricingQuantity: number;
     requestedQuantity: number;
     quantityPerPack: number | null;
+    setupFee?: number;
     enforceMinQty: boolean;
     requirePackagingProduct: boolean;
     productById: Map<string, any>;
@@ -450,6 +452,7 @@ export class CatalogPublicService extends CatalogSharedService {
       pricingQuantity,
       requestedQuantity,
       quantityPerPack,
+      setupFee = 0,
       enforceMinQty,
       requirePackagingProduct,
       productById,
@@ -519,7 +522,8 @@ export class CatalogPublicService extends CatalogSharedService {
       quantity: requestedQuantity,
       quantityPerPack,
       unitPrice,
-      totalPrice: unitPrice * requestedQuantity,
+      // Units + a one-time setup/imprint fee for this line (0 for pack/packaging).
+      totalPrice: unitPrice * requestedQuantity + Math.max(0, setupFee),
       imageUrl
     };
   }

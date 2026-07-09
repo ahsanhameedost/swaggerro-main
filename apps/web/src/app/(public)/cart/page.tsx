@@ -250,6 +250,18 @@ export default function CartPage() {
                               {formatMoney(item.unitPrice, item.currency)}
                             </div>
                             <div className="text-sm text-black/55">/ item</div>
+                            <div className="mt-1 text-sm text-black/70">
+                              {item.quantity} × {formatMoney(item.unitPrice, item.currency)} ={" "}
+                              <span className="font-semibold">
+                                {formatMoney(item.unitPrice * item.quantity, item.currency)}
+                              </span>
+                            </div>
+                            {item.setupFee ? (
+                              <div className="mt-0.5 text-xs text-black/55">
+                                + {formatMoney(item.setupFee, item.currency)} setup
+                                {item.imprintMethodName ? ` · ${item.imprintMethodName}` : ""}
+                              </div>
+                            ) : null}
                             {item.label ? (
                               <div className="mt-1 text-xs font-medium text-black/45">
                                 Tier: {item.label}

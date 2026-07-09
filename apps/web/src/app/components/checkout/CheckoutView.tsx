@@ -44,7 +44,12 @@ export interface CheckoutDetailsPayload {
   phone: string | null;
   shippingAddress: string | null;
   notes: string | null;
-  items: { productId: string; productCatalogVariantId: string | null; quantity: number }[];
+  items: {
+    productId: string;
+    productCatalogVariantId: string | null;
+    quantity: number;
+    setupFee?: number;
+  }[];
 }
 
 export interface CheckoutViewProps {
@@ -108,8 +113,9 @@ export function CheckoutView(props: CheckoutViewProps) {
     primaryStyle,
   } = props;
 
-  const lineTotal = (i: BulkCartItem) =>
-    resolveUnitPrice(i.basePrice, i.quantity, i.pricingOptions) * i.quantity;
+  const unitOf = (i: BulkCartItem) => resolveUnitPrice(i.basePrice, i.quantity, i.pricingOptions);
+  // Line total = units + a one-time setup/imprint fee (if any).
+  const lineTotal = (i: BulkCartItem) => unitOf(i) * i.quantity + (i.setupFee ?? 0);
   const total = useMemo(() => items.reduce((sum, i) => sum + lineTotal(i), 0), [items]);
   const currency = items[0]?.currency ?? "USD";
 
@@ -167,6 +173,7 @@ export function CheckoutView(props: CheckoutViewProps) {
           productId: i.productId,
           productCatalogVariantId: i.productCatalogVariantId ?? null,
           quantity: i.quantity,
+          setupFee: i.setupFee ?? 0,
         })),
       });
       if (res.testMode) {
@@ -372,8 +379,14 @@ export function CheckoutView(props: CheckoutViewProps) {
                     <p className="font-medium">{i.name}</p>
                     <p className="text-muted-foreground">
                       {i.variantName ? `${i.variantName} · ` : ""}
-                      {formatMoney(resolveUnitPrice(i.basePrice, i.quantity, i.pricingOptions), i.currency)} × {i.quantity}
+                      {formatMoney(unitOf(i), i.currency)} × {i.quantity}
                     </p>
+                    {i.setupFee ? (
+                      <p className="text-xs text-muted-foreground">
+                        + {formatMoney(i.setupFee, i.currency)} setup
+                        {i.imprintMethodName ? ` · ${i.imprintMethodName}` : ""}
+                      </p>
+                    ) : null}
                   </div>
                   <span className="font-medium tabular-nums">{formatMoney(lineTotal(i), i.currency)}</span>
                 </div>
