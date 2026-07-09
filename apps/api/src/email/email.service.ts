@@ -98,6 +98,20 @@ export class EmailService implements OnModuleInit {
     }
   }
 
+  // Send a pre-rendered branded email. Used by the central notification event
+  // dispatcher (via the generic-email queue job) so every domain event shares one
+  // reliable, retried delivery path.
+  async sendGenericEmail(payload: { to: string; subject: string; html: string; text?: string }) {
+    const info = await this.transporter.sendMail({
+      from: env.EMAIL_FROM,
+      to: payload.to,
+      subject: payload.subject,
+      text: payload.text,
+      html: payload.html
+    });
+    this.logger.log(`sendGenericEmail success to=${payload.to} ${mailInfoSummary(info)}`);
+  }
+
   async sendAdminContactEmail(payload: ContactEmailPayload) {
     this.logger.log(
       `sendAdminContactEmail start from=${env.EMAIL_FROM} to=${env.ADMIN_EMAIL} replyTo=${payload.email}`

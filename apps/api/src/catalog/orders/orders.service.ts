@@ -28,6 +28,7 @@ import { EmailService } from "../../email/email.service";
 import { PrismaService } from "../../prisma/prisma.service";
 import { StorageService } from "../../storage/storage.service";
 import { NotificationsService } from "../../notifications/notifications.service";
+import { NotificationEventsService } from "../../notifications/notification-events.service";
 import { CatalogSharedService } from "../common/catalog-shared.service";
 import { hasPermission } from "../../common/utils/permissions";
 import { env } from "../../env";
@@ -87,7 +88,8 @@ export class CatalogOrdersService extends CatalogSharedService {
     prisma: PrismaService,
     storage: StorageService,
     emailService: EmailService,
-    private readonly notifications: NotificationsService
+    private readonly notifications: NotificationsService,
+    private readonly events: NotificationEventsService
   ) {
     super(prisma, storage, emailService);
   }
@@ -307,12 +309,22 @@ export class CatalogOrdersService extends CatalogSharedService {
         .split("_")
         .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
         .join(" ");
-      await this.notifications.notify({
+      await this.events.dispatchToUser({
         userId: order.userId,
         type: "catalog.order.status",
         title: `Order ${statusLabel.toLowerCase()}`,
         body: `Your order ${orderLabel} is now ${statusLabel}.`,
-        link: `/dashboard/orders/${order.id}`
+        link: `/dashboard/orders/${order.id}`,
+        email: {
+          subject: `Order ${orderLabel} — ${statusLabel}`,
+          heading: `Order ${statusLabel}`,
+          paragraphs: [
+            `Your order ${orderLabel} is now ${statusLabel}.`,
+            "You can view the latest details and next steps from your dashboard."
+          ],
+          ctaPath: `/dashboard/orders/${order.id}`,
+          ctaLabel: "View order"
+        }
       });
     }
 
@@ -346,24 +358,26 @@ export class CatalogOrdersService extends CatalogSharedService {
       assignedEmployeeId = employee.id;
       employeeName = this.buildUserDisplayName(employee.firstName, employee.lastName, employee.email);
 
-      try {
-        await this.emailService.sendEmployeeAssignedOrderEmail({
-          to: employee.email,
-          employeeName,
-          orderId: order.id,
-          customerName: order.name
-        });
-      } catch {}
-
-      // In-app notification so the designer sees the assignment immediately,
-      // without relying on email delivery. (notify() is fire-and-forget.)
+      // One event → in-app notification + queued (retried) branded email.
       const orderLabel = `SW-${String(order.orderNumber).padStart(3, "0")}`;
-      await this.notifications.notify({
+      await this.events.dispatchToUser({
         userId: employee.id,
         type: "design.assigned",
         title: "New design assigned",
         body: `You've been assigned to order ${orderLabel} for ${order.name}.`,
-        link: `/dashboard/orders/${order.id}`
+        link: `/dashboard/orders/${order.id}`,
+        email: {
+          subject: `New order assigned: ${orderLabel}`,
+          heading: "New design assigned",
+          paragraphs: [
+            "A new order has been assigned to you.",
+            `Order: ${orderLabel}`,
+            `Customer: ${order.name}`,
+            "Sign in to your dashboard to review the request and start the design process."
+          ],
+          ctaPath: `/dashboard/orders/${order.id}`,
+          ctaLabel: "Open order"
+        }
       });
     }
 

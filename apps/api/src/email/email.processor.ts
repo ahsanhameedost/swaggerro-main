@@ -6,6 +6,7 @@ import { EmailService } from "./email.service";
 import {
   EMAIL_QUEUE,
   JOB_CONTACT_EMAIL,
+  JOB_GENERIC_EMAIL,
   JOB_PARTNER_APPLICATION_EMAIL,
   JOB_PASSWORD_RESET_CODE_EMAIL,
   JOB_PASSWORD_RESET_SUCCESS_EMAIL,
@@ -13,6 +14,7 @@ import {
   JOB_SIGNUP_WELCOME_EMAIL
 } from "./email.constants";
 
+type GenericEmailJobData = { to: string; subject: string; html: string; text?: string };
 type ContactEmailJobData = { contactMessageId: string };
 type SignupWelcomeEmailJobData = { userId: string };
 type PasswordResetCodeJobData = { userId: string; code: string };
@@ -63,6 +65,7 @@ export class EmailProcessor extends WorkerHost {
 
   async process(
     job: Job<
+      | GenericEmailJobData
       | ContactEmailJobData
       | SignupWelcomeEmailJobData
       | PasswordResetCodeJobData
@@ -71,6 +74,12 @@ export class EmailProcessor extends WorkerHost {
       | SellerOnboardingEmailJobData
     >
   ) {
+    if (job.name === JOB_GENERIC_EMAIL) {
+      const data = job.data as GenericEmailJobData;
+      await this.emailService.sendGenericEmail(data);
+      return;
+    }
+
     if (job.name === JOB_CONTACT_EMAIL) {
       await this.processContactEmail(job as Job<ContactEmailJobData>);
       return;
