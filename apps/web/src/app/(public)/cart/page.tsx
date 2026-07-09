@@ -274,13 +274,23 @@ export default function CartPage() {
                             ) : null}
                           </div>
 
-                          <Button
-                            variant="light"
-                            className="font-medium text-primary data-[hover=true]:bg-primary/10"
-                            onPress={() => removeBulkItem(getCartItemKey(item))}
-                          >
-                            Remove
-                          </Button>
+                          <div className="flex items-center justify-end gap-1">
+                            <Link href={productHref(item)}>
+                              <Button
+                                variant="light"
+                                className="font-medium text-black/70 data-[hover=true]:bg-black/5"
+                              >
+                                Edit
+                              </Button>
+                            </Link>
+                            <Button
+                              variant="light"
+                              className="font-medium text-primary data-[hover=true]:bg-primary/10"
+                              onPress={() => removeBulkItem(getCartItemKey(item))}
+                            >
+                              Remove
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     ))}

@@ -44,6 +44,9 @@ export default function ProductDetailPage() {
   const addBulkItem = useCatalogCartStore((s) => s.addBulkItem);
   const bulkItems = useCatalogCartStore((s) => s.bulkItems);
   const updateBulkQuantity = useCatalogCartStore((s) => s.updateBulkQuantity);
+  const removeBulkItem = useCatalogCartStore((s) => s.removeBulkItem);
+  // The cart line we're editing (when the shopper came here via cart "Edit").
+  const [editingKey, setEditingKey] = useState<string | null>(null);
 
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>({});
   const [quantity, setQuantity] = useState(1);
@@ -60,28 +63,41 @@ export default function ProductDetailPage() {
   const hasVariants = (product?.productCatalogVariants.length ?? 0) > 0;
   const imprintMethods = useMemo(() => getImprintMethods(product?.category?.slug), [product?.category?.slug]);
 
-  // B2C rule: screen print is not offered below 6 units (setup cost only makes
-  // sense at volume). Hide it whenever quantity < 6.
-  const availableImprintMethods = useMemo(
-    () => imprintMethods.filter((m) => !(quantity < 6 && m.key === "screen_print")),
-    [imprintMethods, quantity],
-  );
+  // B2C rule: imprint/decoration is only offered from 6 units up (setup cost only
+  // makes sense at volume). Below 6 the whole selector is disabled.
+  const imprintEnabled = quantity >= 6;
 
   useEffect(() => {
     if (!product) return;
-    setSelectedOptions({});
-    setQuantity(1);
     setImageIndex(0);
-    // Default the imprint method once when the product loads; the user can then
-    // toggle it off (clicking a selected method again deselects it).
-    setMethodKey(getImprintMethods(product.category?.slug)[0]?.key ?? "");
+    setMethodKey("");
+    // Resume from an existing cart line for this product: preselect its variant
+    // options and quantity so the shopper edits in place instead of restarting.
+    const cartLine = useCatalogCartStore
+      .getState()
+      .bulkItems.find((i) => !i.storeId && i.productId === product.id);
+    if (cartLine) {
+      const variant = product.productCatalogVariants.find(
+        (v) => v.id === cartLine.productCatalogVariantId,
+      );
+      const opts: Record<string, string> = {};
+      variant?.selectedOptions.forEach((o) => {
+        if (o.optionId) opts[o.variantName] = o.optionId;
+      });
+      setSelectedOptions(opts);
+      setQuantity(cartLine.quantity);
+      setEditingKey(getCartItemKey(cartLine));
+    } else {
+      setSelectedOptions({});
+      setQuantity(1);
+      setEditingKey(null);
+    }
   }, [product?.id]);
 
   useEffect(() => {
-    // If the selected method is no longer offered (e.g. screen print under 6),
-    // clear it rather than silently forcing a different method on the user.
-    setMethodKey((k) => (k && !availableImprintMethods.some((m) => m.key === k) ? "" : k));
-  }, [availableImprintMethods]);
+    // No imprint fee below the 6-unit threshold — clear any prior selection.
+    if (!imprintEnabled) setMethodKey("");
+  }, [imprintEnabled]);
 
   const matchedVariant = useMemo(() => {
     if (!product || !hasVariants) return null;
@@ -136,7 +152,7 @@ export default function ProductDetailPage() {
   const activeMinQty = 1;
   const activeStock = matchedVariant?.stock ?? product?.baseStock ?? 0;
 
-  const method = imprintMethods.find((m) => m.key === methodKey) ?? null;
+  const method = imprintEnabled ? imprintMethods.find((m) => m.key === methodKey) ?? null : null;
   const setupFee = method?.setupFee ?? 0;
   const unit = resolveUnitPrice(activeBasePrice, quantity, activePricing);
   const subtotal = unit * quantity;
@@ -178,31 +194,43 @@ export default function ProductDetailPage() {
       ? matchedVariant.title ?? matchedVariant.selectedOptions.map((o) => o.label).join(" / ")
       : null;
 
-    if (existingCartItem) {
-      // Already in the cart — set the quantity to the chosen value rather than
-      // stacking, so 6 → revisit → 5 means 5, not 11.
+    const newKey = getCartItemKey({
+      productId: product.id,
+      productCatalogVariantId: matchedVariant?.id ?? null,
+      storeId: null,
+    });
+    const newItem = {
+      productId: product.id,
+      slug: product.slug,
+      name: product.name,
+      imageUrl: activeImage?.url ?? product.images[0]?.url ?? null,
+      productCatalogVariantId: matchedVariant?.id ?? null,
+      variantName: variantLabel,
+      basePrice: activeBasePrice,
+      compareAtPrice: product.compareAtPrice ?? null,
+      stock: activeStock,
+      minQty: activeMinQty,
+      currency: product.currency,
+      pricingOptions: activePricing,
+      quantity,
+      setupFee,
+      imprintMethodName: method?.name ?? null,
+    };
+
+    if (editingKey) {
+      // Editing the cart line we arrived from: drop the old line and re-add with
+      // the current variant, quantity and fee — a clean in-place replace even if
+      // the shopper switched variant.
+      removeBulkItem(editingKey);
+      addBulkItem(newItem);
+    } else if (existingCartItem) {
+      // Same product + variant already in the cart — set (don't stack) the qty.
       updateBulkQuantity(getCartItemKey(existingCartItem), quantity);
     } else {
-      addBulkItem({
-        productId: product.id,
-        slug: product.slug,
-        name: product.name,
-        imageUrl: activeImage?.url ?? product.images[0]?.url ?? null,
-        productCatalogVariantId: matchedVariant?.id ?? null,
-        variantName: variantLabel,
-        basePrice: activeBasePrice,
-        compareAtPrice: product.compareAtPrice ?? null,
-        stock: activeStock,
-        minQty: activeMinQty,
-        currency: product.currency,
-        pricingOptions: activePricing,
-        quantity,
-        setupFee,
-        imprintMethodName: method?.name ?? null,
-      });
+      addBulkItem(newItem);
     }
 
-    if (directBuyMode) {
+    if (directBuyMode && !editingKey) {
       // Small B2C order — show the right-side drawer offering direct checkout.
       setAddedLine({
         name: product.name,
@@ -218,7 +246,7 @@ export default function ProductDetailPage() {
 
     // Larger order — keep the existing quote/cart flow.
     addToast({
-      title: existingCartItem ? "Cart updated" : "Added to cart",
+      title: editingKey || existingCartItem ? "Cart updated" : "Added to cart",
       description: `${product.name} is in your cart.`,
       color: "success",
     });
@@ -334,23 +362,37 @@ export default function ProductDetailPage() {
             </div>
           ))}
 
-          {availableImprintMethods.length ? (
+          {imprintMethods.length ? (
             <div className="mt-6">
               <p className="text-sm font-semibold text-foreground">
                 Imprint method{" "}
                 <span className="font-normal text-muted-foreground">
-                  — optional, click again to remove
+                  {imprintEnabled ? "— optional, click again to remove" : "— available on orders of 6+"}
                 </span>
               </p>
-              <div className="mt-2 grid grid-cols-2 gap-2">
-                {availableImprintMethods.map((m) => (
-                  <button key={m.key} type="button" onClick={() => setMethodKey((k) => (k === m.key ? "" : m.key))}
-                    className={cn("rounded-xl border px-3 py-2.5 text-left transition", methodKey === m.key ? "border-primary bg-brand-soft" : "border-border hover:border-foreground/30")}>
+              <div className={cn("mt-2 grid grid-cols-2 gap-2", !imprintEnabled && "opacity-50")}>
+                {imprintMethods.map((m) => (
+                  <button
+                    key={m.key}
+                    type="button"
+                    disabled={!imprintEnabled}
+                    onClick={() => setMethodKey((k) => (k === m.key ? "" : m.key))}
+                    className={cn(
+                      "rounded-xl border px-3 py-2.5 text-left transition",
+                      methodKey === m.key ? "border-primary bg-brand-soft" : "border-border hover:border-foreground/30",
+                      !imprintEnabled && "cursor-not-allowed hover:border-border",
+                    )}
+                  >
                     <span className="block text-sm font-medium text-foreground">{m.name}</span>
                     <span className="block text-xs text-muted-foreground">{formatMoney(m.setupFee)} setup</span>
                   </button>
                 ))}
               </div>
+              {!imprintEnabled ? (
+                <p className="mt-1.5 text-xs text-muted-foreground">
+                  Add {6 - quantity} more to unlock imprint decoration.
+                </p>
+              ) : null}
             </div>
           ) : null}
 
@@ -406,7 +448,7 @@ export default function ProductDetailPage() {
             <button onClick={handleAddToCart} disabled={!canAdd}
               className="mt-4 w-full rounded-xl py-3 font-semibold text-white disabled:opacity-50"
               style={{ backgroundImage: "var(--primary-gradient)" }}>
-              {existingCartItem
+              {editingKey || existingCartItem
                 ? "Update cart"
                 : directBuyMode
                   ? "Add to Cart · Buy now"
