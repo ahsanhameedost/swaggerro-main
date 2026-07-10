@@ -6,7 +6,7 @@ import {
   ServiceUnavailableException
 } from "@nestjs/common";
 import { Prisma, type CatalogOrderDesignPhase, type CatalogOrderRevisionStatus } from "@prisma/client";
-import { PDFDocument, StandardFonts } from "pdf-lib";
+import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 // archiver is a CommonJS module whose export IS the factory function. The plain
 // default import resolved to `.default` (undefined) under this tsconfig and threw
 // "archiver_1.default is not a function". import-require binds the callable export.
@@ -929,47 +929,69 @@ async createOrderPayment(id: string, input: CreateOrderPaymentDto, authUser: Aut
     const font = await pdf.embedFont(StandardFonts.Helvetica);
     const boldFont = await pdf.embedFont(StandardFonts.HelveticaBold);
 
-    const cover = pdf.addPage([595.28, 841.89]);
-    cover.drawText(`Order ${order.id}`, {
+    const PAGE_W = 595.28;
+    const PAGE_H = 841.89;
+    const BRAND = rgb(0.769, 0.118, 0.227); // #C41E3A
+    const MUTED = rgb(0.42, 0.45, 0.5);
+    const orderLabel = `SW-${String(order.orderNumber).padStart(3, "0")}`;
+
+    const cover = pdf.addPage([PAGE_W, PAGE_H]);
+    // Branded header band.
+    cover.drawRectangle({ x: 0, y: PAGE_H - 120, width: PAGE_W, height: 120, color: BRAND });
+    cover.drawText("SWAGGEROO", { x: 48, y: PAGE_H - 58, size: 13, font: boldFont, color: rgb(1, 1, 1) });
+    cover.drawText("Design Proof", { x: 48, y: PAGE_H - 92, size: 26, font: boldFont, color: rgb(1, 1, 1) });
+
+    let cy = PAGE_H - 170;
+    const coverLine = (label: string, value: string) => {
+      cover.drawText(label, { x: 48, y: cy, size: 10, font, color: MUTED });
+      cover.drawText(value, { x: 48, y: cy - 16, size: 14, font: boldFont });
+      cy -= 46;
+    };
+    coverLine("ORDER", orderLabel);
+    coverLine("CUSTOMER", order.name);
+    coverLine("DATE", new Date(order.createdAt).toLocaleDateString());
+    coverLine("ITEMS", String(order.items.length));
+    cover.drawText("Please review each design on the following pages.", {
       x: 48,
-      y: 780,
-      size: 20,
-      font: boldFont
-    });
-    cover.drawText(`Customer: ${order.name}`, {
-      x: 48,
-      y: 748,
-      size: 12,
-      font
-    });
-    cover.drawText(`Items: ${order.items.length}`, {
-      x: 48,
-      y: 730,
-      size: 12,
-      font
+      y: cy - 4,
+      size: 11,
+      font,
+      color: MUTED
     });
 
     for (const [index, item] of order.items.entries()) {
-      const page = pdf.addPage([595.28, 841.89]);
+      const page = pdf.addPage([PAGE_W, PAGE_H]);
       const imageUrl = item.mockupImageUrl ?? item.proofImageUrl ?? item.imageUrl ?? null;
 
+      // Slim branded header band per item.
+      page.drawRectangle({ x: 0, y: PAGE_H - 74, width: PAGE_W, height: 74, color: BRAND });
       page.drawText(`${index + 1}. ${item.productName}`, {
         x: 48,
-        y: 790,
+        y: PAGE_H - 46,
         size: 18,
-        font: boldFont
+        font: boldFont,
+        color: rgb(1, 1, 1)
+      });
+      page.drawText(`${orderLabel}`, {
+        x: PAGE_W - 120,
+        y: PAGE_H - 46,
+        size: 12,
+        font: boldFont,
+        color: rgb(1, 1, 1)
       });
       page.drawText(`Variant: ${item.variantName ?? "Standard"}`, {
         x: 48,
-        y: 764,
+        y: PAGE_H - 100,
         size: 11,
-        font
+        font,
+        color: MUTED
       });
       page.drawText(`Phase: ${this.formatDesignPhaseLabel(item.designPhase)}`, {
         x: 48,
-        y: 746,
+        y: PAGE_H - 118,
         size: 11,
-        font
+        font,
+        color: MUTED
       });
 
       if (imageUrl) {
