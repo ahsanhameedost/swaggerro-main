@@ -240,7 +240,9 @@ export default function CartPage() {
                             minValue={item.minQty}
                             maxValue={item.stock}
                             onChange={(nextValue) => updateBulkQuantity(getCartItemKey(item), nextValue)}
-                            helperText={`Available stock: ${item.stock}`}
+                            /* Inventory levels are hidden from customers (#37) — show
+                               only availability, not the exact stock count. */
+                            helperText={item.stock > 0 ? "In stock" : "Out of stock"}
                           />
                         </div>
 
