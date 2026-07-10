@@ -106,9 +106,19 @@ export default async function Home() {
 function Hero() {
   return (
     <section className="relative overflow-hidden">
+      {/* Branded backdrop: a soft brand wash + primary glow behind the hero,
+          replacing the flat white background with something on-brand. */}
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(currentColor_1px,transparent_1px)] [background-size:22px_22px] text-border/55 [mask-image:linear-gradient(to_bottom,black,transparent_88%)]"
+        className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-b from-brand-soft/70 via-background to-background"
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -top-32 left-1/2 -z-10 h-[460px] w-[860px] -translate-x-1/2 rounded-full bg-primary/25 blur-[130px]"
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(currentColor_1px,transparent_1px)] [background-size:22px_22px] text-border/45 [mask-image:linear-gradient(to_bottom,black,transparent_88%)]"
       />
       <HeroSlider />
       <div className="relative -mt-4 select-none text-primary/15 sm:-mt-2">

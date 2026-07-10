@@ -1014,6 +1014,21 @@ function OrderStageTracker({ order }: { order: CatalogOrder }) {
   const current = orderStageIndex(order);
   const nextLabel = current < FULFILLMENT_STAGES.length - 1 ? FULFILLMENT_STAGES[current + 1] : null;
 
+  // "What action is required next" — surface the customer's pending step (#48).
+  const needsReview = (order.items ?? []).some(
+    (i) => i.designPhase === "REVIEW_MOCKUP_DESIGN" || i.designPhase === "REVIEW_FINAL_DESIGN"
+  );
+  const needsPayment =
+    order.status === "APPROVED" && order.paymentStatus !== "PAID" && order.allItemsReadyToOrder;
+  const action = needsReview
+    ? { text: "Action needed: review & approve your designs.", href: "/dashboard/designs" }
+    : needsPayment
+      ? {
+          text: "Action needed: complete payment to start production.",
+          href: `/dashboard/orders/${order.id}/checkout`
+        }
+      : null;
+
   // Dynamic delivery message vs the estimated date (#28).
   const eta = order.estimatedDeliveryDate ? new Date(order.estimatedDeliveryDate) : null;
   const shipped = order.productionStage === "SHIPPED";
@@ -1041,6 +1056,16 @@ function OrderStageTracker({ order }: { order: CatalogOrder }) {
             {nextLabel ? `Next: ${nextLabel}` : "Shipped"}
           </div>
         </div>
+
+        {action ? (
+          <Link
+            href={action.href}
+            className="flex items-center justify-between gap-3 rounded-xl border border-primary/40 bg-brand-soft px-3.5 py-2.5 text-sm font-medium text-primary transition hover:bg-brand-soft/80"
+          >
+            <span>{action.text}</span>
+            <span className="shrink-0 text-primary">→</span>
+          </Link>
+        ) : null}
 
         {deliveryNote ? (
           <div
