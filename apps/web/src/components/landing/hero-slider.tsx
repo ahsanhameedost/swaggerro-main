@@ -78,6 +78,10 @@ export function HeroSlider() {
         aria-hidden={active !== 0}
       >
         <div className="mx-auto max-w-site px-6 pt-12 text-center sm:pt-16">
+          {/* Branding tagline (#46) — placeholder wording pending client's exact copy. */}
+          <span className="mb-5 inline-flex items-center gap-2 rounded-full border border-primary/30 bg-brand-soft px-4 py-1.5 text-sm font-semibold text-primary">
+            ✦ Over 17 years of branded-swag expertise
+          </span>
           <h1 className="mx-auto max-w-4xl font-display text-[2.75rem] leading-[0.98] font-bold tracking-[-0.035em] text-balance text-foreground sm:text-6xl lg:text-7xl">
             Swag your team will <span className="text-primary">actually wear</span>.
           </h1>

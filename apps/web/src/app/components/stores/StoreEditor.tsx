@@ -97,6 +97,8 @@ export function StoreEditor({
     return initial;
   });
   const [brandingTarget, setBrandingTarget] = useState<ProductLogoTarget | null>(null);
+  // Central margin control (#38/#39): one % applied across every selected product.
+  const [marginPercent, setMarginPercent] = useState("40");
 
   const { data: catalog, isLoading: loadingCatalog } = usePublicProducts({ page: 1, pageSize: 48 });
   const catalogProducts = catalog?.items ?? [];
@@ -112,6 +114,31 @@ export function StoreEditor({
     setProductIds((current) =>
       current.includes(id) ? current.filter((x) => x !== id) : [...current, id]
     );
+  };
+
+  // Set every selected product's price to base + margin% in one action (#39).
+  const applyMarginToAll = () => {
+    const pct = Number(marginPercent);
+    if (!Number.isFinite(pct) || pct < 0) return;
+    const factor = 1 + pct / 100;
+    setBranding((current) => {
+      const next = { ...current };
+      for (const id of productIds) {
+        const product = catalogProducts.find((p) => p.id === id);
+        if (!product) continue;
+        const basePrice = product.basePrice ?? product.floorPrice ?? product.lowestPrice ?? 0;
+        if (basePrice <= 0) continue;
+        const existing = next[id];
+        next[id] = {
+          productId: id,
+          logoUrl: existing?.logoUrl ?? null,
+          logoKey: existing?.logoKey ?? null,
+          placement: existing?.placement ?? null,
+          customPrice: Math.round(basePrice * factor * 100) / 100,
+        };
+      }
+      return next;
+    });
   };
 
   // Open the customize popup for a product (and select it if it isn't already).
@@ -601,6 +628,38 @@ export function StoreEditor({
               value={productSearch}
               onChange={(e) => setProductSearch(e.target.value)}
             />
+          </div>
+        </div>
+
+        {/* Central margin control (#38/#39): set one % markup across all products. */}
+        <div className="flex flex-wrap items-center gap-3 border-b border-border bg-muted/30 px-6 py-4">
+          <div>
+            <p className="text-sm font-semibold text-foreground">Margin</p>
+            <p className="text-xs text-muted-foreground">
+              Set every selected product&apos;s price to base + this % in one click.
+            </p>
+          </div>
+          <div className="ml-auto flex items-center gap-2">
+            <div className="relative">
+              <input
+                type="number"
+                min={0}
+                value={marginPercent}
+                onChange={(e) => setMarginPercent(e.target.value)}
+                className="h-10 w-24 rounded-xl border border-input bg-background pl-3 pr-7 text-sm tabular-nums outline-none focus-visible:border-ring"
+              />
+              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                %
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={applyMarginToAll}
+              disabled={loadingCatalog || !productIds.length}
+              className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:opacity-50"
+            >
+              <Tag className="size-4" /> Apply to all
+            </button>
           </div>
         </div>
 
