@@ -31,6 +31,7 @@ import { CategoryShowcase } from "@/components/landing/category-showcase";
 import { FeatureBento } from "@/components/landing/feature-bento";
 import { OccasionCollections } from "@/components/landing/occasion-collections";
 import CurvedLoop from "@/components/reactbits/CurvedLoop";
+import DarkVeil from "@/components/reactbits/DarkVeil";
 import { ProductCard } from "@/components/shop/product-card";
 import ScrollStack, { ScrollStackItem } from "@/components/reactbits/ScrollStack";
 import { getHomeProducts, getHomeCategories, toShowcaseProducts } from "@/lib/home/data";
@@ -105,30 +106,36 @@ export default async function Home() {
 // ── Hero ──────────────────────────────────────────────────────────────────────
 function Hero() {
   return (
-    <section className="relative overflow-hidden">
-      {/* Branded backdrop: a soft brand wash + primary glow behind the hero,
-          replacing the flat white background with something on-brand. */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-b from-brand-soft/70 via-background to-background"
-      />
-      <div
-        aria-hidden
-        className="pointer-events-none absolute -top-32 left-1/2 -z-10 h-[460px] w-[860px] -translate-x-1/2 rounded-full bg-primary/25 blur-[130px]"
-      />
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(currentColor_1px,transparent_1px)] [background-size:22px_22px] text-border/45 [mask-image:linear-gradient(to_bottom,black,transparent_88%)]"
-      />
-      <HeroSlider />
-      <div className="relative -mt-4 select-none text-primary/15 sm:-mt-2">
-        <CurvedLoop
-          marqueeText="Custom Swag ✦ Volume Pricing ✦ Free Proofs ✦ Ships Worldwide ✦"
-          speed={1.2}
-          curveAmount={80}
-          interactive
-          className="text-[3.25rem]"
+    // Dark hero: an animated DarkVeil background spans the whole banner, with the
+    // content rendered light-on-dark above it.
+    <section className="relative overflow-hidden bg-[#070712] text-white">
+      {/* Animated bluish veil across the full banner. */}
+      <div aria-hidden className="pointer-events-none absolute inset-0 z-0">
+        <DarkVeil
+          hueShift={0}
+          speed={0.5}
+          warpAmount={1.2}
+          scanlineIntensity={0.1}
+          scanlineFrequency={2}
+          noiseIntensity={0.02}
         />
+      </div>
+      {/* Soft scrim so the headline stays crisp over the animation. */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 z-0 bg-gradient-to-b from-[#070712]/50 via-[#070712]/10 to-[#070712]/80"
+      />
+      <div className="relative z-10">
+        <HeroSlider />
+        <div className="relative -mt-4 select-none text-white/10 sm:-mt-2">
+          <CurvedLoop
+            marqueeText="Custom Swag ✦ Volume Pricing ✦ Free Proofs ✦ Ships Worldwide ✦"
+            speed={1.2}
+            curveAmount={80}
+            interactive
+            className="text-[3.25rem]"
+          />
+        </div>
       </div>
     </section>
   );

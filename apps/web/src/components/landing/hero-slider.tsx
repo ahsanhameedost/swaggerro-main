@@ -79,13 +79,13 @@ export function HeroSlider() {
       >
         <div className="mx-auto max-w-site px-6 pt-12 text-center sm:pt-16">
           {/* Branding tagline (#46) — placeholder wording pending client's exact copy. */}
-          <span className="mb-5 inline-flex items-center gap-2 rounded-full border border-primary/30 bg-brand-soft px-4 py-1.5 text-sm font-semibold text-primary">
-            ✦ Over 17 years of branded-swag expertise
+          <span className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-1.5 text-sm font-semibold text-white backdrop-blur-sm">
+            <span className="text-primary">✦</span> Over 17 years of branded-swag expertise
           </span>
-          <h1 className="mx-auto max-w-4xl font-display text-[2.75rem] leading-[0.98] font-bold tracking-[-0.035em] text-balance text-foreground sm:text-6xl lg:text-7xl">
+          <h1 className="mx-auto max-w-4xl font-display text-[2.75rem] leading-[0.98] font-bold tracking-[-0.035em] text-balance text-white sm:text-6xl lg:text-7xl">
             Swag your team will <span className="text-primary">actually wear</span>.
           </h1>
-          <p className="mx-auto mt-6 max-w-xl text-lg leading-relaxed text-pretty text-muted-foreground">
+          <p className="mx-auto mt-6 max-w-xl text-lg leading-relaxed text-pretty text-white/75">
             Shop hundreds of products, drop in your logo, and order in bulk — volume pricing that
             drops as you scale, with a free proof before anything prints.
           </p>
@@ -105,13 +105,16 @@ export function HeroSlider() {
             </Link>
             <Link
               href="/studio"
-              className={cn(buttonVariants({ variant: "outline", size: "lg" }), "h-12 px-6 text-base")}
+              className={cn(
+                buttonVariants({ variant: "outline", size: "lg" }),
+                "h-12 border-white/30 bg-transparent px-6 text-base text-white hover:bg-white/10",
+              )}
             >
               Build a pack
             </Link>
           </div>
 
-          <ul className="mt-7 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-muted-foreground">
+          <ul className="mt-7 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-white/75">
             <li className="flex items-center gap-1.5">
               <Check className="size-4 text-primary" /> Free proof before print
             </li>
