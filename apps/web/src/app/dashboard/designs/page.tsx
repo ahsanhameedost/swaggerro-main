@@ -475,56 +475,119 @@ function CustomerDesignView({ orders }: { orders: CatalogOrder[] }) {
   );
 }
 
+// What the design team should do next for a given phase — the only step that
+// matters to them, so the queue reads as a clear to-do list.
+function designerNextStep(phase: CatalogOrderItem["designPhase"]): {
+  label: string;
+  group: "action" | "waiting" | "done";
+} {
+  switch (phase) {
+    case "MOCKUP_IN_PROGRESS":
+      return { label: "Upload mockup", group: "action" };
+    case "REVISION_REQUESTED":
+      return { label: "Address revision", group: "action" };
+    case "FINALIZING_PROOF_DESIGN":
+      return { label: "Upload final proof", group: "action" };
+    case "REVIEW_MOCKUP_DESIGN":
+      return { label: "Awaiting customer review", group: "waiting" };
+    case "REVIEW_FINAL_DESIGN":
+      return { label: "Awaiting final approval", group: "waiting" };
+    case "READY_TO_ORDER":
+      return { label: "Approved & ready", group: "done" };
+    default:
+      return { label: formatDesignPhaseLabel(phase), group: "waiting" };
+  }
+}
+
+const TEAM_GROUPS: { key: "action" | "waiting" | "done"; title: string; hint: string }[] = [
+  { key: "action", title: "Needs your action", hint: "Upload or revise these designs" },
+  { key: "waiting", title: "Waiting on customer", hint: "Submitted — pending customer review" },
+  { key: "done", title: "Completed", hint: "Approved and ready to order" }
+];
+
 function TeamDesignView({ orders }: { orders: CatalogOrder[] }) {
   const rows = orders.flatMap((order) =>
     order.items.map((item) => ({
       orderId: order.id,
       orderName: order.project?.swagPackName || order.project?.name || order.id,
       customerName: order.name,
-      item
+      item,
+      step: designerNextStep(item.designPhase)
     }))
   );
 
   return (
-    <div className="grid gap-4">
-      {rows.map((row) => (
-        <Card key={`${row.orderId}:${row.item.id}`} className="border border-divider shadow-sm">
-          <CardBody className="flex flex-col gap-4 p-5 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex min-w-0 items-center gap-4">
-              <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-3xl bg-default-100">
-                {getPreferredDesignImage(row.item) ? (
-                  <Image
-                    removeWrapper
-                    src={getPreferredDesignImage(row.item)!}
-                    alt={row.item.productName}
-                    className="h-full w-full object-contain"
-                  />
-                ) : (
-                  <div className="text-xs text-foreground/55">No preview</div>
-                )}
-              </div>
-              <div className="space-y-1">
-                <div className="font-semibold">{row.item.productName}</div>
-                <div className="text-sm text-foreground/60">{row.orderName}</div>
-                <div className="text-sm text-foreground/60">
-                  {row.customerName} · {formatDesignPhaseLabel(row.item.designPhase)}
-                </div>
-                {row.item.hasOpenRevision ? (
-                  <Chip size="sm" color="warning" variant="flat">
-                    Revision requested
-                  </Chip>
-                ) : null}
-              </div>
+    <div className="flex flex-col gap-8">
+      {TEAM_GROUPS.map((group) => {
+        const groupRows = rows.filter((r) => r.step.group === group.key);
+        if (!groupRows.length) return null;
+        const chipColor =
+          group.key === "action" ? "warning" : group.key === "done" ? "success" : "default";
+        return (
+          <div key={group.key} className="space-y-3">
+            <div className="flex items-baseline gap-3">
+              <h2 className="text-lg font-semibold">{group.title}</h2>
+              <span className="text-sm text-foreground/55">
+                {groupRows.length} · {group.hint}
+              </span>
             </div>
+            <div className="grid gap-4">
+              {groupRows.map((row) => (
+                <Card key={`${row.orderId}:${row.item.id}`} className="border border-divider shadow-sm">
+                  <CardBody className="flex flex-col gap-4 p-5 lg:flex-row lg:items-center lg:justify-between">
+                    <div className="flex min-w-0 items-center gap-4">
+                      <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-default-100">
+                        {getPreferredDesignImage(row.item) ? (
+                          <Image
+                            removeWrapper
+                            src={getPreferredDesignImage(row.item)!}
+                            alt={row.item.productName}
+                            className="h-full w-full object-contain"
+                          />
+                        ) : (
+                          <div className="text-xs text-foreground/55">No preview</div>
+                        )}
+                      </div>
+                      <div className="min-w-0 space-y-1.5">
+                        <div className="font-semibold">{row.item.productName}</div>
+                        <div className="text-sm text-foreground/60">
+                          {row.orderName} · {row.customerName}
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Chip size="sm" color={chipColor} variant="flat">
+                            {row.step.label}
+                          </Chip>
+                          {row.item.hasOpenRevision ? (
+                            <Chip size="sm" color="warning" variant="flat">
+                              Revision requested
+                            </Chip>
+                          ) : null}
+                        </div>
+                      </div>
+                    </div>
 
-            <div className="flex flex-wrap gap-3">
-              <Link href={`/dashboard/orders/${row.orderId}`}>
-                <Button variant="bordered">Open order</Button>
-              </Link>
+                    <div className="flex flex-wrap gap-3">
+                      <Link href={`/dashboard/orders/${row.orderId}`}>
+                        <Button
+                          variant={group.key === "action" ? "solid" : "bordered"}
+                          color={group.key === "action" ? "primary" : "default"}
+                          style={
+                            group.key === "action"
+                              ? { backgroundImage: "var(--primary-gradient)", color: "#fff" }
+                              : undefined
+                          }
+                        >
+                          {group.key === "action" ? row.step.label : "Open order"}
+                        </Button>
+                      </Link>
+                    </div>
+                  </CardBody>
+                </Card>
+              ))}
             </div>
-          </CardBody>
-        </Card>
-      ))}
+          </div>
+        );
+      })}
     </div>
   );
 }
