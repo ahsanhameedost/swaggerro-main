@@ -27,7 +27,16 @@ import { SettingsModule } from "./settings/settings.module";
   imports: [
     PrismaModule,
     BullModule.forRoot({
-      connection: { host: env.REDIS_HOST, port: env.REDIS_PORT }
+      connection: {
+        host: env.REDIS_HOST,
+        port: env.REDIS_PORT,
+        // Fail fast instead of buffering commands when Redis is unreachable, so a
+        // queue.add() (email dispatch) can never hang the HTTP request — callers
+        // treat email as best-effort and continue. (maxRetriesPerRequest: null is
+        // BullMQ's required setting for its blocking worker connection.)
+        enableOfflineQueue: false,
+        maxRetriesPerRequest: null
+      }
     }),
     AuthModule,
     UsersModule,

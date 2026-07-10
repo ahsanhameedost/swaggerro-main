@@ -49,18 +49,22 @@ export class ContactService {
       select: { id: true }
     });
 
-    const job = await this.emailQueue.add(
-      JOB_CONTACT_EMAIL,
-      { contactMessageId: record.id },
-      {
-        attempts: 5,
-        backoff: { type: "exponential", delay: 1000 },
-        removeOnComplete: true,
-        removeOnFail: false
-      }
-    );
-
-    this.logger.log(`email job queued jobId=${job.id} contactMessageId=${record.id}`);
+    // Best-effort: a Redis outage must not fail the contact submission.
+    try {
+      const job = await this.emailQueue.add(
+        JOB_CONTACT_EMAIL,
+        { contactMessageId: record.id },
+        {
+          attempts: 5,
+          backoff: { type: "exponential", delay: 1000 },
+          removeOnComplete: true,
+          removeOnFail: false
+        }
+      );
+      this.logger.log(`email job queued jobId=${job.id} contactMessageId=${record.id}`);
+    } catch (err) {
+      this.logger.error(`failed to queue contact email: ${(err as Error).message}`);
+    }
     return record;
   }
 

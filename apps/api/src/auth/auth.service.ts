@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException, UnauthorizedException } from "@nestjs/common";
+import { BadRequestException, ConflictException, Injectable, Logger, NotFoundException, UnauthorizedException } from "@nestjs/common";
 import { InjectQueue } from "@nestjs/bullmq";
 import { JwtService } from "@nestjs/jwt";
 import * as bcrypt from "bcryptjs";
@@ -22,12 +22,30 @@ import { ChangePasswordDto } from "./dto/change-password.dto";
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly users: UsersService,
     private readonly jwt: JwtService,
     @InjectQueue(EMAIL_QUEUE) private readonly emailQueue: Queue
   ) {}
+
+  // Best-effort email enqueue — a Redis outage must never fail auth (signup /
+  // password reset). The job is retried once queued; if the queue is down we
+  // log and continue.
+  private async enqueueEmail(name: string, data: Record<string, unknown>) {
+    try {
+      await this.emailQueue.add(name, data, {
+        attempts: 5,
+        backoff: { type: "exponential", delay: 1000 },
+        removeOnComplete: true,
+        removeOnFail: false
+      });
+    } catch (err) {
+      this.logger.error(`failed to queue ${name}: ${(err as Error).message}`);
+    }
+  }
 
   async signup(dto: SignupDto) {
     const email = dto.email.trim().toLowerCase();
@@ -46,16 +64,7 @@ export class AuthService {
       phone: dto.phone?.trim()
     });
 
-    await this.emailQueue.add(
-      JOB_SIGNUP_WELCOME_EMAIL,
-      { userId: created.id },
-      {
-        attempts: 5,
-        backoff: { type: "exponential", delay: 1000 },
-        removeOnComplete: true,
-        removeOnFail: false
-      }
-    );
+    await this.enqueueEmail(JOB_SIGNUP_WELCOME_EMAIL, { userId: created.id });
 
     const user = await this.users.findByIdWithPermissions(created.id);
 
@@ -124,16 +133,7 @@ export class AuthService {
       }
     });
 
-    await this.emailQueue.add(
-      JOB_PASSWORD_RESET_CODE_EMAIL,
-      { userId: user.id, code },
-      {
-        attempts: 5,
-        backoff: { type: "exponential", delay: 1000 },
-        removeOnComplete: true,
-        removeOnFail: false
-      }
-    );
+    await this.enqueueEmail(JOB_PASSWORD_RESET_CODE_EMAIL, { userId: user.id, code });
 
     return {
       ok: true,
@@ -173,16 +173,7 @@ export class AuthService {
       })
     ]);
 
-    await this.emailQueue.add(
-      JOB_PASSWORD_RESET_SUCCESS_EMAIL,
-      { userId: match.userId },
-      {
-        attempts: 5,
-        backoff: { type: "exponential", delay: 1000 },
-        removeOnComplete: true,
-        removeOnFail: false
-      }
-    );
+    await this.enqueueEmail(JOB_PASSWORD_RESET_SUCCESS_EMAIL, { userId: match.userId });
 
     return { ok: true };
   }
