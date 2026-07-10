@@ -23,7 +23,9 @@ import type {
   RequestOrderItemRevisionDto,
   UpdateOrderItemDesignDto,
   UpdateOrderStatusDto,
-  UpdateProductionStageDto
+  UpdateProductionStageDto,
+  RequestOrderAddOnsDto,
+  ResolveOrderAddOnDto
 } from "../dto/order.dto";
 import { EmailService } from "../../email/email.service";
 import { PrismaService } from "../../prisma/prisma.service";
@@ -374,6 +376,162 @@ export class CatalogOrdersService extends CatalogSharedService {
     }
 
     return this.serializeOrderDetail(updated);
+  }
+
+  // Highest matching volume-tier unit price (falls back to base).
+  private resolveTierUnitPrice(baseUnit: number, quantity: number, options: any[]): number {
+    let unit = Math.max(0, baseUnit);
+    const sorted = [...(options ?? [])].sort((a, b) => (a.qtyFrom ?? 0) - (b.qtyFrom ?? 0));
+    for (const o of sorted) {
+      if (quantity < o.qtyFrom) continue;
+      if (o.isOnward || o.qtyTo == null || quantity <= o.qtyTo) unit = Math.max(0, Number(o.price));
+    }
+    return unit;
+  }
+
+  // Customer adds more products to an in-progress order (to save shipping). The
+  // items are created as pending add-ons and an admin must approve them (#33/#34).
+  async requestOrderAddOns(orderId: string, input: RequestOrderAddOnsDto, authUser: AuthUser) {
+    if (!hasPermission(authUser, "orders.self.read")) {
+      throw new ForbiddenException("Only customers can add products to their order");
+    }
+    const order = await this.findAccessibleOrderOrThrow(orderId, authUser);
+    if (["CANCELLED", "REJECTED"].includes(order.status)) {
+      throw new BadRequestException("This order can no longer be changed");
+    }
+    if (order.productionStage === "SHIPPED") {
+      throw new BadRequestException("This order has already shipped");
+    }
+
+    const products = await this.prisma.catalogProduct.findMany({
+      where: { id: { in: input.items.map((i) => i.productId) }, status: "ACTIVE" },
+      include: {
+        productCatalogVariants: { include: { pricingOptions: true } },
+        pricingOptions: { where: { productCatalogVariantId: null } },
+        images: { orderBy: { sortOrder: "asc" }, take: 1 }
+      }
+    });
+    const byId = new Map(products.map((p) => [p.id, p]));
+
+    for (const item of input.items) {
+      const product = byId.get(item.productId);
+      if (!product) throw new BadRequestException("One of the products is unavailable");
+
+      let baseUnit = product.basePrice != null ? Number(product.basePrice) : 0;
+      let variantId: string | null = null;
+      let variantName: string | null = null;
+      let pricingOptions: any[] = product.pricingOptions;
+      if (item.productCatalogVariantId) {
+        const variant = product.productCatalogVariants.find(
+          (v) => v.id === item.productCatalogVariantId
+        );
+        if (!variant) throw new BadRequestException("Selected variant not found");
+        baseUnit = Number(variant.price);
+        variantId = variant.id;
+        variantName = variant.title ?? null;
+        if (variant.pricingOptions?.length) pricingOptions = variant.pricingOptions;
+      }
+
+      const unit =
+        product.bulkPricingEnabled === false
+          ? baseUnit
+          : this.resolveTierUnitPrice(baseUnit, item.quantity, pricingOptions);
+
+      await this.prisma.catalogOrderItem.create({
+        data: {
+          order: { connect: { id: order.id } },
+          product: { connect: { id: product.id } },
+          ...(variantId ? { productCatalogVariant: { connect: { id: variantId } } } : {}),
+          productName: product.name,
+          variantName,
+          itemType: "BULK",
+          designPhase: "MOCKUP_IN_PROGRESS",
+          pendingAddOn: true,
+          quantity: item.quantity,
+          unitPrice: new Prisma.Decimal(unit),
+          totalPrice: new Prisma.Decimal(unit * item.quantity),
+          imageUrl: product.images?.[0]?.url ?? null
+        }
+      });
+    }
+
+    const orderLabel = `SW-${String(order.orderNumber).padStart(3, "0")}`;
+    await this.events.dispatchToAdmins({
+      type: "order.addon_requested",
+      title: "Add-on request",
+      body: `${order.name} wants to add ${input.items.length} item(s) to order ${orderLabel} to save shipping.`,
+      link: `/dashboard/orders/${order.id}`,
+      email: {
+        subject: `Add-on request — ${orderLabel}`,
+        heading: "Add-on request to review",
+        paragraphs: [
+          `${order.name} requested to add ${input.items.length} product(s) to order ${orderLabel} to combine shipping.`,
+          "Open the order to approve or reject the added items."
+        ],
+        ctaPath: `/dashboard/orders/${order.id}`,
+        ctaLabel: "Review request"
+      }
+    });
+
+    return this.getOrderById(order.id, authUser);
+  }
+
+  // Admin approves (joins the order + adds to total) or rejects (removes) a
+  // pending add-on item.
+  async resolveOrderAddOn(
+    orderId: string,
+    itemId: string,
+    input: ResolveOrderAddOnDto,
+    authUser: AuthUser
+  ) {
+    this.assertCanManageOrders(authUser);
+    const order = await this.findAccessibleOrderOrThrow(orderId, authUser);
+    const item = order.items.find((entry) => entry.id === itemId);
+    if (!item || !(item as any).pendingAddOn) {
+      throw new BadRequestException("No pending add-on item found");
+    }
+
+    const orderLabel = `SW-${String(order.orderNumber).padStart(3, "0")}`;
+
+    if (input.approve) {
+      await this.prisma.$transaction([
+        this.prisma.catalogOrderItem.update({
+          where: { id: item.id },
+          data: { pendingAddOn: false }
+        }),
+        this.prisma.catalogOrder.update({
+          where: { id: order.id },
+          data: { totalPrice: { increment: item.totalPrice } }
+        })
+      ]);
+    } else {
+      await this.prisma.catalogOrderItem.delete({ where: { id: item.id } });
+    }
+
+    if (order.userId) {
+      await this.events.dispatchToUser({
+        userId: order.userId,
+        type: input.approve ? "order.addon_approved" : "order.addon_rejected",
+        title: input.approve ? "Added item approved" : "Added item declined",
+        body: input.approve
+          ? `"${item.productName}" was approved and added to order ${orderLabel}.`
+          : `"${item.productName}" could not be added to order ${orderLabel}.`,
+        link: `/dashboard/orders/${order.id}`,
+        email: {
+          subject: `${input.approve ? "Added item approved" : "Added item declined"} — ${orderLabel}`,
+          heading: input.approve ? "Your added item is approved" : "Your added item was declined",
+          paragraphs: [
+            input.approve
+              ? `"${item.productName}" has been added to order ${orderLabel} and will ship together.`
+              : `"${item.productName}" could not be added to order ${orderLabel}. Please reach out if you have questions.`
+          ],
+          ctaPath: `/dashboard/orders/${order.id}`,
+          ctaLabel: "View order"
+        }
+      });
+    }
+
+    return this.getOrderById(order.id, authUser);
   }
 
   async assignEmployee(id: string, input: AssignOrderEmployeeDto, authUser: AuthUser) {
@@ -1251,7 +1409,10 @@ private calculateOrderTotals(order: Pick<OrderWithRelations, "items" | "totalPri
     }
   }
 
-  const storageQuantity = (order.items ?? []).reduce((sum, item) => {
+  // Pending add-on items (awaiting admin approval) don't count toward storage,
+  // totals or readiness until they're approved (#33/#34).
+  const activeItems = (order.items ?? []).filter((item) => !(item as any).pendingAddOn);
+  const storageQuantity = activeItems.reduce((sum, item) => {
     const allocated = allocatedByOrderItemId.get(item.id) ?? 0;
     return sum + Math.max(0, item.quantity - allocated);
   }, 0);
@@ -1266,9 +1427,8 @@ private calculateOrderTotals(order: Pick<OrderWithRelations, "items" | "totalPri
   const taxesAndFeesCents = 0;
   const totalDueCents = subtotalCents + storageCostCents + shippingCostCents + taxesAndFeesCents;
   const totalDue = totalDueCents / 100;
-  const allItemsReadyToOrder = (order.items ?? []).every(
-    (item) => item.designPhase === "READY_TO_ORDER"
-  );
+  const allItemsReadyToOrder =
+    activeItems.length > 0 && activeItems.every((item) => item.designPhase === "READY_TO_ORDER");
 
   return {
     subtotal,
@@ -1619,6 +1779,7 @@ private async createStripePayment(
           id: item.id,
           itemType: item.itemType,
           designPhase: item.designPhase,
+          pendingAddOn: (item as any).pendingAddOn ?? false,
           productName: item.productName,
           variantName: item.variantName,
           quantity: item.quantity,

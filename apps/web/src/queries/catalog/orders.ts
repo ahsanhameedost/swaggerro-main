@@ -8,6 +8,8 @@ import {
   getCatalogOrderStats,
   listCatalogOrders,
   refundCatalogOrder,
+  requestCatalogOrderAddOns,
+  resolveCatalogOrderAddOn,
   requestCatalogOrderItemRevision,
   updateCatalogOrderItemDesign,
   updateCatalogOrderProductionStage,
@@ -76,6 +78,39 @@ export function useUpdateCatalogOrderProductionStage() {
   return useMutation({
     mutationFn: ({ id, productionStage }: { id: string; productionStage: string }) =>
       updateCatalogOrderProductionStage(id, productionStage),
+    onSuccess: async (_, variables) => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["catalog", "orders"] }),
+        queryClient.invalidateQueries({ queryKey: ["catalog", "orders", "detail", variables.id] })
+      ]);
+    }
+  });
+}
+
+export function useRequestCatalogOrderAddOns() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      items
+    }: {
+      id: string;
+      items: { productId: string; productCatalogVariantId?: string | null; quantity: number }[];
+    }) => requestCatalogOrderAddOns(id, items),
+    onSuccess: async (_, variables) => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["catalog", "orders"] }),
+        queryClient.invalidateQueries({ queryKey: ["catalog", "orders", "detail", variables.id] })
+      ]);
+    }
+  });
+}
+
+export function useResolveCatalogOrderAddOn() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, itemId, approve }: { id: string; itemId: string; approve: boolean }) =>
+      resolveCatalogOrderAddOn(id, itemId, approve),
     onSuccess: async (_, variables) => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["catalog", "orders"] }),

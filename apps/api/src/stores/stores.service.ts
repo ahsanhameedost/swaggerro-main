@@ -432,12 +432,16 @@ export class StoresService {
     Object.assign(createData, this.themeData(input.theme));
     Object.assign(createData, this.customizationData(input));
 
-    const store = await this.prisma.$transaction(async (tx) => {
-      const created = await tx.store.create({ data: createData });
-      const branding = this.buildBrandingMap(input.productBranding, productIds);
-      await this.replaceStoreProducts(tx, created.id, productIds, branding);
-      return created;
-    });
+    const store = await this.prisma.withRetry(
+      () =>
+        this.prisma.$transaction(async (tx) => {
+          const created = await tx.store.create({ data: createData });
+          const branding = this.buildBrandingMap(input.productBranding, productIds);
+          await this.replaceStoreProducts(tx, created.id, productIds, branding);
+          return created;
+        }),
+      "create store"
+    );
 
     return this.getStoreById(store.id);
   }
@@ -463,14 +467,18 @@ export class StoresService {
     Object.assign(data, this.themeData(input.theme));
     Object.assign(data, this.customizationData(input));
 
-    await this.prisma.$transaction(async (tx) => {
-      await tx.store.update({ where: { id }, data });
-      if (input.productIds !== undefined) {
-        const productIds = await this.resolveProductIds(input.productIds);
-        const branding = this.buildBrandingMap(input.productBranding, productIds);
-        await this.replaceStoreProducts(tx, id, productIds, branding);
-      }
-    });
+    await this.prisma.withRetry(
+      () =>
+        this.prisma.$transaction(async (tx) => {
+          await tx.store.update({ where: { id }, data });
+          if (input.productIds !== undefined) {
+            const productIds = await this.resolveProductIds(input.productIds);
+            const branding = this.buildBrandingMap(input.productBranding, productIds);
+            await this.replaceStoreProducts(tx, id, productIds, branding);
+          }
+        }),
+      "update store"
+    );
 
     return this.getStoreById(id);
   }
@@ -514,14 +522,18 @@ export class StoresService {
     Object.assign(data, this.themeData(input.theme));
     Object.assign(data, this.customizationData(input));
 
-    await this.prisma.$transaction(async (tx) => {
-      await tx.store.update({ where: { id: store.id }, data });
-      if (input.productIds !== undefined) {
-        const productIds = await this.resolveProductIds(input.productIds);
-        const branding = this.buildBrandingMap(input.productBranding, productIds);
-        await this.replaceStoreProducts(tx, store.id, productIds, branding);
-      }
-    });
+    await this.prisma.withRetry(
+      () =>
+        this.prisma.$transaction(async (tx) => {
+          await tx.store.update({ where: { id: store.id }, data });
+          if (input.productIds !== undefined) {
+            const productIds = await this.resolveProductIds(input.productIds);
+            const branding = this.buildBrandingMap(input.productBranding, productIds);
+            await this.replaceStoreProducts(tx, store.id, productIds, branding);
+          }
+        }),
+      "update own store"
+    );
 
     return this.getStoreById(store.id);
   }

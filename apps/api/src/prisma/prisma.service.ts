@@ -46,4 +46,36 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
   async onModuleDestroy() {
     await this.$disconnect();
   }
+
+  /**
+   * Run a DB operation, retrying only transient CONNECTION failures — e.g. the
+   * managed Azure Postgres dropping an idle connection (P1001 "can't reach
+   * server", P1017 "server closed the connection"). Safe to wrap a whole
+   * `$transaction`: a dropped connection rolls the transaction back, so
+   * re-running it can never double-apply. It is NOT safe (and not needed) for a
+   * query that already executed — only pre-execution connection errors retry
+   * here; every other error (validation, not-found, unique, etc.) is rethrown
+   * immediately.
+   */
+  async withRetry<T>(fn: () => Promise<T>, label = "db operation"): Promise<T> {
+    const transient = new Set(["P1001", "P1002", "P1008", "P1017"]);
+    let lastError: unknown;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        return await fn();
+      } catch (error) {
+        const code = (error as { code?: string }).code;
+        if (!code || !transient.has(code) || attempt === 3) throw error;
+        lastError = error;
+        this.logger.warn(`Transient DB error ${code} during ${label} — retry ${attempt}/2`);
+        try {
+          await this.$connect();
+        } catch {
+          /* best-effort reconnect; the next attempt will surface any real error */
+        }
+        await new Promise((resolve) => setTimeout(resolve, attempt * 500));
+      }
+    }
+    throw lastError;
+  }
 }

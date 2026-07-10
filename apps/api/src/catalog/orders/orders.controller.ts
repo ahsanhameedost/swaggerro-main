@@ -24,7 +24,9 @@ import {
   requestOrderItemRevisionSchema,
   updateOrderItemDesignSchema,
   updateOrderStatusSchema,
-  updateProductionStageSchema
+  updateProductionStageSchema,
+  requestOrderAddOnsSchema,
+  resolveOrderAddOnSchema
 } from "../dto/order.dto";
 import { CatalogOrdersService } from "./orders.service";
 
@@ -93,6 +95,44 @@ export class CatalogOrdersController {
       order: await this.ordersService.updateProductionStage(
         id,
         parseOrThrow(updateProductionStageSchema.safeParse(body), "Invalid production stage payload"),
+        req.user!
+      )
+    };
+  }
+
+  // Customer requests adding products to an in-progress order (save shipping).
+  @UseGuards(AuthGuard, PermissionsGuard)
+  @Post("orders/:id/add-ons")
+  @RequireAnyPermissions("orders.self.read")
+  async requestOrderAddOns(
+    @Param("id") id: string,
+    @Body() body: unknown,
+    @Req() req: FastifyRequest & { user?: AuthUser }
+  ) {
+    return {
+      order: await this.ordersService.requestOrderAddOns(
+        id,
+        parseOrThrow(requestOrderAddOnsSchema.safeParse(body), "Invalid add-on request"),
+        req.user!
+      )
+    };
+  }
+
+  // Admin approves / rejects a pending add-on item.
+  @UseGuards(AuthGuard, PermissionsGuard)
+  @Patch("orders/:id/add-ons/:itemId")
+  @RequirePermissions("catalog.orders.update")
+  async resolveOrderAddOn(
+    @Param("id") id: string,
+    @Param("itemId") itemId: string,
+    @Body() body: unknown,
+    @Req() req: FastifyRequest & { user?: AuthUser }
+  ) {
+    return {
+      order: await this.ordersService.resolveOrderAddOn(
+        id,
+        itemId,
+        parseOrThrow(resolveOrderAddOnSchema.safeParse(body), "Invalid add-on decision"),
         req.user!
       )
     };

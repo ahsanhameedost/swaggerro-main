@@ -36,6 +36,7 @@ export type CatalogOrderItem = {
   id: string;
   itemType: CatalogOrderItemType;
   designPhase: CatalogOrderDesignPhase;
+  pendingAddOn?: boolean;
   productName: string;
   variantName?: string | null;
   quantity: number;

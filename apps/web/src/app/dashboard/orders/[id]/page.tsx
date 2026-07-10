@@ -9,6 +9,12 @@ import {
   CardBody,
   Chip,
   Image,
+  Input,
+  Modal,
+  ModalBody,
+  ModalContent,
+  ModalFooter,
+  ModalHeader,
   Select,
   SelectItem,
   Spinner,
@@ -25,8 +31,11 @@ import {
   useUpdateCatalogOrderStatus,
   useUpdateCatalogOrderProductionStage,
   useRefundCatalogOrder,
+  useRequestCatalogOrderAddOns,
+  useResolveCatalogOrderAddOn,
   useAssignCatalogOrderEmployee,
-  useEmployees
+  useEmployees,
+  usePublicProducts
 } from "@/lib/queries.catalog";
 import { uploadFileToPresignedUrl } from "@/modules/catalog/public/api";
 import { downloadApiFile } from "@/lib/download";
@@ -336,12 +345,18 @@ export default function OrderDetailsPage() {
   ]);
   const isCustomer = !isStaffView;
   const canManageStatus = hasPermission(user, "catalog.orders.update");
+  // Inventory levels are admin-only — never shown to designers, customers or
+  // sellers (#36). inventory.read is held by SUPER_ADMIN / operations roles only.
+  const canSeeInventory = hasPermission(user, "inventory.read");
   const canAssign = hasPermission(user, "admin.users.write");
   const canRead = hasAnyPermission(user, ["catalog.orders.read", "orders.assigned.read", "orders.self.read"]);
 
   const statusMutation = useUpdateCatalogOrderStatus();
   const productionMutation = useUpdateCatalogOrderProductionStage();
   const refundMutation = useRefundCatalogOrder();
+  const addOnMutation = useRequestCatalogOrderAddOns();
+  const resolveAddOnMutation = useResolveCatalogOrderAddOn();
+  const [addOnOpen, setAddOnOpen] = useState(false);
   const assignMutation = useAssignCatalogOrderEmployee();
   const { data: employees = [] } = useEmployees("", canAssign);
   const canPlanShipping = hasAnyPermission(user, [
@@ -444,6 +459,13 @@ export default function OrderDetailsPage() {
                 {isCustomer ? "Plan shipping & storage" : "Open shipping planner"}
               </Button>
             </Link>
+            {isCustomer &&
+            !["CANCELLED", "REJECTED"].includes(order.status) &&
+            order.productionStage !== "SHIPPED" ? (
+              <Button variant="bordered" onPress={() => setAddOnOpen(true)}>
+                Add products (save shipping)
+              </Button>
+            ) : null}
             {!isCustomer && canManageStatus && order.paymentStatus === "PAID" ? (
               <Button
                 variant="bordered"
@@ -479,6 +501,85 @@ export default function OrderDetailsPage() {
       </Card>
 
       <OrderStageTracker order={order} />
+
+      {canManageStatus && order.items.some((i) => i.pendingAddOn) ? (
+        <Card className="border border-warning/50 shadow-sm">
+          <CardBody className="space-y-3 p-6">
+            <div>
+              <div className="text-lg font-semibold">Add-on requests</div>
+              <p className="text-sm text-foreground/60">
+                The customer asked to add these products to combine shipping. Approve to add them to
+                the order, or reject.
+              </p>
+            </div>
+            {order.items
+              .filter((i) => i.pendingAddOn)
+              .map((item) => (
+                <div
+                  key={item.id}
+                  className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-divider p-4"
+                >
+                  <div>
+                    <div className="font-semibold">{item.productName}</div>
+                    <div className="text-sm text-foreground/60">
+                      {item.variantName || "Standard"} · Qty {item.quantity} ·{" "}
+                      {formatMoney(item.totalPrice, order.currency)}
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      color="primary"
+                      isLoading={resolveAddOnMutation.isPending}
+                      onPress={async () => {
+                        try {
+                          await resolveAddOnMutation.mutateAsync({
+                            id: order.id,
+                            itemId: item.id,
+                            approve: true
+                          });
+                          addToast({ title: "Add-on approved", color: "success" });
+                        } catch (e: any) {
+                          addToast({
+                            title: "Failed",
+                            description: e?.message ?? "Could not approve.",
+                            color: "danger"
+                          });
+                        }
+                      }}
+                      style={{ backgroundImage: "var(--primary-gradient)" }}
+                    >
+                      Approve
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="bordered"
+                      color="danger"
+                      onPress={async () => {
+                        try {
+                          await resolveAddOnMutation.mutateAsync({
+                            id: order.id,
+                            itemId: item.id,
+                            approve: false
+                          });
+                          addToast({ title: "Add-on rejected", color: "success" });
+                        } catch (e: any) {
+                          addToast({
+                            title: "Failed",
+                            description: e?.message ?? "Could not reject.",
+                            color: "danger"
+                          });
+                        }
+                      }}
+                    >
+                      Reject
+                    </Button>
+                  </div>
+                </div>
+              ))}
+          </CardBody>
+        </Card>
+      ) : null}
 
       {!isCustomer && (canManageStatus || canAssign) ? (
         <Card className="border border-divider shadow-sm">
@@ -824,28 +925,30 @@ export default function OrderDetailsPage() {
               </div>
             </div>
 
-            <div className="space-y-3 rounded-3xl border border-divider bg-content1 p-4">
-              <div className="flex items-center gap-2 text-sm font-semibold">
-                <Boxes className="size-4" />
-                Storage and inventory
+            {canSeeInventory ? (
+              <div className="space-y-3 rounded-3xl border border-divider bg-content1 p-4">
+                <div className="flex items-center gap-2 text-sm font-semibold">
+                  <Boxes className="size-4" />
+                  Storage and inventory
+                </div>
+                <div className="text-sm text-foreground/60">
+                  {order.inventorySummary?.availableQuantity
+                    ? `${order.inventorySummary.availableQuantity} unit(s) are currently available in inventory.`
+                    : order.inventorySummary?.pendingWarehouseQuantity
+                      ? `${order.inventorySummary.pendingWarehouseQuantity} unit(s) are pending warehouse receipt before they appear in inventory.`
+                      : order.storageQuantity > 0
+                        ? `${order.storageQuantity} unit(s) will remain in warehouse storage after payment.`
+                        : "Everything on this order is currently allocated to saved shipments."}
+                </div>
+                {order.paymentStatus === "PAID" ? (
+                  <Link href="/dashboard/inventory">
+                    <Button variant="bordered" className="w-full">
+                      View inventory
+                    </Button>
+                  </Link>
+                ) : null}
               </div>
-              <div className="text-sm text-foreground/60">
-                {order.inventorySummary?.availableQuantity
-                  ? `${order.inventorySummary.availableQuantity} unit(s) are currently available in inventory.`
-                  : order.inventorySummary?.pendingWarehouseQuantity
-                    ? `${order.inventorySummary.pendingWarehouseQuantity} unit(s) are pending warehouse receipt before they appear in inventory.`
-                    : order.storageQuantity > 0
-                      ? `${order.storageQuantity} unit(s) will remain in warehouse storage after payment.`
-                      : "Everything on this order is currently allocated to saved shipments."}
-              </div>
-              {order.paymentStatus === "PAID" ? (
-                <Link href="/dashboard/inventory">
-                  <Button variant="bordered" className="w-full">
-                    View inventory
-                  </Button>
-                </Link>
-              ) : null}
-            </div>
+            ) : null}
 
             <div className="space-y-3 rounded-3xl border border-divider bg-content1 p-4">
               <div className="flex items-center gap-2 text-sm font-semibold">
@@ -984,7 +1087,118 @@ export default function OrderDetailsPage() {
           </CardBody>
         </Card>
       </div>
+
+      <AddOnModal orderId={order.id} isOpen={addOnOpen} onClose={() => setAddOnOpen(false)} />
     </div>
+  );
+}
+
+// Customer modal: pick extra products + quantities to add to an in-progress order
+// (an admin approves them). Reuses the public catalog for the picker (#33/#34).
+function AddOnModal({
+  orderId,
+  isOpen,
+  onClose
+}: {
+  orderId: string;
+  isOpen: boolean;
+  onClose: () => void;
+}) {
+  const { data } = usePublicProducts({ page: 1, pageSize: 48 });
+  const products = data?.items ?? [];
+  const [search, setSearch] = useState("");
+  const [qty, setQty] = useState<Record<string, number>>({});
+  const mutation = useRequestCatalogOrderAddOns();
+
+  const filtered = products.filter((p) =>
+    p.name.toLowerCase().includes(search.trim().toLowerCase())
+  );
+  const selected = Object.entries(qty).filter(([, q]) => q > 0);
+
+  const submit = async () => {
+    const items = selected.map(([productId, quantity]) => ({ productId, quantity }));
+    if (!items.length) {
+      addToast({ title: "Pick at least one product", color: "warning" });
+      return;
+    }
+    try {
+      await mutation.mutateAsync({ id: orderId, items });
+      addToast({
+        title: "Request sent",
+        description: "An admin will review your added items.",
+        color: "success"
+      });
+      setQty({});
+      onClose();
+    } catch (e: any) {
+      addToast({ title: "Failed", description: e?.message ?? "Try again.", color: "danger" });
+    }
+  };
+
+  return (
+    <Modal
+      isOpen={isOpen}
+      onOpenChange={(o) => (!o ? onClose() : undefined)}
+      size="2xl"
+      scrollBehavior="inside"
+    >
+      <ModalContent>
+        {() => (
+          <>
+            <ModalHeader>Add products to this order</ModalHeader>
+            <ModalBody className="space-y-3">
+              <p className="text-sm text-foreground/60">
+                Add more products to ship together and save on shipping — an admin reviews and
+                approves before they join your order.
+              </p>
+              <Input placeholder="Search products…" value={search} onValueChange={setSearch} />
+              <div className="space-y-2">
+                {filtered.map((p) => (
+                  <div
+                    key={p.id}
+                    className="flex items-center justify-between gap-3 rounded-xl border border-divider p-3"
+                  >
+                    <div className="min-w-0">
+                      <div className="truncate font-medium">{p.name}</div>
+                      <div className="text-xs text-foreground/55">
+                        {formatMoney(
+                          p.floorPrice ?? p.basePrice ?? p.lowestPrice ?? 0,
+                          p.currency
+                        )}{" "}
+                        /ea
+                      </div>
+                    </div>
+                    <input
+                      type="number"
+                      min={0}
+                      value={qty[p.id] ?? 0}
+                      onChange={(e) =>
+                        setQty((c) => ({ ...c, [p.id]: Math.max(0, Number(e.target.value) || 0) }))
+                      }
+                      className="h-9 w-20 rounded-lg border border-divider bg-background text-center text-sm outline-none"
+                    />
+                  </div>
+                ))}
+              </div>
+            </ModalBody>
+            <ModalFooter>
+              <Button variant="flat" onPress={onClose}>
+                Cancel
+              </Button>
+              <Button
+                color="primary"
+                isLoading={mutation.isPending}
+                isDisabled={!selected.length}
+                onPress={submit}
+                style={{ backgroundImage: "var(--primary-gradient)" }}
+              >
+                Send request ({selected.length})
+              </Button>
+            </ModalFooter>
+          </>
+        )}
+      </ModalContent>
+    </Modal>
   );
 }
 

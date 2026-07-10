@@ -51,6 +51,23 @@ export async function updateCatalogOrderProductionStage(id: string, productionSt
   });
 }
 
+export async function requestCatalogOrderAddOns(
+  id: string,
+  items: { productId: string; productCatalogVariantId?: string | null; quantity: number }[]
+) {
+  return apiFetch<UpdateCatalogOrderStatusResponse>(`/catalog/orders/${id}/add-ons`, {
+    method: "POST",
+    body: JSON.stringify({ items })
+  });
+}
+
+export async function resolveCatalogOrderAddOn(id: string, itemId: string, approve: boolean) {
+  return apiFetch<UpdateCatalogOrderStatusResponse>(`/catalog/orders/${id}/add-ons/${itemId}`, {
+    method: "PATCH",
+    body: JSON.stringify({ approve })
+  });
+}
+
 export async function assignCatalogOrderEmployee(id: string, assignedEmployeeId: string | null) {
   return apiFetch<CatalogOrderResponse>(`/catalog/orders/${id}/assignment`, {
     method: "PATCH",

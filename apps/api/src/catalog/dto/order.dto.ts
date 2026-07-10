@@ -40,6 +40,23 @@ export const updateProductionStageSchema = z.object({
   productionStage: productionStageSchema
 });
 
+export const requestOrderAddOnsSchema = z.object({
+  items: z
+    .array(
+      z.object({
+        productId: z.string().trim().min(1),
+        productCatalogVariantId: z.string().trim().min(1).optional().nullable(),
+        quantity: z.coerce.number().int().min(1).max(100000)
+      })
+    )
+    .min(1, "Add at least one product")
+    .max(50)
+});
+
+export const resolveOrderAddOnSchema = z.object({
+  approve: z.boolean()
+});
+
 export const assignOrderEmployeeSchema = z.object({
   assignedEmployeeId: z.string().trim().nullable()
 });
@@ -77,6 +94,8 @@ export const createOrderPaymentSchema = z.object({
 export type ListOrdersQuery = z.infer<typeof listOrdersQuerySchema>;
 export type UpdateOrderStatusDto = z.infer<typeof updateOrderStatusSchema>;
 export type UpdateProductionStageDto = z.infer<typeof updateProductionStageSchema>;
+export type RequestOrderAddOnsDto = z.infer<typeof requestOrderAddOnsSchema>;
+export type ResolveOrderAddOnDto = z.infer<typeof resolveOrderAddOnSchema>;
 export type AssignOrderEmployeeDto = z.infer<typeof assignOrderEmployeeSchema>;
 export type CreateOrderDesignUploadDto = z.infer<typeof createOrderDesignUploadSchema>;
 export type UpdateOrderItemDesignDto = z.infer<typeof updateOrderItemDesignSchema>;

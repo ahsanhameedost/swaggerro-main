@@ -609,6 +609,9 @@ model CatalogOrderItem {
   variantName             String?
   itemType                CatalogOrderItemType    @default(BULK)
   designPhase             CatalogOrderDesignPhase @default(MOCKUP_IN_PROGRESS)
+  // Add-on requested by the customer on an in-progress order (to save shipping).
+  // Excluded from totals + readiness until an admin approves it (#33/#34).
+  pendingAddOn            Boolean                 @default(false)
   quantity                Int
   quantityPerPack         Int?
   unitPrice               Decimal                 @db.Decimal(10, 2)
