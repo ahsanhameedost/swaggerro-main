@@ -411,6 +411,7 @@ export abstract class CatalogSharedService {
       status: product.status,
       isPackaging: Boolean(product.isPackaging),
       bulkPricingEnabled: product.bulkPricingEnabled !== false,
+      leadTimeDays: product.leadTimeDays ?? null,
       category: product.category
         ? {
             id: product.category.id,
@@ -548,6 +549,7 @@ export abstract class CatalogSharedService {
       status: product.status,
       isPackaging: Boolean(product.isPackaging),
       bulkPricingEnabled: product.bulkPricingEnabled !== false,
+      leadTimeDays: product.leadTimeDays ?? null,
       basePrice,
       basePriceCents: basePrice,
       compareAtPrice,

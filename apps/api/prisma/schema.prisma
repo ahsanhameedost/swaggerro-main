@@ -327,6 +327,10 @@ model CatalogProduct {
   minQty                 Int                        @default(1)
   baseStock              Int                        @default(0)
   currency               String                     @default("USD")
+  // Admin-managed lead time: estimated days to produce + ship. Drives the
+  // shop "ships in ~N days" display, the shipping-time filter, pre-checkout
+  // timeline-conflict warnings, and the order ETA.
+  leadTimeDays           Int?
   // Swaggeroo's per-product commission. When commissionValue is null the
   // store-level Store.commissionPercent is used as the fallback.
   commissionType         SwagCommissionType         @default(PERCENT)

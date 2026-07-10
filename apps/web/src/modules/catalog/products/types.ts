@@ -101,6 +101,7 @@ export type CatalogProductListItem = {
   hasVariants: boolean;
   isPackaging: boolean;
   bulkPricingEnabled?: boolean;
+  leadTimeDays?: number | null;
   basePrice?: number | null;
   basePriceCents?: number | null;
   compareAtPrice?: number | null;
@@ -134,6 +135,7 @@ export type CatalogProductDetail = {
   status: "DRAFT" | "ACTIVE" | "ARCHIVED";
   isPackaging: boolean;
   bulkPricingEnabled?: boolean;
+  leadTimeDays?: number | null;
   basePrice?: number | null;
   basePriceCents?: number | null;
   compareAtPrice?: number | null;
@@ -203,6 +205,7 @@ export type CreateProductInput = {
   compareAtPrice?: number | null;
   minQty: number;
   baseStock: number;
+  leadTimeDays?: number | null;
   currency?: string;
   commissionType?: SwagCommissionType;
   commissionValue?: number | null;

@@ -67,6 +67,7 @@ export type ProductEditorState = {
   compareAtPrice: number | null;
   minQty: number;
   baseStock: number;
+  leadTimeDays: number | null;
   commissionType: SwagCommissionType;
   commissionValue: number | null;
   images: EditorImage[];

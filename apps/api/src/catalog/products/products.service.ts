@@ -501,6 +501,7 @@ export class CatalogProductsService extends CatalogSharedService {
           compareAtPrice: input.compareAtPrice != null ? new Prisma.Decimal(input.compareAtPrice) : null,
           minQty: input.minQty ?? 1,
           baseStock: input.productCatalogVariants.length ? 0 : input.baseStock ?? 0,
+          leadTimeDays: input.leadTimeDays ?? null,
           currency: input.currency || "USD",
           commissionType: input.commissionType ?? "PERCENT",
           commissionValue:
@@ -590,6 +591,10 @@ if (input.categoryId !== undefined) data.category = input.categoryId ? { connect
 
       if (input.baseStock !== undefined && !(input.productCatalogVariants?.length)) {
         data.baseStock = input.baseStock;
+      }
+
+      if (input.leadTimeDays !== undefined) {
+        data.leadTimeDays = input.leadTimeDays ?? null;
       }
 
       if (input.currency !== undefined) {

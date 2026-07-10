@@ -455,6 +455,24 @@ export function ProductBasicsSection({
                                 }))
                             }
                         />
+
+                        <Input
+                            type="number"
+                            min={0}
+                            label="Lead time (days)"
+                            description="Estimated days to produce + ship. Drives the shop 'ships in ~N days' badge, shipping-time filter and timeline warnings."
+                            placeholder="e.g. 14"
+                            value={state.leadTimeDays == null ? "" : String(state.leadTimeDays)}
+                            onChange={(event) =>
+                                onStateChange((current) => ({
+                                    ...current,
+                                    leadTimeDays:
+                                        event.target.value === ""
+                                            ? null
+                                            : Math.max(0, Number(event.target.value || 0))
+                                }))
+                            }
+                        />
                     </CardBody>
                 </Card>
 

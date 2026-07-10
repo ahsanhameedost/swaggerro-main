@@ -184,6 +184,8 @@ const productSchemaBase = z.object({
   compareAtPrice: moneySchema.optional().nullable(),
   minQty: z.coerce.number().int().min(1).default(1),
   baseStock: z.coerce.number().int().min(0).default(0),
+  // Estimated production + shipping lead time in days (admin-managed).
+  leadTimeDays: z.coerce.number().int().min(0).max(365).optional().nullable(),
   currency: z.string().trim().min(3).max(8).default("USD"),
   // Swaggeroo's per-product commission. PERCENT value is capped 0-15;
   // FLAT value is a dollar amount taken at the catalog base price.
