@@ -107,7 +107,7 @@ export function HeroSlider() {
               href="/studio"
               className={cn(
                 buttonVariants({ variant: "outline", size: "lg" }),
-                "h-12 border-white/30 bg-transparent px-6 text-base text-white hover:bg-white/10",
+                "h-12 border-white/30 bg-transparent px-6 text-base text-white hover:bg-white/10 hover:text-white",
               )}
             >
               Build a pack
@@ -217,7 +217,7 @@ export function HeroSlider() {
             aria-current={active === i}
             className={cn(
               "h-2 rounded-full transition-all",
-              active === i ? "w-6 bg-primary" : "w-2 bg-foreground/25 hover:bg-foreground/40",
+              active === i ? "w-6 bg-primary" : "w-2 bg-white/30 hover:bg-white/50",
             )}
           />
         ))}
