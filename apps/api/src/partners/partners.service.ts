@@ -48,6 +48,10 @@ export class PartnersService {
         country: input.country.trim(),
         state: input.state?.trim() || null,
         postalCode: input.postalCode?.trim() || null,
+        annualVolume: input.annualVolume?.trim() || null,
+        settlementMethod: input.settlementMethod?.trim() || null,
+        taxId: input.taxId?.trim() || null,
+        brandingAssets: input.brandingAssets?.trim() || null,
         desiredSlug: input.desiredSlug ? normalizeSlug(input.desiredSlug) || null : null,
         website: input.website?.trim() || null,
         additionalInfo: input.additionalInfo?.trim() || null,
@@ -260,6 +264,10 @@ export class PartnersService {
     country: string;
     state?: string | null;
     postalCode?: string | null;
+    annualVolume?: string | null;
+    settlementMethod?: string | null;
+    taxId?: string | null;
+    brandingAssets?: string | null;
     desiredSlug?: string | null;
     logoUrl: string | null;
     logoKey: string | null;
@@ -285,6 +293,10 @@ export class PartnersService {
       country: item.country,
       state: item.state ?? null,
       postalCode: item.postalCode ?? null,
+      annualVolume: item.annualVolume ?? null,
+      settlementMethod: item.settlementMethod ?? null,
+      taxId: item.taxId ?? null,
+      brandingAssets: item.brandingAssets ?? null,
       desiredSlug: item.desiredSlug ?? null,
       logoUrl: item.logoUrl,
       logoKey: item.logoKey,

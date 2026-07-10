@@ -43,6 +43,34 @@ export const createSellerApplicationSchema = z.object({
     .optional()
     .or(z.literal(""))
     .transform((value) => (value ? value : undefined)),
+  annualVolume: z
+    .string()
+    .trim()
+    .max(120)
+    .optional()
+    .or(z.literal(""))
+    .transform((value) => (value ? value : undefined)),
+  settlementMethod: z
+    .string()
+    .trim()
+    .max(120)
+    .optional()
+    .or(z.literal(""))
+    .transform((value) => (value ? value : undefined)),
+  taxId: z
+    .string()
+    .trim()
+    .max(80)
+    .optional()
+    .or(z.literal(""))
+    .transform((value) => (value ? value : undefined)),
+  brandingAssets: z
+    .string()
+    .trim()
+    .max(2000)
+    .optional()
+    .or(z.literal(""))
+    .transform((value) => (value ? value : undefined)),
   // Desired storefront URL slug (e.g. "acme-corp" → swaggeroo.com/store/acme-corp).
   // Optional: if omitted we derive it from the company name during onboarding.
   desiredSlug: z

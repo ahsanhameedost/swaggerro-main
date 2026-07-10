@@ -12,6 +12,10 @@ export type SellerApplication = {
   country: string;
   state: string | null;
   postalCode: string | null;
+  annualVolume: string | null;
+  settlementMethod: string | null;
+  taxId: string | null;
+  brandingAssets: string | null;
   desiredSlug: string | null;
   logoUrl: string | null;
   logoKey: string | null;
@@ -37,6 +41,10 @@ export type CreateSellerApplicationInput = {
   country: string;
   state?: string;
   postalCode?: string;
+  annualVolume?: string;
+  settlementMethod?: string;
+  taxId?: string;
+  brandingAssets?: string;
   desiredSlug?: string;
   website?: string;
   additionalInfo?: string;

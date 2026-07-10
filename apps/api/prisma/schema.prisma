@@ -907,6 +907,11 @@ model SellerApplication {
   country             String
   state               String?
   postalCode          String?
+  // Onboarding extras (optional).
+  annualVolume        String?
+  settlementMethod    String?
+  taxId               String?
+  brandingAssets      String?                 @db.Text
   desiredSlug         String?
   logoUrl             String?
   logoKey             String?

@@ -157,6 +157,9 @@ function DetailModal({
                   label="State / postal code"
                   value={[application.state, application.postalCode].filter(Boolean).join(" · ") || "—"}
                 />
+                <Detail label="Annual order volume" value={application.annualVolume || "—"} />
+                <Detail label="Payment settlement" value={application.settlementMethod || "—"} />
+                <Detail label="Tax / VAT number" value={application.taxId || "—"} />
                 <Detail
                   label="Website"
                   value={
@@ -177,6 +180,9 @@ function DetailModal({
               </div>
 
               <Detail label="Company address" value={application.companyAddress} />
+              {application.brandingAssets ? (
+                <Detail label="Existing branding assets" value={application.brandingAssets} multiline />
+              ) : null}
               <Detail label="Business description" value={application.businessDescription} multiline />
               {application.additionalInfo ? (
                 <Detail label="Additional information" value={application.additionalInfo} multiline />

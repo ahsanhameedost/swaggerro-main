@@ -62,6 +62,10 @@ type FormState = {
   countryCode: string;
   stateName: string;
   postalCode: string;
+  annualVolume: string;
+  settlementMethod: string;
+  taxId: string;
+  brandingAssets: string;
   slug: string;
   website: string;
   additionalInfo: string;
@@ -78,6 +82,10 @@ const EMPTY: FormState = {
   countryCode: "",
   stateName: "",
   postalCode: "",
+  annualVolume: "",
+  settlementMethod: "",
+  taxId: "",
+  brandingAssets: "",
   slug: "",
   website: "",
   additionalInfo: "",
@@ -317,6 +325,10 @@ export default function BecomeASellerPage() {
         country: countryName,
         state: form.stateName.trim() || undefined,
         postalCode: form.postalCode.trim() || undefined,
+        annualVolume: form.annualVolume.trim() || undefined,
+        settlementMethod: form.settlementMethod.trim() || undefined,
+        taxId: form.taxId.trim() || undefined,
+        brandingAssets: form.brandingAssets.trim() || undefined,
         desiredSlug: form.slug.trim() || undefined,
         website: form.website.trim() || undefined,
         additionalInfo: form.additionalInfo.trim() || undefined,
@@ -489,6 +501,49 @@ export default function BecomeASellerPage() {
               <Field label="ZIP / postal code" error={errors.postalCode}>
                 <input className={inputClass} value={form.postalCode} onChange={(e) => set("postalCode", e.target.value)} placeholder="94103" />
               </Field>
+            </div>
+
+            <div className="mt-6 border-t border-border pt-5">
+              <p className="text-sm font-semibold text-foreground">
+                A few more details{" "}
+                <span className="font-normal text-muted-foreground">
+                  — optional, helps us onboard you faster
+                </span>
+              </p>
+              <div className="mt-3 grid gap-4 sm:grid-cols-2">
+                <Field label="Estimated annual order volume" error={errors.annualVolume}>
+                  <select
+                    className={cn(inputClass, !form.annualVolume && "text-muted-foreground")}
+                    value={form.annualVolume}
+                    onChange={(e) => set("annualVolume", e.target.value)}
+                  >
+                    <option value="">Select a range…</option>
+                    <option value="Under $10k">Under $10k</option>
+                    <option value="$10k–$50k">$10k–$50k</option>
+                    <option value="$50k–$250k">$50k–$250k</option>
+                    <option value="$250k+">$250k+</option>
+                  </select>
+                </Field>
+                <Field label="Preferred payment settlement" error={errors.settlementMethod}>
+                  <select
+                    className={cn(inputClass, !form.settlementMethod && "text-muted-foreground")}
+                    value={form.settlementMethod}
+                    onChange={(e) => set("settlementMethod", e.target.value)}
+                  >
+                    <option value="">Select a method…</option>
+                    <option value="Bank transfer (ACH)">Bank transfer (ACH)</option>
+                    <option value="Wire">Wire</option>
+                    <option value="PayPal">PayPal</option>
+                    <option value="Stripe">Stripe</option>
+                  </select>
+                </Field>
+                <Field label="Tax / VAT registration number" error={errors.taxId}>
+                  <input className={inputClass} value={form.taxId} onChange={(e) => set("taxId", e.target.value)} placeholder="e.g. 12-3456789" />
+                </Field>
+                <Field label="Existing branding assets" error={errors.brandingAssets}>
+                  <input className={inputClass} value={form.brandingAssets} onChange={(e) => set("brandingAssets", e.target.value)} placeholder="Link to logo / brand kit, or a short note" />
+                </Field>
+              </div>
             </div>
 
             <div className="mt-6 flex justify-end">
