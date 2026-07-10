@@ -7,6 +7,8 @@ import {
 } from "@nestjs/common";
 import { Prisma, type CatalogOrderDesignPhase, type CatalogOrderRevisionStatus } from "@prisma/client";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
+import QRCode from "qrcode";
+import { webBaseUrl } from "../../email/email-layout";
 // archiver is a CommonJS module whose export IS the factory function. The plain
 // default import resolved to `.default` (undefined) under this tsconfig and threw
 // "archiver_1.default is not a function". import-require binds the callable export.
@@ -124,7 +126,7 @@ export class CatalogOrdersService extends CatalogSharedService {
     },
     items: {
       include: {
-        product: { select: { leadTimeDays: true } },
+        product: { select: { leadTimeDays: true, slug: true } },
         inventoryLedgerEntries: {
           orderBy: { createdAt: "desc" as const }
         },
@@ -1109,9 +1111,30 @@ async createOrderPayment(id: string, input: CreateOrderPaymentDto, authUser: Aut
     coverLine("CUSTOMER", order.name);
     coverLine("DATE", new Date(order.createdAt).toLocaleDateString());
     coverLine("ITEMS", String(order.items.length));
+
+    // Order tracking link + scannable QR so the customer can jump straight to
+    // their order from the printed/emailed proof (#25).
+    const base = webBaseUrl();
+    const orderUrl = `${base}/dashboard/orders/${order.id}`;
+    cover.drawText("TRACK YOUR ORDER", { x: 48, y: cy, size: 10, font, color: MUTED });
+    cover.drawText(orderUrl, { x: 48, y: cy - 16, size: 10, font, color: BRAND });
+    try {
+      const qrPng = await QRCode.toBuffer(orderUrl, { type: "png", width: 220, margin: 1 });
+      const qr = await pdf.embedPng(qrPng);
+      cover.drawImage(qr, { x: PAGE_W - 168, y: 90, width: 120, height: 120 });
+      cover.drawText("Scan to track", {
+        x: PAGE_W - 158,
+        y: 74,
+        size: 9,
+        font,
+        color: MUTED
+      });
+    } catch {
+      /* QR is best-effort — the link text above still works. */
+    }
     cover.drawText("Please review each design on the following pages.", {
       x: 48,
-      y: cy - 4,
+      y: 130,
       size: 11,
       font,
       color: MUTED
@@ -1151,6 +1174,16 @@ async createOrderPayment(id: string, input: CreateOrderPaymentDto, authUser: Aut
         font,
         color: MUTED
       });
+      const productSlug = (item as any).product?.slug as string | undefined;
+      if (productSlug) {
+        page.drawText(`Product: ${base}/shop/${productSlug}`, {
+          x: 48,
+          y: PAGE_H - 136,
+          size: 10,
+          font,
+          color: BRAND
+        });
+      }
 
       if (imageUrl) {
         try {
