@@ -10,6 +10,7 @@ import { randomUUID } from "crypto";
 import { PrismaService } from "../../prisma/prisma.service";
 import { env } from "../../env";
 import { NotificationsService } from "../../notifications/notifications.service";
+import { NotificationEventsService } from "../../notifications/notification-events.service";
 import type {
   ConfirmPublicCheckoutInput,
   CreatePublicCheckoutInput
@@ -21,7 +22,8 @@ export class PublicCheckoutService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly notifications: NotificationsService
+    private readonly notifications: NotificationsService,
+    private readonly events: NotificationEventsService
   ) {}
 
   private getStripeClient() {
@@ -244,11 +246,31 @@ export class PublicCheckoutService {
     });
 
     const amountLabel = `$${(totalCents / 100).toFixed(2)}`;
+    const orderLabel = `SW-${String(order.orderNumber).padStart(3, "0")}`;
     await this.notifications.notifyAdmins({
       type: "catalog.order.paid",
       title: "Shop order paid",
       body: `${order.name} placed a ${amountLabel} order.`,
       link: `/dashboard/orders/${order.id}`
+    });
+
+    // Customer order-confirmation with a direct tracking link (#26).
+    await this.events.dispatchToUser({
+      userId: buyerUserId,
+      type: "catalog.order.confirmed",
+      title: "Order confirmed",
+      body: `Your order ${orderLabel} (${amountLabel}) is confirmed.`,
+      link: `/dashboard/orders/${order.id}`,
+      email: {
+        subject: `Order confirmed — ${orderLabel}`,
+        heading: "Thanks — your order is confirmed",
+        paragraphs: [
+          `We received your payment of ${amountLabel} for order ${orderLabel}.`,
+          "You can track its status and next steps anytime from your dashboard."
+        ],
+        ctaPath: `/dashboard/orders/${order.id}`,
+        ctaLabel: "Track your order"
+      }
     });
 
     return { orderId: order.id, paymentStatus: "PAID" as const, alreadyPaid: false };

@@ -41,6 +41,13 @@ import {
 } from "@/lib/order-flow";
 import { hasAnyPermission, hasPermission } from "@/lib/permissions";
 
+const PRODUCTION_STAGE_LABELS: Record<string, string> = {
+  NOT_STARTED: "Not started",
+  READY_FOR_PRODUCTION: "Ready for production",
+  IN_PRODUCTION: "In production",
+  SHIPPED: "Shipped"
+};
+
 export default function OrdersPage() {
   const { data: user } = useMe();
   const isCustomer = hasPermission(user, "orders.self.read");
@@ -264,9 +271,20 @@ export default function OrdersPage() {
                         ))}
                       </Select>
                     ) : (
-                      <Chip size="sm" variant="flat" color={getOrderStatusColor(order.status)}>
-                        {formatOrderStatusLabel(order.status)}
-                      </Chip>
+                      <div className="flex flex-col items-start gap-1">
+                        <Chip size="sm" variant="flat" color={getOrderStatusColor(order.status)}>
+                          {formatOrderStatusLabel(order.status)}
+                        </Chip>
+                        {order.productionStage && order.productionStage !== "NOT_STARTED" ? (
+                          <Chip
+                            size="sm"
+                            variant="flat"
+                            color={order.productionStage === "SHIPPED" ? "success" : "primary"}
+                          >
+                            {PRODUCTION_STAGE_LABELS[order.productionStage]}
+                          </Chip>
+                        ) : null}
+                      </div>
                     )}
                   </TableCell>
 
