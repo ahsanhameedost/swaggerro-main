@@ -257,7 +257,7 @@ export function PackStudio() {
     setStep((s) => Math.min(STEPS.length - 1, s + 1));
   };
 
-  const addPackToCart = () => {
+  const addPackToCart = (destination: "/cart" | "/project-submission" = "/cart") => {
     if (!hasItems) {
       addToast({ title: "Your pack is empty.", color: "warning" });
       return;
@@ -272,7 +272,7 @@ export function PackStudio() {
       description: `${summary.swagPackName} · ${summary.packQuantity} packs`,
       color: "success",
     });
-    router.push("/cart");
+    router.push(destination);
   };
 
   if (!hydrated || isLoading) {
@@ -715,10 +715,10 @@ export function PackStudio() {
             ) : (
               <button
                 type="button"
-                onClick={addPackToCart}
+                onClick={() => addPackToCart("/project-submission")}
                 className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-brand transition hover:bg-primary/90"
               >
-                Add Pack to Cart
+                Approve &amp; checkout
               </button>
             )}
           </div>
@@ -775,10 +775,17 @@ export function PackStudio() {
 
                 <button
                   type="button"
-                  onClick={addPackToCart}
+                  onClick={() => addPackToCart("/project-submission")}
                   className="mt-4 w-full rounded-xl bg-primary py-3 text-sm font-semibold text-primary-foreground shadow-brand transition hover:bg-primary/90"
                 >
-                  Add Pack to Cart
+                  Approve &amp; checkout
+                </button>
+                <button
+                  type="button"
+                  onClick={() => addPackToCart("/cart")}
+                  className="mt-2 w-full rounded-xl border border-border py-2.5 text-sm font-medium transition hover:bg-muted"
+                >
+                  Add to cart
                 </button>
               </>
             ) : (
