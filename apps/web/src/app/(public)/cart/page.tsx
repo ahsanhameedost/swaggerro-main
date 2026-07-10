@@ -16,6 +16,7 @@ import {
 import { calculateCatalogCartSummary } from "@/lib/catalog-cart";
 import { formatMoney } from "@/lib/money";
 import { useMe } from "@/queries/auth";
+import { saveSwagPack } from "@/modules/swag-packs/api";
 import { getPublicProduct } from "@/modules/catalog/public/api";
 import type { CatalogProductDetail, CatalogProductListItem, ProductCatalogVariant } from "@/modules/catalog/products/types";
 import { PageBanner } from "@/components/marketing/page-banner";
@@ -82,6 +83,38 @@ export default function CartPage() {
 
   const [packagingDrawerOpen, setPackagingDrawerOpen] = useState(false);
   const [selectingPackaging, setSelectingPackaging] = useState(false);
+  const [savingPack, setSavingPack] = useState(false);
+
+  // Save the current SwagPack to the customer's account so they can reorder it (#12).
+  const handleSavePack = async () => {
+    if (!user) {
+      addToast({ title: "Sign in to save your pack", color: "warning" });
+      return;
+    }
+    const s = useCatalogCartStore.getState();
+    const name =
+      (typeof window !== "undefined" && window.prompt("Name this pack", s.swagPackName)) ||
+      s.swagPackName;
+    setSavingPack(true);
+    try {
+      await saveSwagPack(name, {
+        swagPackItems: s.swagPackItems,
+        swagPackPackaging: s.swagPackPackaging,
+        swagPackQuantity: s.swagPackQuantity,
+        swagPackName: name,
+        branding: s.branding
+      });
+      addToast({
+        title: "Pack saved",
+        description: "Reorder it anytime from My Swag Packs.",
+        color: "success"
+      });
+    } catch (e: any) {
+      addToast({ title: "Save failed", description: e?.message ?? "Try again.", color: "danger" });
+    } finally {
+      setSavingPack(false);
+    }
+  };
 
   const handlePackagingSelect = async (product: CatalogProductListItem) => {
     setSelectingPackaging(true);
@@ -317,6 +350,13 @@ export default function CartPage() {
                         onPress={clearSwagPack}
                       >
                         Remove
+                      </Button>
+                      <Button
+                        variant="bordered"
+                        isLoading={savingPack}
+                        onPress={handleSavePack}
+                      >
+                        Save pack
                       </Button>
                       <Link href="/swag-pack">
                         <Button

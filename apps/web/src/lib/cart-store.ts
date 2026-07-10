@@ -78,6 +78,17 @@ type CatalogCartStore = CatalogCartSnapshot & {
   clearSwagPackItems: () => void;
   clearSwagPack: () => void;
   clearCart: () => void;
+  // Hydrate a saved SwagPack (reorder) back into the cart (#12).
+  loadSwagPack: (snapshot: SavedSwagPackSnapshot) => void;
+};
+
+// The shape persisted when a customer saves a SwagPack to reorder later.
+export type SavedSwagPackSnapshot = {
+  swagPackItems: SwagPackCartItem[];
+  swagPackPackaging: SwagPackPackagingItem | null;
+  swagPackQuantity: number;
+  swagPackName: string;
+  branding: CartBranding;
 };
 
 function getItemKey(
@@ -227,6 +238,19 @@ export const useCatalogCartStore = create<CatalogCartStore>()(
           swagPackLogoUrl: null,
           swagPackLogoKey: null,
           branding: { logoUrl: null, logoKey: null, mockupUrl: null, note: null }
+        }),
+      loadSwagPack: (snapshot) =>
+        set({
+          swagPackItems: snapshot.swagPackItems ?? [],
+          swagPackPackaging: snapshot.swagPackPackaging ?? null,
+          swagPackQuantity: snapshot.swagPackQuantity ?? 25,
+          swagPackName: snapshot.swagPackName ?? createDefaultSwagPackName(),
+          branding: snapshot.branding ?? {
+            logoUrl: null,
+            logoKey: null,
+            mockupUrl: null,
+            note: null
+          }
         })
     }),
     {

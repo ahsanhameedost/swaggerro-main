@@ -20,6 +20,7 @@ import { StoreCheckoutModule } from "./catalog/store-checkout/store-checkout.mod
 import { PublicCheckoutModule } from "./catalog/public-checkout/public-checkout.module";
 import { PayoutsModule } from "./payouts/payouts.module";
 import { PaymentsModule } from "./payments/payments.module";
+import { SavedSwagPacksModule } from "./saved-swag-packs/saved-swag-packs.module";
 import { SettingsModule } from "./settings/settings.module";
 
 @Module({
@@ -45,6 +46,7 @@ import { SettingsModule } from "./settings/settings.module";
     PublicCheckoutModule,
     PayoutsModule,
     PaymentsModule,
+    SavedSwagPacksModule,
     SettingsModule
   ],
   controllers: [HealthController]

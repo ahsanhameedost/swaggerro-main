@@ -53,6 +53,13 @@ const NAV_ITEMS: NavItem[] = [
     requiredAnyPermissions: ["design.read", "design.assigned.read", "orders.self.read"]
   },
   {
+    key: "swag-packs",
+    label: "My Swag Packs",
+    href: "/dashboard/swag-packs",
+    icon: "Gift",
+    requiredAnyPermissions: ["orders.self.read"]
+  },
+  {
     key: "recipients",
     label: "Recipients",
     href: "/dashboard/recipients",

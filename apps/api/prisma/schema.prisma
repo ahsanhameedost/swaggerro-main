@@ -898,6 +898,20 @@ enum SellerApplicationStatus {
   REJECTED
 }
 
+// A SwagPack a customer saved from the builder so they can reorder it later
+// without rebuilding. `snapshot` holds the cart's swag-pack config as JSON.
+model SavedSwagPack {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  snapshot  Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, createdAt])
+  @@map("saved_swag_packs")
+}
+
 model SellerApplication {
   id                  String                  @id @default(cuid())
   companyName         String

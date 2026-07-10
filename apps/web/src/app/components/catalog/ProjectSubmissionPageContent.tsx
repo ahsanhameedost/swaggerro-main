@@ -421,6 +421,27 @@ export function ProjectSubmissionPageContent() {
               <div className="space-y-5 border-t border-black/10 pt-8">
                 <h3 className="text-2xl font-semibold text-black">Project details</h3>
 
+                {/* #13 — the Studio flow launches from the first option here. */}
+                <Link
+                  href="/studio"
+                  className="flex items-center justify-between gap-4 rounded-[24px] border border-[var(--primary)]/30 bg-[var(--primary)]/[0.05] p-5 transition hover:bg-[var(--primary)]/[0.09]"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--primary)]/15 text-[var(--primary)]">
+                      <Sparkles className="size-5" />
+                    </span>
+                    <div>
+                      <div className="font-semibold text-black">Build your Swag Pack in the Studio</div>
+                      <div className="text-sm text-black/55">
+                        Pick products, set quantities and add branding with live pricing.
+                      </div>
+                    </div>
+                  </div>
+                  <span className="shrink-0 rounded-full bg-[var(--primary)] px-4 py-2 text-sm font-semibold text-white">
+                    Open Studio
+                  </span>
+                </Link>
+
                 <Input
                   label="What's your budget per swag pack/person?"
                   type="number"
