@@ -23,7 +23,8 @@ import {
   listOrdersQuerySchema,
   requestOrderItemRevisionSchema,
   updateOrderItemDesignSchema,
-  updateOrderStatusSchema
+  updateOrderStatusSchema,
+  updateProductionStageSchema
 } from "../dto/order.dto";
 import { CatalogOrdersService } from "./orders.service";
 
@@ -75,6 +76,23 @@ export class CatalogOrdersController {
       order: await this.ordersService.updateOrderStatus(
         id,
         parseOrThrow(updateOrderStatusSchema.safeParse(body), "Invalid order status payload"),
+        req.user!
+      )
+    };
+  }
+
+  @UseGuards(AuthGuard, PermissionsGuard)
+  @Patch("orders/:id/production")
+  @RequirePermissions("catalog.orders.update")
+  async updateProductionStage(
+    @Param("id") id: string,
+    @Body() body: unknown,
+    @Req() req: FastifyRequest & { user?: AuthUser }
+  ) {
+    return {
+      order: await this.ordersService.updateProductionStage(
+        id,
+        parseOrThrow(updateProductionStageSchema.safeParse(body), "Invalid production stage payload"),
         req.user!
       )
     };

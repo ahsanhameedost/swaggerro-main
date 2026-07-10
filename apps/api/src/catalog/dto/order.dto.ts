@@ -29,6 +29,17 @@ export const updateOrderStatusSchema = z.object({
   status: catalogOrderStatusSchema
 });
 
+export const productionStageSchema = z.enum([
+  "NOT_STARTED",
+  "READY_FOR_PRODUCTION",
+  "IN_PRODUCTION",
+  "SHIPPED"
+]);
+
+export const updateProductionStageSchema = z.object({
+  productionStage: productionStageSchema
+});
+
 export const assignOrderEmployeeSchema = z.object({
   assignedEmployeeId: z.string().trim().nullable()
 });
@@ -65,6 +76,7 @@ export const createOrderPaymentSchema = z.object({
 
 export type ListOrdersQuery = z.infer<typeof listOrdersQuerySchema>;
 export type UpdateOrderStatusDto = z.infer<typeof updateOrderStatusSchema>;
+export type UpdateProductionStageDto = z.infer<typeof updateProductionStageSchema>;
 export type AssignOrderEmployeeDto = z.infer<typeof assignOrderEmployeeSchema>;
 export type CreateOrderDesignUploadDto = z.infer<typeof createOrderDesignUploadSchema>;
 export type UpdateOrderItemDesignDto = z.infer<typeof updateOrderItemDesignSchema>;

@@ -56,6 +56,16 @@ enum CatalogPaymentStatus {
   REFUNDED
 }
 
+// Post-approval fulfillment stage of an order, surfaced to the customer as a
+// tracker. READY_FOR_PRODUCTION is auto-set once all designs are approved;
+// IN_PRODUCTION / SHIPPED are advanced by staff / the shipping flow.
+enum ProductionStage {
+  NOT_STARTED
+  READY_FOR_PRODUCTION
+  IN_PRODUCTION
+  SHIPPED
+}
+
 // How Swaggeroo takes its cut on a product sold through a seller store.
 // PERCENT: cut = rate% of the seller's sale price (capped 0-15).
 // FLAT: a fixed dollar cut defined at the product's catalog base price; it
@@ -550,6 +560,7 @@ model CatalogOrder {
   type               CatalogOrderType
   status             CatalogOrderStatus    @default(PENDING_REVIEW)
   paymentStatus      CatalogPaymentStatus  @default(UNPAID)
+  productionStage    ProductionStage       @default(NOT_STARTED)
   email              String
   name               String
   companyName        String?

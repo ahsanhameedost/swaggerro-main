@@ -1,6 +1,7 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException, ServiceUnavailableException } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
+import { NotificationEventsService } from "../notifications/notification-events.service";
 import type { AuthUser } from "../common/guards/auth.guard";
 import { randomUUID } from "crypto";
 import { slugify } from "../common/utils/slug";
@@ -37,7 +38,10 @@ type ShipmentDraftLine = {
 
 @Injectable()
 export class ShippingService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly events: NotificationEventsService
+  ) {}
 
   async listShippingProfiles() {
     const items = await this.prisma.shippingProfile.findMany({
@@ -979,6 +983,33 @@ export class ShippingService {
         }
       });
     });
+
+    // Notify the customer when their shipment goes out, with a tracking link.
+    if (input.status === "ON_THE_WAY" && shipment.order?.userId) {
+      const trackingUrl = shipment.trackingUrl;
+      await this.events.dispatchToUser({
+        userId: shipment.order.userId,
+        type: "shipping.shipped",
+        title: "Your order shipped",
+        body: "Your order is on the way.",
+        link: `/dashboard/orders/${shipment.orderId}`,
+        email: {
+          subject: "Your order shipped",
+          heading: "Your order is on the way",
+          paragraphs: [
+            "Good news — your order has shipped.",
+            ...(trackingUrl ? ["Use the button below to track your package."] : [])
+          ],
+          ctaPath: trackingUrl ?? `/dashboard/orders/${shipment.orderId}`,
+          ctaLabel: trackingUrl ? "Track your package" : "View order"
+        }
+      });
+      // Reflect on the order's production tracker.
+      await this.prisma.catalogOrder.update({
+        where: { id: shipment.orderId },
+        data: { productionStage: "SHIPPED" }
+      });
+    }
 
     return this.serializeShipment(shipment);
   }

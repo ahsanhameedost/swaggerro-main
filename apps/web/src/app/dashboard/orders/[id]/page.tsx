@@ -23,6 +23,7 @@ import {
   useCatalogOrder,
   useUpdateCatalogOrderItemDesign,
   useUpdateCatalogOrderStatus,
+  useUpdateCatalogOrderProductionStage,
   useRefundCatalogOrder,
   useAssignCatalogOrderEmployee,
   useEmployees
@@ -44,7 +45,7 @@ import {
   getPaymentStatusColor,
   getPreferredDesignImage
 } from "@/lib/order-flow";
-import type { CatalogOrderItem, CatalogOrderDesignPhase, CatalogOrderStatus } from "@/modules/catalog/orders/types";
+import type { CatalogOrder, CatalogOrderItem, CatalogOrderDesignPhase, CatalogOrderStatus } from "@/modules/catalog/orders/types";
 
 const ORDER_STATUSES: CatalogOrderStatus[] = [
   "PENDING_REVIEW",
@@ -339,6 +340,7 @@ export default function OrderDetailsPage() {
   const canRead = hasAnyPermission(user, ["catalog.orders.read", "orders.assigned.read", "orders.self.read"]);
 
   const statusMutation = useUpdateCatalogOrderStatus();
+  const productionMutation = useUpdateCatalogOrderProductionStage();
   const refundMutation = useRefundCatalogOrder();
   const assignMutation = useAssignCatalogOrderEmployee();
   const { data: employees = [] } = useEmployees("", canAssign);
@@ -476,6 +478,8 @@ export default function OrderDetailsPage() {
         </CardBody>
       </Card>
 
+      <OrderStageTracker order={order} />
+
       {!isCustomer && (canManageStatus || canAssign) ? (
         <Card className="border border-divider shadow-sm">
           <CardBody className="flex flex-col gap-4 p-6 lg:flex-row lg:items-end lg:justify-between">
@@ -508,6 +512,39 @@ export default function OrderDetailsPage() {
                 >
                   {ORDER_STATUSES.map((s) => (
                     <SelectItem key={s}>{formatOrderStatusLabel(s)}</SelectItem>
+                  ))}
+                </Select>
+              ) : null}
+
+              {canManageStatus ? (
+                <Select
+                  label="Production stage"
+                  aria-label="Production stage"
+                  selectedKeys={[order.productionStage ?? "NOT_STARTED"]}
+                  className="min-w-[220px]"
+                  isDisabled={productionMutation.isPending}
+                  onSelectionChange={async (keys) => {
+                    const next = Array.from(keys as Set<string>)[0];
+                    if (!next || next === (order.productionStage ?? "NOT_STARTED")) return;
+                    try {
+                      await productionMutation.mutateAsync({ id: order.id, productionStage: next });
+                      addToast({ title: "Production stage updated", color: "success" });
+                    } catch (e: any) {
+                      addToast({
+                        title: "Update failed",
+                        description: e?.message ?? "Unable to update production stage.",
+                        color: "danger"
+                      });
+                    }
+                  }}
+                >
+                  {[
+                    { key: "NOT_STARTED", label: "Not started" },
+                    { key: "READY_FOR_PRODUCTION", label: "Ready for production" },
+                    { key: "IN_PRODUCTION", label: "In production" },
+                    { key: "SHIPPED", label: "Shipped" }
+                  ].map((s) => (
+                    <SelectItem key={s.key}>{s.label}</SelectItem>
                   ))}
                 </Select>
               ) : null}
@@ -948,5 +985,77 @@ export default function OrderDetailsPage() {
         </Card>
       </div>
     </div>
+  );
+}
+
+const FULFILLMENT_STAGES = ["Submitted", "In design", "Approved", "In production", "Shipped"];
+
+function orderStageIndex(order: CatalogOrder) {
+  if (order.productionStage === "SHIPPED") return 4;
+  if (order.productionStage === "IN_PRODUCTION") return 3;
+  if (order.status === "APPROVED" || order.productionStage === "READY_FOR_PRODUCTION") return 2;
+  if (order.status === "IN_REVIEW") return 1;
+  return 0;
+}
+
+// Order-level progress tracker so every user always sees where the order is,
+// what's done and what's next (Submitted → In design → Approved → In production → Shipped).
+function OrderStageTracker({ order }: { order: CatalogOrder }) {
+  if (order.status === "CANCELLED" || order.status === "REJECTED") {
+    return (
+      <Card className="border border-divider shadow-sm">
+        <CardBody className="p-6 text-sm font-semibold text-foreground/80">
+          This order is {order.status === "CANCELLED" ? "cancelled" : "rejected"}.
+        </CardBody>
+      </Card>
+    );
+  }
+
+  const current = orderStageIndex(order);
+  const nextLabel = current < FULFILLMENT_STAGES.length - 1 ? FULFILLMENT_STAGES[current + 1] : null;
+
+  return (
+    <Card className="border border-divider shadow-sm">
+      <CardBody className="space-y-4 p-6">
+        <div className="flex items-center justify-between">
+          <div className="text-lg font-semibold">Order progress</div>
+          <div className="text-sm text-foreground/60">
+            {nextLabel ? `Next: ${nextLabel}` : "Shipped"}
+          </div>
+        </div>
+        <div className="flex items-center">
+          {FULFILLMENT_STAGES.map((label, i) => {
+            const done = i < current;
+            const active = i === current;
+            return (
+              <div key={label} className="flex flex-1 items-center last:flex-none">
+                <div className="flex flex-col items-center gap-1.5">
+                  <div
+                    className={[
+                      "flex h-8 w-8 items-center justify-center rounded-full border text-xs font-semibold",
+                      done
+                        ? "border-success bg-success text-white"
+                        : active
+                          ? "border-primary bg-primary text-white"
+                          : "border-default-300 text-foreground/40"
+                    ].join(" ")}
+                  >
+                    {done ? "✓" : i + 1}
+                  </div>
+                  <span className={active ? "text-xs font-medium" : "text-xs text-foreground/55"}>
+                    {label}
+                  </span>
+                </div>
+                {i < FULFILLMENT_STAGES.length - 1 ? (
+                  <div
+                    className={["mx-2 h-0.5 flex-1", i < current ? "bg-success" : "bg-default-200"].join(" ")}
+                  />
+                ) : null}
+              </div>
+            );
+          })}
+        </div>
+      </CardBody>
+    </Card>
   );
 }

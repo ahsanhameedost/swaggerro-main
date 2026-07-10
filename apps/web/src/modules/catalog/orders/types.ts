@@ -3,6 +3,11 @@ import type { PaginationMeta } from "../shared";
 export type CatalogOrderItemType = "BULK" | "SWAG_PACK" | "PACKAGING";
 export type CatalogOrderStatus = "PENDING_REVIEW" | "IN_REVIEW" | "APPROVED" | "REJECTED" | "CANCELLED";
 export type CatalogPaymentStatus = "UNPAID" | "PENDING" | "PAID" | "FAILED" | "REFUNDED";
+export type ProductionStage =
+  | "NOT_STARTED"
+  | "READY_FOR_PRODUCTION"
+  | "IN_PRODUCTION"
+  | "SHIPPED";
 export type CatalogOrderDesignPhase =
   | "MOCKUP_IN_PROGRESS"
   | "REVIEW_MOCKUP_DESIGN"
@@ -60,6 +65,7 @@ export type CatalogOrder = {
   type: "BULK" | "SWAG_PACK" | "COMBINED";
   status: CatalogOrderStatus;
   paymentStatus: CatalogPaymentStatus;
+  productionStage?: ProductionStage;
   email: string;
   name: string;
   companyName?: string | null;

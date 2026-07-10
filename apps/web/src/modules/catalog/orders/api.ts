@@ -44,6 +44,13 @@ export async function refundCatalogOrder(id: string) {
   });
 }
 
+export async function updateCatalogOrderProductionStage(id: string, productionStage: string) {
+  return apiFetch<UpdateCatalogOrderStatusResponse>(`/catalog/orders/${id}/production`, {
+    method: "PATCH",
+    body: JSON.stringify({ productionStage })
+  });
+}
+
 export async function assignCatalogOrderEmployee(id: string, assignedEmployeeId: string | null) {
   return apiFetch<CatalogOrderResponse>(`/catalog/orders/${id}/assignment`, {
     method: "PATCH",

@@ -22,7 +22,8 @@ import type {
   ListOrdersQuery,
   RequestOrderItemRevisionDto,
   UpdateOrderItemDesignDto,
-  UpdateOrderStatusDto
+  UpdateOrderStatusDto,
+  UpdateProductionStageDto
 } from "../dto/order.dto";
 import { EmailService } from "../../email/email.service";
 import { PrismaService } from "../../prisma/prisma.service";
@@ -331,6 +332,49 @@ export class CatalogOrdersService extends CatalogSharedService {
     return this.serializeOrderDetail(order);
   }
 
+  async updateProductionStage(
+    id: string,
+    input: UpdateProductionStageDto,
+    authUser: AuthUser
+  ) {
+    this.assertCanManageOrders(authUser);
+    const order = await this.findAccessibleOrderOrThrow(id, authUser);
+
+    const updated = await this.prisma.catalogOrder.update({
+      where: { id: order.id },
+      data: { productionStage: input.productionStage },
+      include: this.orderInclude
+    });
+
+    const STAGE_LABELS: Record<string, string> = {
+      NOT_STARTED: "Not started",
+      READY_FOR_PRODUCTION: "Ready for production",
+      IN_PRODUCTION: "In production",
+      SHIPPED: "Shipped"
+    };
+    const label = STAGE_LABELS[input.productionStage] ?? input.productionStage;
+    const orderLabel = `SW-${String(order.orderNumber).padStart(3, "0")}`;
+
+    if (order.userId && input.productionStage !== "NOT_STARTED") {
+      await this.events.dispatchToUser({
+        userId: order.userId,
+        type: "order.production_stage",
+        title: label,
+        body: `Order ${orderLabel} is now ${label.toLowerCase()}.`,
+        link: `/dashboard/orders/${order.id}`,
+        email: {
+          subject: `Order ${orderLabel} — ${label}`,
+          heading: label,
+          paragraphs: [`Order ${orderLabel} is now ${label.toLowerCase()}.`],
+          ctaPath: `/dashboard/orders/${order.id}`,
+          ctaLabel: "Track your order"
+        }
+      });
+    }
+
+    return this.serializeOrderDetail(updated);
+  }
+
   async assignEmployee(id: string, input: AssignOrderEmployeeDto, authUser: AuthUser) {
     this.assertCanManageUsers(authUser);
 
@@ -473,6 +517,42 @@ export class CatalogOrdersService extends CatalogSharedService {
       });
     });
 
+    // Fan out design-progress events to the customer.
+    const newPhase = input.designPhase;
+    if (order.userId && newPhase) {
+      const orderLabel = `SW-${String(order.orderNumber).padStart(3, "0")}`;
+      if (newPhase === "REVIEW_MOCKUP_DESIGN" || newPhase === "REVIEW_FINAL_DESIGN") {
+        const isFinal = newPhase === "REVIEW_FINAL_DESIGN";
+        await this.events.dispatchToUser({
+          userId: order.userId,
+          type: "design.review_ready",
+          title: isFinal ? "Final design ready for review" : "Mockup ready for review",
+          body: `${item.productName} on order ${orderLabel} is ready for your review.`,
+          link: "/dashboard/designs",
+          email: {
+            subject: `${isFinal ? "Final design" : "Mockup"} ready to review — ${orderLabel}`,
+            heading: isFinal ? "Your final design is ready" : "Your mockup is ready",
+            paragraphs: [
+              `The ${isFinal ? "final design" : "mockup"} for ${item.productName} on order ${orderLabel} is ready for your review.`,
+              "Open your designs to approve it or request changes."
+            ],
+            ctaPath: "/dashboard/designs",
+            ctaLabel: "Review your design"
+          }
+        });
+      } else if (newPhase === "MOCKUP_IN_PROGRESS") {
+        // Low-signal progress — in-app only, no email.
+        await this.events.dispatchToUser({
+          userId: order.userId,
+          type: "design.started",
+          title: "Design started",
+          body: `Our team started working on ${item.productName} for order ${orderLabel}.`,
+          link: `/dashboard/orders/${order.id}`,
+          email: false
+        });
+      }
+    }
+
     return this.getOrderById(order.id, authUser);
   }
 
@@ -523,26 +603,34 @@ export class CatalogOrdersService extends CatalogSharedService {
       });
     });
 
-    const recipientEmail = order.assignedEmployee?.email ?? process.env.ADMIN_EMAIL ?? null;
-    const recipientName = order.assignedEmployee
-      ? this.buildUserDisplayName(
-          order.assignedEmployee.firstName,
-          order.assignedEmployee.lastName,
-          order.assignedEmployee.email
-        )
-      : "Admin";
+    // Notify the assigned designer (or all admins if unassigned) — in-app + email.
+    const orderLabel = `SW-${String(order.orderNumber).padStart(3, "0")}`;
+    const body = `${order.name} requested changes on ${item.productName} (order ${orderLabel}).`;
+    const email = {
+      subject: `Revision requested — ${orderLabel}`,
+      heading: "Revision requested",
+      paragraphs: [body, `Notes: ${input.notes.trim()}`],
+      ctaPath: `/dashboard/orders/${order.id}`,
+      ctaLabel: "Open order"
+    };
 
-    if (recipientEmail) {
-      try {
-        await this.emailService.sendDesignRevisionRequestedEmail({
-          to: recipientEmail,
-          recipientName,
-          orderId: order.id,
-          productName: item.productName,
-          requestedByName: order.name,
-          notes: input.notes.trim()
-        });
-      } catch {}
+    if (order.assignedEmployeeId) {
+      await this.events.dispatchToUser({
+        userId: order.assignedEmployeeId,
+        type: "design.revision_requested",
+        title: "Revision requested",
+        body,
+        link: `/dashboard/orders/${order.id}`,
+        email
+      });
+    } else {
+      await this.events.dispatchToAdmins({
+        type: "design.revision_requested",
+        title: "Revision requested",
+        body,
+        link: `/dashboard/orders/${order.id}`,
+        email
+      });
     }
 
     return this.getOrderById(order.id, authUser);
@@ -600,8 +688,71 @@ export class CatalogOrdersService extends CatalogSharedService {
       await this.prisma.catalogOrder.update({
         where: { id: updated.id },
         data: {
-          status: "APPROVED"
+          status: "APPROVED",
+          productionStage: "READY_FOR_PRODUCTION"
         }
+      });
+    }
+
+    const orderLabel = `SW-${String(order.orderNumber).padStart(3, "0")}`;
+    const stageLabel = input.stage === "MOCKUP" ? "mockup" : "final design";
+
+    // Tell the design team (assigned designer, else admins) the customer approved.
+    const approvalBody = `${order.name} approved the ${stageLabel} for ${item.productName} (order ${orderLabel}).`;
+    const approvalEmail = {
+      subject: `${input.stage === "MOCKUP" ? "Mockup" : "Final design"} approved — ${orderLabel}`,
+      heading: "Design approved",
+      paragraphs: [approvalBody],
+      ctaPath: `/dashboard/orders/${order.id}`,
+      ctaLabel: "Open order"
+    };
+    if (order.assignedEmployeeId) {
+      await this.events.dispatchToUser({
+        userId: order.assignedEmployeeId,
+        type: "design.approved",
+        title: "Design approved",
+        body: approvalBody,
+        link: `/dashboard/orders/${order.id}`,
+        email: approvalEmail
+      });
+    } else {
+      await this.events.dispatchToAdmins({
+        type: "design.approved",
+        title: "Design approved",
+        body: approvalBody,
+        link: `/dashboard/orders/${order.id}`,
+        email: approvalEmail
+      });
+    }
+
+    // Once every item is approved the order is ready to produce — notify both the
+    // customer (this previously bypassed all notifications) and the admins.
+    if (allItemsReady && order.userId) {
+      await this.events.dispatchToUser({
+        userId: order.userId,
+        type: "design.all_approved",
+        title: "All designs approved",
+        body: `Every design on order ${orderLabel} is approved and ready to order.`,
+        link: `/dashboard/orders/${order.id}`,
+        email: {
+          subject: `All designs approved — ${orderLabel}`,
+          heading: "You're ready to order",
+          paragraphs: [
+            `All designs on order ${orderLabel} are approved and ready to produce.`,
+            "Head to your order to continue to checkout."
+          ],
+          ctaPath: `/dashboard/orders/${order.id}`,
+          ctaLabel: "View order"
+        }
+      });
+    }
+    if (allItemsReady) {
+      await this.events.dispatchToAdmins({
+        type: "order.ready_to_produce",
+        title: "Order ready to produce",
+        body: `All designs on order ${orderLabel} are approved.`,
+        link: `/dashboard/orders/${order.id}`,
+        email: false
       });
     }
 
@@ -1374,6 +1525,7 @@ private async createStripePayment(
       type: order.type,
       status: order.status,
       paymentStatus: order.paymentStatus,
+      productionStage: order.productionStage,
       email: order.email,
       name: order.name,
       companyName: order.companyName,

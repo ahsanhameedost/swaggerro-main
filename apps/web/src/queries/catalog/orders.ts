@@ -10,6 +10,7 @@ import {
   refundCatalogOrder,
   requestCatalogOrderItemRevision,
   updateCatalogOrderItemDesign,
+  updateCatalogOrderProductionStage,
   updateCatalogOrderStatus
 } from "@/modules/catalog/orders/api";
 import type {
@@ -60,6 +61,21 @@ export function useUpdateCatalogOrderStatus() {
   return useMutation({
     mutationFn: ({ id, status }: { id: string; status: CatalogOrderStatus }) =>
       updateCatalogOrderStatus(id, status),
+    onSuccess: async (_, variables) => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["catalog", "orders"] }),
+        queryClient.invalidateQueries({ queryKey: ["catalog", "orders", "detail", variables.id] })
+      ]);
+    }
+  });
+}
+
+export function useUpdateCatalogOrderProductionStage() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, productionStage }: { id: string; productionStage: string }) =>
+      updateCatalogOrderProductionStage(id, productionStage),
     onSuccess: async (_, variables) => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["catalog", "orders"] }),
