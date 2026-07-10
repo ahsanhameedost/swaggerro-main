@@ -5,3 +5,6 @@ dist
 .env.local
 .DS_Store
 *.log
+
+# Local backup of the original source — not part of the app
+Swaggeroo-Danish-2/
