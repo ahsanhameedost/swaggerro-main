@@ -47,6 +47,7 @@ export default function ShopPage() {
   const [colors, setColors] = useState<string[]>([]);
   const [minPrice, setMinPrice] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
+  const [shipTime, setShipTime] = useState<"" | "fast" | "standard" | "extended">("");
   const [sort, setSort] = useState<SortValue>("featured");
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const deferredSearch = useDeferredValue(search);
@@ -68,6 +69,13 @@ export default function ShopPage() {
       const price = fromPrice(p);
       if (min != null && price < min) return false;
       if (max != null && price > max) return false;
+      if (shipTime) {
+        const lt = p.leadTimeDays;
+        if (lt == null) return false;
+        if (shipTime === "fast" && lt > 7) return false;
+        if (shipTime === "standard" && (lt <= 7 || lt > 14)) return false;
+        if (shipTime === "extended" && lt <= 14) return false;
+      }
       if (q && !`${p.name} ${p.shortDescription ?? ""}`.toLowerCase().includes(q)) return false;
       return true;
     });
@@ -77,7 +85,7 @@ export default function ShopPage() {
     else if (sort === "moq-asc") list = [...list].sort((a, b) => a.minQty - b.minQty);
     else if (sort === "newest") list = [...list].sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""));
     return list;
-  }, [allProducts, category, colors, minPrice, maxPrice, deferredSearch, sort]);
+  }, [allProducts, category, colors, minPrice, maxPrice, shipTime, deferredSearch, sort]);
 
   const pageItems = filtered.slice(0, visibleCount);
   const hasMore = visibleCount < filtered.length;
@@ -106,9 +114,9 @@ export default function ShopPage() {
     setColors((cur) => (cur.includes(name) ? cur.filter((c) => c !== name) : [...cur, name]));
   };
   const clearAll = () => {
-    setCategory(null); setColors([]); setMinPrice(""); setMaxPrice(""); setVisibleCount(PAGE_SIZE);
+    setCategory(null); setColors([]); setMinPrice(""); setMaxPrice(""); setShipTime(""); setVisibleCount(PAGE_SIZE);
   };
-  const hasActive = category || colors.length || minPrice || maxPrice;
+  const hasActive = category || colors.length || minPrice || maxPrice || shipTime;
 
   const activeCategory = categories.find((c) => c.slug === category) ?? null;
 
@@ -172,6 +180,31 @@ export default function ShopPage() {
           <input type="number" min={0} placeholder="Max" value={maxPrice}
             onChange={(e) => { resetPage(); setMaxPrice(e.target.value); }}
             className="h-9 w-full rounded-lg border border-input bg-background px-2.5 text-sm tabular-nums outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50" />
+        </div>
+      </div>
+
+      <div>
+        <h3 className="mb-2.5 text-xs font-semibold tracking-wide text-muted-foreground uppercase">Shipping time</h3>
+        <div className="flex flex-col gap-1.5">
+          {[
+            { value: "", label: "Any" },
+            { value: "fast", label: "Ships in ~1 week" },
+            { value: "standard", label: "1–2 weeks" },
+            { value: "extended", label: "3+ weeks" },
+          ].map((opt) => (
+            <button
+              key={opt.value || "any"}
+              type="button"
+              onClick={() => { resetPage(); setShipTime(opt.value as typeof shipTime); }}
+              className={cn(
+                "flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-sm transition",
+                shipTime === opt.value ? "bg-brand-soft font-medium text-primary" : "text-foreground hover:bg-muted",
+              )}
+            >
+              <span className={cn("size-2 rounded-full", shipTime === opt.value ? "bg-primary" : "bg-default-300")} />
+              {opt.label}
+            </button>
+          ))}
         </div>
       </div>
     </div>

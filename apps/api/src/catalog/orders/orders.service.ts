@@ -122,6 +122,7 @@ export class CatalogOrdersService extends CatalogSharedService {
     },
     items: {
       include: {
+        product: { select: { leadTimeDays: true } },
         inventoryLedgerEntries: {
           orderBy: { createdAt: "desc" as const }
         },
@@ -1474,6 +1475,18 @@ private async createStripePayment(
 
   serializeOrderDetail(order: OrderWithRelations) {
     const totals = this.calculateOrderTotals(order);
+
+    // Estimated delivery = order date + the longest product lead time on the
+    // order. Powers the customer ETA and the ahead/late tracker messaging (#28).
+    const maxLeadDays = Math.max(
+      0,
+      ...(order.items ?? []).map((it) => (it as any).product?.leadTimeDays ?? 0)
+    );
+    const estimatedDeliveryDate =
+      maxLeadDays > 0
+        ? new Date(new Date(order.createdAt).getTime() + maxLeadDays * 86_400_000).toISOString()
+        : null;
+
     const includedShipmentQuantityByOrderItemId = new Map<string, number>();
 
     for (const shipment of order.shipments ?? []) {
@@ -1526,6 +1539,7 @@ private async createStripePayment(
       status: order.status,
       paymentStatus: order.paymentStatus,
       productionStage: order.productionStage,
+      estimatedDeliveryDate,
       email: order.email,
       name: order.name,
       companyName: order.companyName,

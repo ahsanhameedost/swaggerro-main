@@ -10,9 +10,11 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
+  Clock,
   Lock,
   PackageOpen,
   Sparkles,
+  TriangleAlert,
   TrendingDown,
   Truck,
 } from "lucide-react";
@@ -47,6 +49,8 @@ export default function ProductDetailPage() {
   const removeBulkItem = useCatalogCartStore((s) => s.removeBulkItem);
   // The cart line we're editing (when the shopper came here via cart "Edit").
   const [editingKey, setEditingKey] = useState<string | null>(null);
+  // Optional "needed by" date used to warn about production-timeline conflicts.
+  const [neededBy, setNeededBy] = useState("");
 
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>({});
   const [quantity, setQuantity] = useState(1);
@@ -161,6 +165,18 @@ export default function ProductDetailPage() {
   const savingsPercent = computeSavingsPercent(activeBasePrice, unit);
   const discountPerUnit = Math.max(0, activeBasePrice - unit);
   const discountTotal = discountPerUnit * quantity;
+
+  // Production-timeline conflict: if the shopper needs it sooner than the
+  // product's lead time can deliver, warn before checkout (#30).
+  const leadTimeDays = product?.leadTimeDays ?? null;
+  const daysUntilNeeded = useMemo(() => {
+    if (!neededBy) return null;
+    const target = new Date(neededBy);
+    if (Number.isNaN(target.getTime())) return null;
+    return Math.ceil((target.getTime() - Date.now()) / 86_400_000);
+  }, [neededBy]);
+  const timelineConflict =
+    leadTimeDays != null && daysUntilNeeded != null && daysUntilNeeded < leadTimeDays;
 
   // volume tiers sorted
   const tiers = useMemo(
@@ -326,7 +342,13 @@ export default function ProductDetailPage() {
           <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-xs text-muted-foreground">
             <span className="inline-flex items-center gap-1.5"><Truck className="size-3.5" /> Made to order</span>
             <span className="inline-flex items-center gap-1.5"><PackageOpen className="size-3.5" /> Buy 1 or in bulk</span>
-            <span className="inline-flex items-center gap-1.5"><TrendingDown className="size-3.5" /> Volume pricing — cheaper per unit at scale</span>
+            {product.leadTimeDays != null ? (
+              <span className="inline-flex items-center gap-1.5">
+                <Clock className="size-3.5" /> Ships in ~{product.leadTimeDays} days
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5"><TrendingDown className="size-3.5" /> Volume pricing — cheaper per unit at scale</span>
+            )}
           </div>
 
           {/* color / size / imprint */}
@@ -410,6 +432,33 @@ export default function ProductDetailPage() {
               ))}
             </div>
           </div>
+
+          {/* needed-by date + production-timeline conflict warning (#30) */}
+          {leadTimeDays != null ? (
+            <div className="mt-6">
+              <p className="text-sm font-semibold text-foreground">
+                Need it by a date?{" "}
+                <span className="font-normal text-muted-foreground">(optional)</span>
+              </p>
+              <input
+                type="date"
+                value={neededBy}
+                min={new Date().toISOString().slice(0, 10)}
+                onChange={(e) => setNeededBy(e.target.value)}
+                className="mt-2 h-10 rounded-xl border border-input bg-background px-3 text-sm outline-none focus-visible:border-ring"
+              />
+              {timelineConflict ? (
+                <div className="mt-3 flex items-start gap-2 rounded-xl border border-warning/50 bg-warning/10 px-3.5 py-3 text-sm text-foreground/80">
+                  <TriangleAlert className="mt-0.5 size-4 shrink-0" />
+                  <span>
+                    This product needs about {leadTimeDays} days to produce and ship, so it may not
+                    arrive by your selected date. Please choose an alternative product or adjust your
+                    timeline.
+                  </span>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
 
           {/* price panel */}
           <div className="mt-6 rounded-2xl border border-border bg-card p-5 shadow-sm">

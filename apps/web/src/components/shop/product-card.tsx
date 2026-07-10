@@ -99,6 +99,12 @@ export function ProductCard({
           </div>
         ) : null}
 
+        {product.leadTimeDays != null ? (
+          <p className="mt-2 text-xs font-medium text-muted-foreground">
+            Ships in ~{product.leadTimeDays} days
+          </p>
+        ) : null}
+
         <div className="mt-auto flex items-end justify-between pt-4">
           <div>
             <span className="text-xs text-muted-foreground">from</span>

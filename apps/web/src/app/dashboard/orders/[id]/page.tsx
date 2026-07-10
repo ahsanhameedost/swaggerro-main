@@ -1014,6 +1014,24 @@ function OrderStageTracker({ order }: { order: CatalogOrder }) {
   const current = orderStageIndex(order);
   const nextLabel = current < FULFILLMENT_STAGES.length - 1 ? FULFILLMENT_STAGES[current + 1] : null;
 
+  // Dynamic delivery message vs the estimated date (#28).
+  const eta = order.estimatedDeliveryDate ? new Date(order.estimatedDeliveryDate) : null;
+  const shipped = order.productionStage === "SHIPPED";
+  const pastEta = eta ? Date.now() > eta.getTime() : false;
+  const etaLabel = eta ? eta.toLocaleDateString() : null;
+  let deliveryNote: { tone: "good" | "bad" | "muted"; text: string } | null = null;
+  if (eta) {
+    if (shipped && !pastEta) {
+      deliveryNote = { tone: "good", text: `On the way — delivering ahead of the ${etaLabel} estimate.` };
+    } else if (shipped) {
+      deliveryNote = { tone: "muted", text: `Shipped. Estimated delivery was ${etaLabel}.` };
+    } else if (pastEta) {
+      deliveryNote = { tone: "bad", text: `Oops — this is running past the estimated ${etaLabel}. We're on it.` };
+    } else {
+      deliveryNote = { tone: "muted", text: `On track — estimated delivery by ${etaLabel}.` };
+    }
+  }
+
   return (
     <Card className="border border-divider shadow-sm">
       <CardBody className="space-y-4 p-6">
@@ -1023,6 +1041,21 @@ function OrderStageTracker({ order }: { order: CatalogOrder }) {
             {nextLabel ? `Next: ${nextLabel}` : "Shipped"}
           </div>
         </div>
+
+        {deliveryNote ? (
+          <div
+            className={[
+              "rounded-xl px-3.5 py-2.5 text-sm",
+              deliveryNote.tone === "good"
+                ? "bg-success/10 text-success"
+                : deliveryNote.tone === "bad"
+                  ? "bg-warning/10 text-warning"
+                  : "bg-default-100 text-foreground/70"
+            ].join(" ")}
+          >
+            {deliveryNote.text}
+          </div>
+        ) : null}
         <div className="flex items-center">
           {FULFILLMENT_STAGES.map((label, i) => {
             const done = i < current;

@@ -66,6 +66,7 @@ export type CatalogOrder = {
   status: CatalogOrderStatus;
   paymentStatus: CatalogPaymentStatus;
   productionStage?: ProductionStage;
+  estimatedDeliveryDate?: string | null;
   email: string;
   name: string;
   companyName?: string | null;
