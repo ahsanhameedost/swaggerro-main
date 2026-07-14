@@ -570,7 +570,8 @@ export class CatalogOrdersService extends CatalogSharedService {
         type: "design.assigned",
         title: "New design assigned",
         body: `You've been assigned to order ${orderLabel} for ${order.name}.`,
-        link: `/dashboard/orders/${order.id}`,
+        // Designers work out of the Designs queue, not the full order page.
+        link: `/dashboard/designs`,
         email: {
           subject: `New order assigned: ${orderLabel}`,
           heading: "New design assigned",
@@ -580,8 +581,8 @@ export class CatalogOrdersService extends CatalogSharedService {
             `Customer: ${order.name}`,
             "Sign in to your dashboard to review the request and start the design process."
           ],
-          ctaPath: `/dashboard/orders/${order.id}`,
-          ctaLabel: "Open order"
+          ctaPath: `/dashboard/designs`,
+          ctaLabel: "Open Designs"
         }
       });
     }
@@ -767,7 +768,7 @@ export class CatalogOrdersService extends CatalogSharedService {
     // Notify the assigned designer (or all admins if unassigned) — in-app + email.
     const orderLabel = `SW-${String(order.orderNumber).padStart(3, "0")}`;
     const body = `${order.name} requested changes on ${item.productName} (order ${orderLabel}).`;
-    const email = {
+    const orderEmail = {
       subject: `Revision requested — ${orderLabel}`,
       heading: "Revision requested",
       paragraphs: [body, `Notes: ${input.notes.trim()}`],
@@ -776,13 +777,14 @@ export class CatalogOrdersService extends CatalogSharedService {
     };
 
     if (order.assignedEmployeeId) {
+      // The assigned designer handles revisions from the Designs queue.
       await this.events.dispatchToUser({
         userId: order.assignedEmployeeId,
         type: "design.revision_requested",
         title: "Revision requested",
         body,
-        link: `/dashboard/orders/${order.id}`,
-        email
+        link: `/dashboard/designs`,
+        email: { ...orderEmail, ctaPath: `/dashboard/designs`, ctaLabel: "Open Designs" }
       });
     } else {
       await this.events.dispatchToAdmins({
@@ -790,7 +792,7 @@ export class CatalogOrdersService extends CatalogSharedService {
         title: "Revision requested",
         body,
         link: `/dashboard/orders/${order.id}`,
-        email
+        email: orderEmail
       });
     }
 
@@ -868,13 +870,14 @@ export class CatalogOrdersService extends CatalogSharedService {
       ctaLabel: "Open order"
     };
     if (order.assignedEmployeeId) {
+      // The assigned designer sees approvals in their Designs queue.
       await this.events.dispatchToUser({
         userId: order.assignedEmployeeId,
         type: "design.approved",
         title: "Design approved",
         body: approvalBody,
-        link: `/dashboard/orders/${order.id}`,
-        email: approvalEmail
+        link: `/dashboard/designs`,
+        email: { ...approvalEmail, ctaPath: `/dashboard/designs`, ctaLabel: "Open Designs" }
       });
     } else {
       await this.events.dispatchToAdmins({

@@ -14,6 +14,8 @@ import {
   ModalContent,
   ModalFooter,
   ModalHeader,
+  Select,
+  SelectItem,
   Spinner,
   Textarea
 } from "@heroui/react";
@@ -24,7 +26,8 @@ import {
   useApproveCatalogOrderItem,
   useCatalogOrders,
   useCreateCatalogOrderDesignUpload,
-  useRequestCatalogOrderItemRevision
+  useRequestCatalogOrderItemRevision,
+  useUpdateCatalogOrderItemDesign
 } from "@/lib/queries.catalog";
 import { uploadFileToPresignedUrl } from "@/modules/catalog/public/api";
 import { downloadApiFile } from "@/lib/download";
@@ -505,6 +508,240 @@ const TEAM_GROUPS: { key: "action" | "waiting" | "done"; title: string; hint: st
   { key: "done", title: "Completed", hint: "Approved and ready to order" }
 ];
 
+// The phases a designer can move a job through, in workflow order. Uploading a
+// mockup/proof also advances the phase automatically, but this lets them set it
+// manually (e.g. back to "Mockup In Progress" or flag "Revision Requested").
+const DESIGNER_PHASE_OPTIONS: CatalogOrderItem["designPhase"][] = [
+  "MOCKUP_IN_PROGRESS",
+  "REVIEW_MOCKUP_DESIGN",
+  "FINALIZING_PROOF_DESIGN",
+  "REVIEW_FINAL_DESIGN",
+  "READY_TO_ORDER",
+  "REVISION_REQUESTED"
+];
+
+// A single design asset slot. Product / Mockup / Proof are shown side by side so
+// it's clear the mockup and proof are separate uploads that never overwrite the
+// original product image.
+function AssetThumb({ label, src, hint }: { label: string; src?: string | null; hint: string }) {
+  return (
+    <div className="space-y-1.5">
+      <div className="text-xs font-medium text-foreground/55">{label}</div>
+      <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-2xl border border-divider bg-default-100">
+        {src ? (
+          <Image removeWrapper src={src} alt={label} className="h-full w-full object-contain" />
+        ) : (
+          <span className="px-2 text-center text-[11px] text-foreground/40">{hint}</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function DesignJobCard({
+  orderId,
+  orderName,
+  customerName,
+  item,
+  step,
+  accent
+}: {
+  orderId: string;
+  orderName: string;
+  customerName: string;
+  item: CatalogOrderItem;
+  step: { label: string; group: "action" | "waiting" | "done" };
+  accent: "warning" | "success" | "default";
+}) {
+  const uploadMutation = useCreateCatalogOrderDesignUpload();
+  const updateMutation = useUpdateCatalogOrderItemDesign();
+  const mockupInputRef = useRef<HTMLInputElement | null>(null);
+  const proofInputRef = useRef<HTMLInputElement | null>(null);
+  const [pendingKind, setPendingKind] = useState<null | "mockups" | "proofs">(null);
+
+  const uploadAsset = async (
+    file: File,
+    type: "mockups" | "proofs",
+    nextPhase: CatalogOrderItem["designPhase"]
+  ) => {
+    setPendingKind(type);
+    try {
+      const upload = await uploadMutation.mutateAsync({
+        filename: file.name,
+        contentType: file.type as "image/jpeg" | "image/png" | "image/webp",
+        type
+      });
+      await uploadFileToPresignedUrl(upload.uploadUrl, file);
+      // Mockups and proofs write to their own fields (mockupImageUrl /
+      // proofImageUrl) — the product imageUrl is never touched.
+      await updateMutation.mutateAsync({
+        orderId,
+        itemId: item.id,
+        input:
+          type === "mockups"
+            ? {
+                mockupImageUrl: upload.publicUrl,
+                mockupImageKey: upload.key,
+                designPhase: nextPhase,
+                resolveOpenRevision: true
+              }
+            : {
+                proofImageUrl: upload.publicUrl,
+                proofImageKey: upload.key,
+                designPhase: nextPhase
+              }
+      });
+      addToast({
+        title: type === "mockups" ? "Mockup uploaded — sent for review" : "Proof uploaded — sent for final review",
+        color: "success"
+      });
+    } catch (e: any) {
+      addToast({
+        title: "Upload failed",
+        description: e?.message ?? "Unable to upload design asset.",
+        color: "danger"
+      });
+    } finally {
+      setPendingKind(null);
+    }
+  };
+
+  const openRevision = item.revisions.find((revision) => revision.status === "OPEN");
+  const busy = updateMutation.isPending || uploadMutation.isPending;
+
+  return (
+    <Card className="border border-divider shadow-sm">
+      <CardBody className="flex flex-col gap-5 p-5">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="min-w-0 space-y-1.5">
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="text-base font-semibold">{item.productName}</div>
+              <Chip size="sm" variant="flat">
+                {formatItemTypeLabel(item.itemType)}
+              </Chip>
+              <Chip size="sm" color={accent} variant="flat">
+                {step.label}
+              </Chip>
+              {item.hasOpenRevision ? (
+                <Chip size="sm" color="warning" variant="flat">
+                  Revision requested
+                </Chip>
+              ) : null}
+            </div>
+            <div className="text-sm text-foreground/60">
+              {orderName} · {customerName}
+            </div>
+            <div className="text-sm text-foreground/60">
+              {item.variantName || "Standard"} ·{" "}
+              {item.itemType === "BULK"
+                ? `Qty ${item.quantity}`
+                : `${item.quantityPerPack ?? 1} / pack · ${item.quantity} total`}
+            </div>
+          </div>
+
+          <Select
+            aria-label="Update design status"
+            label="Status"
+            labelPlacement="outside"
+            selectedKeys={[item.designPhase]}
+            isDisabled={busy}
+            disallowEmptySelection
+            onSelectionChange={async (keys) => {
+              const nextPhase = Array.from(keys as Set<string>)[0] as CatalogOrderItem["designPhase"];
+              if (!nextPhase || nextPhase === item.designPhase) return;
+              try {
+                await updateMutation.mutateAsync({
+                  orderId,
+                  itemId: item.id,
+                  input: { designPhase: nextPhase }
+                });
+                addToast({ title: "Status updated", color: "success" });
+              } catch (e: any) {
+                addToast({
+                  title: "Update failed",
+                  description: e?.message ?? "Unable to update status.",
+                  color: "danger"
+                });
+              }
+            }}
+            className="w-full shrink-0 lg:w-64"
+          >
+            {DESIGNER_PHASE_OPTIONS.map((phase) => (
+              <SelectItem key={phase}>{formatDesignPhaseLabel(phase)}</SelectItem>
+            ))}
+          </Select>
+        </div>
+
+        {openRevision ? (
+          <div className="rounded-2xl border border-warning/30 bg-warning/5 p-4 text-sm">
+            <div className="font-semibold">Customer requested a revision</div>
+            <div className="mt-1 text-foreground/70">{openRevision.notes}</div>
+            {openRevision.logoUrl ? (
+              <a
+                href={openRevision.logoUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-2 inline-flex text-primary underline"
+              >
+                View attached logo
+              </a>
+            ) : null}
+          </div>
+        ) : null}
+
+        <div className="flex flex-wrap items-end gap-4">
+          <AssetThumb label="Product" src={item.imageUrl} hint="No image" />
+          <AssetThumb label="Mockup" src={item.mockupImageUrl} hint="Not uploaded" />
+          <AssetThumb label="Proof" src={item.proofImageUrl} hint="Not uploaded" />
+
+          <div className="flex flex-1 flex-wrap items-center justify-end gap-3">
+            <input
+              ref={mockupInputRef}
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              hidden
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                if (file) void uploadAsset(file, "mockups", "REVIEW_MOCKUP_DESIGN");
+                event.currentTarget.value = "";
+              }}
+            />
+            <input
+              ref={proofInputRef}
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              hidden
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                if (file) void uploadAsset(file, "proofs", "REVIEW_FINAL_DESIGN");
+                event.currentTarget.value = "";
+              }}
+            />
+            <Button
+              variant="bordered"
+              startContent={<UploadCloud className="size-4" />}
+              isLoading={pendingKind === "mockups"}
+              isDisabled={busy}
+              onPress={() => mockupInputRef.current?.click()}
+            >
+              {item.mockupImageUrl ? "Replace mockup" : "Upload mockup"}
+            </Button>
+            <Button
+              variant="bordered"
+              startContent={<UploadCloud className="size-4" />}
+              isLoading={pendingKind === "proofs"}
+              isDisabled={busy}
+              onPress={() => proofInputRef.current?.click()}
+            >
+              {item.proofImageUrl ? "Replace proof" : "Upload proof"}
+            </Button>
+          </div>
+        </div>
+      </CardBody>
+    </Card>
+  );
+}
+
 function TeamDesignView({ orders }: { orders: CatalogOrder[] }) {
   const rows = orders.flatMap((order) =>
     order.items.map((item) => ({
@@ -533,56 +770,15 @@ function TeamDesignView({ orders }: { orders: CatalogOrder[] }) {
             </div>
             <div className="grid gap-4">
               {groupRows.map((row) => (
-                <Card key={`${row.orderId}:${row.item.id}`} className="border border-divider shadow-sm">
-                  <CardBody className="flex flex-col gap-4 p-5 lg:flex-row lg:items-center lg:justify-between">
-                    <div className="flex min-w-0 items-center gap-4">
-                      <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-default-100">
-                        {getPreferredDesignImage(row.item) ? (
-                          <Image
-                            removeWrapper
-                            src={getPreferredDesignImage(row.item)!}
-                            alt={row.item.productName}
-                            className="h-full w-full object-contain"
-                          />
-                        ) : (
-                          <div className="text-xs text-foreground/55">No preview</div>
-                        )}
-                      </div>
-                      <div className="min-w-0 space-y-1.5">
-                        <div className="font-semibold">{row.item.productName}</div>
-                        <div className="text-sm text-foreground/60">
-                          {row.orderName} · {row.customerName}
-                        </div>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <Chip size="sm" color={chipColor} variant="flat">
-                            {row.step.label}
-                          </Chip>
-                          {row.item.hasOpenRevision ? (
-                            <Chip size="sm" color="warning" variant="flat">
-                              Revision requested
-                            </Chip>
-                          ) : null}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex flex-wrap gap-3">
-                      <Link href={`/dashboard/orders/${row.orderId}`}>
-                        <Button
-                          variant={group.key === "action" ? "solid" : "bordered"}
-                          color={group.key === "action" ? "primary" : "default"}
-                          style={
-                            group.key === "action"
-                              ? { backgroundImage: "var(--primary-gradient)", color: "#fff" }
-                              : undefined
-                          }
-                        >
-                          {group.key === "action" ? row.step.label : "Open order"}
-                        </Button>
-                      </Link>
-                    </div>
-                  </CardBody>
-                </Card>
+                <DesignJobCard
+                  key={`${row.orderId}:${row.item.id}`}
+                  orderId={row.orderId}
+                  orderName={row.orderName}
+                  customerName={row.customerName}
+                  item={row.item}
+                  step={row.step}
+                  accent={chipColor}
+                />
               ))}
             </div>
           </div>
@@ -594,7 +790,11 @@ function TeamDesignView({ orders }: { orders: CatalogOrder[] }) {
 
 export default function DesignsPage() {
   const { data: user } = useMe();
-  const isCustomer = hasPermission(user, "orders.self.read");
+  // Anyone holding a design permission is treated as the design team — even if
+  // they also carry the customer-scoped orders.self.read — so designers get the
+  // production queue view, not the customer "My Designs" review view.
+  const isDesignTeam = hasAnyPermission(user, ["design.read", "design.assigned.read", "design.write"]);
+  const isCustomer = !isDesignTeam && hasPermission(user, "orders.self.read");
   const canRead = hasAnyPermission(user, [
     "design.read",
     "design.assigned.read",
@@ -628,11 +828,11 @@ export default function DesignsPage() {
     <div className="flex flex-col gap-6">
       <Card className="border border-divider shadow-sm">
         <CardHeader className="flex flex-col items-start gap-1 p-6">
-          <div className="text-2xl font-semibold">{isCustomer ? "My Designs" : "Design Jobs"}</div>
+          <div className="text-2xl font-semibold">{isCustomer ? "My Designs" : "Design Queue"}</div>
           <div className="text-sm text-foreground/60">
             {isCustomer
               ? "Review uploaded mockups, download a combined PDF, approve designs, or request revisions."
-              : "Monitor design phases for submitted orders and jump into any order to upload mockups or proofs."}
+              : "Every order that needs artwork, in one place — upload mockups, send proofs for review, and move each job from mockup to ready-to-print."}
           </div>
         </CardHeader>
       </Card>
@@ -654,7 +854,9 @@ export default function DesignsPage() {
       ) : (
         <Card>
           <CardBody className="py-16 text-center text-foreground/60">
-            No design items are available yet.
+            {isCustomer
+              ? "No design items are available yet."
+              : "Your design queue is empty — no orders need artwork right now."}
           </CardBody>
         </Card>
       )}

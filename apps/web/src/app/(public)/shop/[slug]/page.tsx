@@ -510,7 +510,7 @@ export default function ProductDetailPage() {
                 <Lock className="size-4" /> Add {PREVIEW_LOGO_GATE_THRESHOLD + 1}+ to preview your logo
               </div>
             ) : (
-              <Link href={`/mockup?product=${product.slug}`} className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-card py-2.5 text-sm font-semibold hover:border-primary/40">
+              <Link href={`/mockup?product=${product.slug}&qty=${quantity}`} className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-card py-2.5 text-sm font-semibold hover:border-primary/40">
                 <Sparkles className="size-4 text-primary" /> Preview your logo
               </Link>
             )}

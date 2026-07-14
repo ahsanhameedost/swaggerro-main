@@ -84,13 +84,12 @@ export function ProjectSubmissionPageContent() {
   const [email, setEmail] = useState("");
   const [companyName, setCompanyName] = useState("");
   const [phone, setPhone] = useState("");
-  const [budgetPerPerson, setBudgetPerPerson] = useState("");
   const [neededByDate, setNeededByDate] = useState("");
   const [notes, setNotes] = useState("");
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [logoKey, setLogoKey] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
-  const [touched, setTouched] = useState<{ name?: boolean; email?: boolean; budget?: boolean }>({});
+  const [touched, setTouched] = useState<{ name?: boolean; email?: boolean }>({});
 
   useEffect(() => {
     if (!user) {
@@ -127,8 +126,6 @@ export function ProjectSubmissionPageContent() {
 
   const trimmedName = name.trim();
   const emailIsValid = isValidEmail(email);
-  const budgetValue = Number(budgetPerPerson);
-  const budgetIsValid = Number.isFinite(budgetValue) && budgetValue > 0;
 
   const missingRequirements: string[] = [];
   if (!trimmedName) {
@@ -137,11 +134,13 @@ export function ProjectSubmissionPageContent() {
   if (!emailIsValid) {
     missingRequirements.push("a valid email");
   }
-  if (!budgetIsValid) {
-    missingRequirements.push("a budget per swag pack/person");
-  }
 
   const isBusy = submitMutation.isPending || uploading;
+
+  // Setup (imprint/decoration) fees are folded into each line's totalPrice, so
+  // surface them separately for a clear breakdown next to the estimate.
+  const setupFeesTotal = summary.bulkItems.reduce((sum, item) => sum + (item.setupFee ?? 0), 0);
+  const productsSubtotal = summary.total - setupFeesTotal;
 
   const canSubmit =
     summary.hasItems &&
@@ -225,23 +224,12 @@ export function ProjectSubmissionPageContent() {
     }
 
     // Surface inline field errors if anything required is missing.
-    setTouched({ name: true, email: true, budget: true });
+    setTouched({ name: true, email: true });
 
     if (!trimmedName || !emailIsValid) {
       addToast({
         title: "Missing contact details",
         description: "Please provide your name and a valid email.",
-        color: "warning"
-      });
-      return;
-    }
-
-    const parsedBudget = budgetValue;
-
-    if (!budgetIsValid) {
-      addToast({
-        title: "Budget required",
-        description: "Please enter your estimated budget per swag pack or person.",
         color: "warning"
       });
       return;
@@ -257,7 +245,7 @@ export function ProjectSubmissionPageContent() {
         companyName: companyName.trim() || null,
         phone: phone.trim() || null,
         notes: finalNotes,
-        budgetPerPerson: parsedBudget,
+        budgetPerPerson: null,
         neededByDate: neededByDate || null,
         logoUrl,
         logoKey,
@@ -443,24 +431,6 @@ export function ProjectSubmissionPageContent() {
                 </Link>
 
                 <Input
-                  label="What's your budget per swag pack/person?"
-                  type="number"
-                  min={0}
-                  step="0.01"
-                  value={budgetPerPerson}
-                  onValueChange={setBudgetPerPerson}
-                  placeholder="126.48"
-                  isRequired
-                  onBlur={() => setTouched((current) => ({ ...current, budget: true }))}
-                  isInvalid={Boolean(touched.budget) && !budgetIsValid}
-                  errorMessage={
-                    touched.budget && !budgetIsValid
-                      ? "Please enter a budget greater than 0."
-                      : undefined
-                  }
-                />
-
-                <Input
                   label="Do you need these by a certain date?"
                   type="date"
                   value={neededByDate}
@@ -585,6 +555,19 @@ export function ProjectSubmissionPageContent() {
           <Card className="border border-black/10 bg-white shadow-sm">
             <CardBody className="space-y-6 p-6">
               <div className="space-y-3">
+                {setupFeesTotal > 0 ? (
+                  <div className="space-y-2 border-b border-black/10 pb-3">
+                    <div className="flex items-center justify-between text-sm text-black/60">
+                      <span>Products subtotal</span>
+                      <span className="font-medium text-black">{formatMoney(productsSubtotal)}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm text-black/60">
+                      <span>Setup fees</span>
+                      <span className="font-medium text-black">{formatMoney(setupFeesTotal)}</span>
+                    </div>
+                  </div>
+                ) : null}
+
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <div className="text-sm font-semibold text-black">Total Estimate</div>
@@ -630,8 +613,13 @@ export function ProjectSubmissionPageContent() {
                       {summary.bulkItems.map((item) => (
                         <div key={`bulk-${item.productId}-${item.productCatalogVariantId ?? "base"}`} className="grid grid-cols-[56px_minmax(0,1fr)] gap-3">
                           <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-2xl bg-zinc-50">
-                            {item.imageUrl ? (
-                              <Image removeWrapper src={item.imageUrl} alt={item.name} className="h-full w-full object-cover" />
+                            {item.mockupUrl ?? item.imageUrl ? (
+                              <Image
+                                removeWrapper
+                                src={(item.mockupUrl ?? item.imageUrl) as string}
+                                alt={item.mockupUrl ? `${item.name} logo proof` : item.name}
+                                className="h-full w-full object-cover"
+                              />
                             ) : (
                               <div className="text-xs font-semibold text-black/35">{item.name.slice(0, 2).toUpperCase()}</div>
                             )}
@@ -643,6 +631,12 @@ export function ProjectSubmissionPageContent() {
                               Qty: {item.quantity} · {formatMoney(item.unitPrice, item.currency)} / item
                               {item.label ? ` · ${item.label}` : ""}
                             </div>
+                            {item.setupFee ? (
+                              <div className="text-xs text-black/55">
+                                + {formatMoney(item.setupFee, item.currency)} setup
+                                {item.imprintMethodName ? ` · ${item.imprintMethodName}` : ""}
+                              </div>
+                            ) : null}
                             {item.savingsPercent > 0 ? (
                               <div className="text-xs font-medium text-success">
                                 Save {item.savingsPercent}% (−{formatMoney(item.discountTotal, item.currency)})

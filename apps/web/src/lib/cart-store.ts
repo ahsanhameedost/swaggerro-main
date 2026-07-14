@@ -30,6 +30,13 @@ export type BulkCartItem = CartItemBase & {
   // so the cart/checkout can show and charge it. Absent = no imprint selected.
   setupFee?: number;
   imprintMethodName?: string | null;
+  // Per-line branding captured in the Mockup Studio. Kept on the line (not just
+  // the global branding) so the cart shows the proof, and the uploaded logo +
+  // placement note travel with the item to the order/design team.
+  logoUrl?: string | null;
+  logoKey?: string | null;
+  mockupUrl?: string | null;
+  designNote?: string | null;
 };
 
 export type SwagPackCartItem = CartItemBase & {
@@ -112,7 +119,15 @@ function upsertBulk(items: BulkCartItem[], nextItem: BulkCartItem) {
       ? {
           ...item,
           quantity: item.quantity + nextItem.quantity,
-          imageUrl: nextItem.imageUrl ?? item.imageUrl
+          imageUrl: nextItem.imageUrl ?? item.imageUrl,
+          // Latest add wins for decoration + branding so re-configuring in the
+          // studio updates the line instead of keeping stale values.
+          setupFee: nextItem.setupFee ?? item.setupFee,
+          imprintMethodName: nextItem.imprintMethodName ?? item.imprintMethodName,
+          logoUrl: nextItem.logoUrl ?? item.logoUrl,
+          logoKey: nextItem.logoKey ?? item.logoKey,
+          mockupUrl: nextItem.mockupUrl ?? item.mockupUrl,
+          designNote: nextItem.designNote ?? item.designNote
         }
       : item
   );

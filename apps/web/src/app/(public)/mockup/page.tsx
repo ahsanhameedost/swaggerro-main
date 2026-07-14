@@ -13,6 +13,9 @@ import { cn } from "@/lib/utils";
 function MockupContent() {
   const params = useSearchParams();
   const slug = params.get("product") ?? "";
+  // Carry the quantity chosen on the product page so the studio doesn't reset it.
+  const qtyParam = Number(params.get("qty"));
+  const initialQty = Number.isFinite(qtyParam) && qtyParam > 0 ? Math.floor(qtyParam) : undefined;
   const { data, isLoading, isError } = usePublicProduct(slug, !!slug);
   const product = data?.product;
 
@@ -54,7 +57,7 @@ function MockupContent() {
     );
   }
 
-  return <MockupBuilder product={product} />;
+  return <MockupBuilder product={product} initialQty={initialQty} />;
 }
 
 export default function MockupPage() {

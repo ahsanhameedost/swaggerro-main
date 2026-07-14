@@ -161,8 +161,27 @@ function hasAnyPermission(permissions: Set<string>, requiredAnyPermissions?: str
   return requiredAnyPermissions.some((permission) => permissions.has(permission));
 }
 
+// A design-team member works only out of the Designs queue. They hold design
+// permissions but not full order/catalog-management access (catalog.orders.read),
+// which is what managers/admins/support have. Keep their sidebar focused on
+// Designs — they still reach orders through the Designs queue, which uses
+// orders.assigned.read behind the scenes.
+const DESIGN_PERMISSIONS = ["design.read", "design.assigned.read", "design.write"];
+const DESIGN_ONLY_NAV_KEYS = ["dashboard", "designs"];
+
+function isDesignOnlyUser(permissions: Set<string>) {
+  return (
+    DESIGN_PERMISSIONS.some((permission) => permissions.has(permission)) &&
+    !permissions.has("catalog.orders.read")
+  );
+}
+
 export function buildNavForUser(user: User | null) {
   const permissions = new Set(user?.permissions ?? []);
+
+  const items = isDesignOnlyUser(permissions)
+    ? NAV_ITEMS.filter((item) => DESIGN_ONLY_NAV_KEYS.includes(item.key))
+    : NAV_ITEMS;
 
   const filterItem = (item: NavItem): NavItem | null => {
     if (!hasAllPermissions(permissions, item.requiredPermissions)) {
@@ -184,5 +203,5 @@ export function buildNavForUser(user: User | null) {
     return item;
   };
 
-  return NAV_ITEMS.map(filterItem).filter(Boolean) as NavItem[];
+  return items.map(filterItem).filter(Boolean) as NavItem[];
 }

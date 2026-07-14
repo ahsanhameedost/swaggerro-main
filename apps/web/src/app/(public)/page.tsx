@@ -106,38 +106,43 @@ export default async function Home() {
 // ── Hero ──────────────────────────────────────────────────────────────────────
 function Hero() {
   return (
-    // Dark hero: an animated DarkVeil background spans the whole banner, with the
-    // content rendered light-on-dark above it.
-    <section className="relative overflow-hidden bg-[#070712] text-white">
-      {/* Animated bluish veil across the full banner. */}
-      <div aria-hidden className="pointer-events-none absolute inset-0 z-0">
-        <DarkVeil
-          hueShift={0}
-          speed={0.5}
-          warpAmount={1.2}
-          scanlineIntensity={0.1}
-          scanlineFrequency={2}
-          noiseIntensity={0.02}
-        />
-      </div>
-      {/* Soft scrim so the headline stays crisp over the animation. */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 z-0 bg-gradient-to-b from-[#070712]/50 via-[#070712]/10 to-[#070712]/80"
-      />
-      <div className="relative z-10">
-        <HeroSlider />
-        <div className="relative -mt-4 select-none text-white/10 sm:-mt-2">
-          <CurvedLoop
-            marqueeText="Custom Swag ✦ Volume Pricing ✦ Free Proofs ✦ Ships Worldwide ✦"
-            speed={1.2}
-            curveAmount={80}
-            interactive
-            className="text-[3.25rem]"
+    <>
+      {/* Dark hero: an animated DarkVeil background spans the whole banner, with
+          the content rendered light-on-dark above it. */}
+      <section className="relative overflow-hidden bg-[#070712] text-white">
+        {/* Animated veil across the full banner, recolored to brand blue #005CFE. */}
+        <div aria-hidden className="pointer-events-none absolute inset-0 z-0">
+          <DarkVeil
+            tintColor="#005CFE"
+            speed={0.8}
+            warpAmount={1.4}
+            scanlineIntensity={0.1}
+            scanlineFrequency={2}
+            noiseIntensity={0.02}
           />
         </div>
+        {/* Soft scrim so the headline stays crisp over the animation — kept light
+            through the middle so the animated veil shows at full strength. */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 z-0 bg-gradient-to-b from-[#070712]/45 via-transparent to-[#070712]/75"
+        />
+        <div className="relative z-10">
+          <HeroSlider />
+        </div>
+      </section>
+      {/* Curved marquee strip — kept on a light background (as in the original
+          design), with faint brand-blue text. */}
+      <div className="relative select-none bg-background text-primary/15">
+        <CurvedLoop
+          marqueeText="Custom Swag ✦ Volume Pricing ✦ Free Proofs ✦ Ships Worldwide ✦"
+          speed={1.2}
+          curveAmount={80}
+          interactive
+          className="text-[3.25rem]"
+        />
       </div>
-    </section>
+    </>
   );
 }
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useEffect } from 'react';
-import { Renderer, Program, Mesh, Triangle, Vec2 } from 'ogl';
+import { Renderer, Program, Mesh, Triangle, Vec2, Color } from 'ogl';
 import './DarkVeil.css';
 
 const vertex = `
@@ -20,6 +20,8 @@ uniform float uNoise;
 uniform float uScan;
 uniform float uScanFreq;
 uniform float uWarp;
+uniform vec3 uTint;
+uniform float uTintStrength;
 #define iTime uTime
 #define iResolution uResolution
 
@@ -69,6 +71,16 @@ void mainImage(out vec4 fragColor,in vec2 fragCoord){
 void main(){
     vec4 col;mainImage(col,gl_FragCoord.xy);
     col.rgb=hueShiftRGB(col.rgb,uHueShift);
+    // Optional brand tint: remap the veil's glow onto a single target color by
+    // luminance, so the animated shape is preserved but recolored on-brand.
+    if(uTintStrength>0.0){
+        // Drive the tint by the veil's brightness (max channel), not luminance —
+        // luminance dims a saturated blue too much and looks washed out/thin.
+        // This keeps the animated glow vivid, with a whitish core at the peaks.
+        float v=max(max(col.r,col.g),col.b);
+        vec3 tinted=uTint*(v*1.35)+vec3(smoothstep(0.55,1.0,v))*0.4;
+        col.rgb=mix(col.rgb,tinted,uTintStrength);
+    }
     float scanline_val=sin(gl_FragCoord.y*uScanFreq)*0.5+0.5;
     col.rgb*=1.-(scanline_val*scanline_val)*uScan;
     col.rgb+=(rand(gl_FragCoord.xy+uTime)-0.5)*uNoise;
@@ -83,10 +95,15 @@ export default function DarkVeil({
   speed = 0.5,
   scanlineFrequency = 0,
   warpAmount = 0,
-  resolutionScale = 1
+  resolutionScale = 1,
+  tintColor = null,
+  tintStrength = 1
 }) {
   const ref = useRef(null);
   useEffect(() => {
+    // tintColor may be a CSS hex string ("#005CFE") or an [r,g,b] array (0–1).
+    const tint = tintColor ? new Color(tintColor) : new Color(0, 0, 0);
+    const tintAmount = tintColor ? tintStrength : 0;
     const canvas = ref.current;
     const parent = canvas.parentElement;
 
@@ -108,7 +125,9 @@ export default function DarkVeil({
         uNoise: { value: noiseIntensity },
         uScan: { value: scanlineIntensity },
         uScanFreq: { value: scanlineFrequency },
-        uWarp: { value: warpAmount }
+        uWarp: { value: warpAmount },
+        uTint: { value: [tint.r, tint.g, tint.b] },
+        uTintStrength: { value: tintAmount }
       }
     });
 
@@ -134,6 +153,8 @@ export default function DarkVeil({
       program.uniforms.uScan.value = scanlineIntensity;
       program.uniforms.uScanFreq.value = scanlineFrequency;
       program.uniforms.uWarp.value = warpAmount;
+      program.uniforms.uTint.value = [tint.r, tint.g, tint.b];
+      program.uniforms.uTintStrength.value = tintAmount;
       renderer.render({ scene: mesh });
       frame = requestAnimationFrame(loop);
     };
@@ -144,6 +165,6 @@ export default function DarkVeil({
       cancelAnimationFrame(frame);
       window.removeEventListener('resize', resize);
     };
-  }, [hueShift, noiseIntensity, scanlineIntensity, speed, scanlineFrequency, warpAmount, resolutionScale]);
+  }, [hueShift, noiseIntensity, scanlineIntensity, speed, scanlineFrequency, warpAmount, resolutionScale, tintColor, tintStrength]);
   return <canvas ref={ref} className="darkveil-canvas" />;
 }

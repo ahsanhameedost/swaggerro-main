@@ -19,7 +19,13 @@ type Placement = { x: number; y: number; size: number; rotation: number; opacity
 const DEFAULT_PLACEMENT: Placement = { x: 50, y: 45, size: 28, rotation: 0, opacity: 100 };
 const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
 
-export function MockupBuilder({ product }: { product: CatalogProductDetail }) {
+export function MockupBuilder({
+  product,
+  initialQty
+}: {
+  product: CatalogProductDetail;
+  initialQty?: number;
+}) {
   const router = useRouter();
   const addBulkItem = useCatalogCartStore((s) => s.addBulkItem);
   const setBranding = useCatalogCartStore((s) => s.setBranding);
@@ -31,7 +37,11 @@ export function MockupBuilder({ product }: { product: CatalogProductDetail }) {
   const [colorId, setColorId] = useState<string | null>(colorGroup?.options[0]?.id ?? null);
   const [sizeId, setSizeId] = useState<string | null>(sizeGroup?.options[0]?.id ?? null);
   const [methodKey, setMethodKey] = useState<string>(imprintMethods[0]?.key ?? "");
-  const [qty, setQty] = useState<number>(product.minQty || 25);
+  // Honor the quantity carried over from the product page; only fall back to a
+  // default when the studio is opened directly. No MOQ is enforced.
+  const [qty, setQty] = useState<number>(
+    initialQty && initialQty > 0 ? initialQty : product.minQty || 25
+  );
 
   const [logo, setLogo] = useState<{ src: string; file: File } | null>(null);
   const [placement, setPlacement] = useState<Placement>(DEFAULT_PLACEMENT);
@@ -60,7 +70,6 @@ export function MockupBuilder({ product }: { product: CatalogProductDetail }) {
   const subtotal = unit * qty;
   const total = subtotal + setupFee;
   const perUnitAllIn = qty > 0 ? total / qty : 0;
-  const belowMoq = qty < (product.minQty || 1);
 
   const image = product.images?.[0]?.url ?? null;
   const colorName = colorGroup?.options.find((o) => o.id === colorId)?.label ?? null;
@@ -153,8 +162,8 @@ export function MockupBuilder({ product }: { product: CatalogProductDetail }) {
       addToast({ title: "Pick a variant", color: "warning" });
       return;
     }
-    if (belowMoq) {
-      addToast({ title: `Minimum is ${product.minQty}`, color: "warning" });
+    if (qty < 1) {
+      addToast({ title: "Enter a quantity", color: "warning" });
       return;
     }
     setSubmitting(true);
@@ -173,23 +182,35 @@ export function MockupBuilder({ product }: { product: CatalogProductDetail }) {
         }
       }
       const variantLabel = [colorName, sizeName].filter(Boolean).join(" / ") || null;
+      const note = logo
+        ? `Logo placement — ${product.name}${variantLabel ? ` (${variantLabel})` : ""}: horizontal ${Math.round(placement.x)}%, vertical ${Math.round(placement.y)}%, size ${placement.size}% of width, rotation ${placement.rotation}°, opacity ${placement.opacity}%. Imprint: ${method?.name ?? "—"}.${mockupUrl ? ` Mockup preview: ${mockupUrl}` : ""}`
+        : null;
       addBulkItem({
         productId: product.id,
         slug: product.slug,
         name: product.name,
+        // Keep the plain product image as the line image; the logo proof is
+        // shown (and attached) separately so the design team gets a clean image.
         imageUrl: image,
         productCatalogVariantId: matchedVariant?.id ?? null,
         variantName: variantLabel,
         basePrice: activeBasePrice,
         compareAtPrice: product.compareAtPrice ?? null,
         stock: matchedVariant?.stock ?? product.baseStock ?? 0,
-        minQty: product.minQty || 1,
+        minQty: 1,
         currency: product.currency,
         pricingOptions: activePricing,
         quantity: qty,
+        // Carry the imprint setup fee so the cart/summary can show and charge it.
+        setupFee,
+        imprintMethodName: method?.name ?? null,
+        // Attach the shopper's logo + composited proof + placement note per line.
+        logoUrl,
+        logoKey,
+        mockupUrl,
+        designNote: note,
       });
       if (logo) {
-        const note = `Logo placement — ${product.name}${variantLabel ? ` (${variantLabel})` : ""}: horizontal ${Math.round(placement.x)}%, vertical ${Math.round(placement.y)}%, size ${placement.size}% of width, rotation ${placement.rotation}°, opacity ${placement.opacity}%. Imprint: ${method?.name ?? "—"}.${mockupUrl ? ` Mockup preview: ${mockupUrl}` : ""}`;
         setBranding({ logoUrl, logoKey, mockupUrl, note });
       }
       addToast({ title: "Added to cart", description: logo ? "Logo & placement saved for the design team." : undefined, color: "success" });
@@ -304,11 +325,11 @@ export function MockupBuilder({ product }: { product: CatalogProductDetail }) {
 
           {/* quantity */}
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Quantity <span className="ml-1 normal-case text-muted-foreground/70">MOQ {product.minQty}</span></p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Quantity</p>
             <div className="mt-2 flex items-center gap-2">
-              <button type="button" onClick={() => setQty((q) => Math.max(1, q - 25))} className="flex size-9 items-center justify-center rounded-lg border border-border">−</button>
+              <button type="button" onClick={() => setQty((q) => Math.max(1, q - 1))} className="flex size-9 items-center justify-center rounded-lg border border-border">−</button>
               <input type="number" value={qty} onChange={(e) => setQty(Math.max(1, Number(e.target.value) || 1))} className="h-9 w-20 rounded-lg border border-input bg-background text-center text-sm outline-none focus-visible:border-ring" />
-              <button type="button" onClick={() => setQty((q) => q + 25)} className="flex size-9 items-center justify-center rounded-lg border border-border">+</button>
+              <button type="button" onClick={() => setQty((q) => q + 1)} className="flex size-9 items-center justify-center rounded-lg border border-border">+</button>
             </div>
           </div>
 
@@ -318,12 +339,11 @@ export function MockupBuilder({ product }: { product: CatalogProductDetail }) {
               <span className="text-sm text-muted-foreground">{formatMoney(perUnitAllIn, product.currency)}/ea all-in</span>
               <span className="font-display text-2xl font-bold tabular-nums">{formatMoney(total, product.currency)}</span>
             </div>
-            <button type="button" onClick={handleAddToCart} disabled={submitting || belowMoq}
+            <button type="button" onClick={handleAddToCart} disabled={submitting || qty < 1}
               className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl py-3 font-semibold text-white disabled:opacity-50"
               style={{ backgroundImage: "var(--primary-gradient)" }}>
               {submitting ? <Loader2 className="size-4 animate-spin" /> : null} Add to cart
             </button>
-            {belowMoq ? <p className="mt-2 text-center text-xs text-warning">Minimum order is {product.minQty}.</p> : null}
             <p className="mt-2 text-center text-xs text-muted-foreground">Free production-ready proof before anything prints.</p>
           </div>
         </div>

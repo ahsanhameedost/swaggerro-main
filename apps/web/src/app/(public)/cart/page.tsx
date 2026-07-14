@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button, Card, CardBody, Image, Spinner } from "@heroui/react";
 import { addToast } from "@heroui/toast";
-import { Box } from "lucide-react";
+import { Box, Paperclip } from "lucide-react";
 import { QuantityStepper } from "@/app/components/catalog/QuantityStepper";
 import { PackagingProductDrawer } from "@/app/components/catalog/PackagingProductDrawer";
 import {
@@ -158,6 +158,11 @@ export default function CartPage() {
     .filter(Boolean)
     .join(", ");
 
+  // Setup (imprint/decoration) fees are folded into each line's totalPrice, so
+  // surface them separately in the summary for a clear breakdown.
+  const setupFeesTotal = summary.bulkItems.reduce((sum, item) => sum + (item.setupFee ?? 0), 0);
+  const productsSubtotal = summary.total - setupFeesTotal;
+
   const goToProjectDetails = () => {
     if (!summary.hasItems) {
       addToast({
@@ -245,18 +250,30 @@ export default function CartPage() {
                         key={getCartItemKey(item)}
                         className="grid gap-4 px-5 py-6 lg:grid-cols-[140px_minmax(0,1fr)_160px]"
                       >
-                        <Link
-                          href={productHref(item)}
-                          className="flex h-32 items-center justify-center overflow-hidden rounded-2xl bg-zinc-50 transition-opacity hover:opacity-90"
-                        >
-                          {item.imageUrl ? (
-                            <Image removeWrapper src={item.imageUrl} alt={item.name} className="h-full w-full object-cover" />
-                          ) : (
-                            <div className="text-lg font-semibold text-black/35">{item.name.slice(0, 2).toUpperCase()}</div>
-                          )}
-                        </Link>
+                        <div className="flex flex-col gap-3">
+                          <Link
+                            href={productHref(item)}
+                            className="flex h-32 items-center justify-center overflow-hidden rounded-2xl bg-zinc-50 transition-opacity hover:opacity-90"
+                          >
+                            {item.imageUrl ? (
+                              <Image removeWrapper src={item.imageUrl} alt={item.name} className="h-full w-full object-cover" />
+                            ) : (
+                              <div className="text-lg font-semibold text-black/35">{item.name.slice(0, 2).toUpperCase()}</div>
+                            )}
+                          </Link>
+                          {item.mockupUrl ? (
+                            <div className="space-y-1">
+                              <div className="text-[11px] font-semibold uppercase tracking-wide text-black/45">
+                                Your proof
+                              </div>
+                              <div className="flex h-32 items-center justify-center overflow-hidden rounded-2xl border border-primary/30 bg-zinc-50">
+                                <Image removeWrapper src={item.mockupUrl} alt={`${item.name} logo proof`} className="h-full w-full object-contain" />
+                              </div>
+                            </div>
+                          ) : null}
+                        </div>
 
-                        <div className="space-y-3">
+                        <div className="space-y-2">
                           <Link
                             href={productHref(item)}
                             className="text-xl font-semibold text-black hover:text-primary hover:underline"
@@ -266,7 +283,6 @@ export default function CartPage() {
                           <div className="text-sm text-black/55">
                             Color: {item.variantName || "Standard"}
                           </div>
-                          <div className="text-sm text-black/55">Quantity</div>
                           <QuantityStepper
                             label="Quantity"
                             value={item.quantity}
@@ -277,6 +293,16 @@ export default function CartPage() {
                                only availability, not the exact stock count. */
                             helperText={item.stock > 0 ? "In stock" : "Out of stock"}
                           />
+                          {item.logoUrl ? (
+                            <a
+                              href={item.logoUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
+                            >
+                              <Paperclip className="size-3.5" /> Logo attached — view file
+                            </a>
+                          ) : null}
                         </div>
 
                         <div className="space-y-4 text-right">
@@ -521,6 +547,12 @@ export default function CartPage() {
                         {item.variantName ? (
                           <div className="text-black/50">{item.variantName}</div>
                         ) : null}
+                        <div className="text-black/50">
+                          {item.quantity} × {formatMoney(item.unitPrice, item.currency)}
+                          {item.setupFee ? (
+                            <> · + {formatMoney(item.setupFee, item.currency)} setup{item.imprintMethodName ? ` (${item.imprintMethodName})` : ""}</>
+                          ) : null}
+                        </div>
                       </div>
                       <div className="whitespace-nowrap font-semibold text-black">
                         {formatMoney(item.totalPrice, item.currency)}
@@ -543,7 +575,19 @@ export default function CartPage() {
                   ) : null}
                 </div>
 
-                <div className="border-t border-black/10 pt-5">
+                <div className="space-y-3 border-t border-black/10 pt-5">
+                  {setupFeesTotal > 0 ? (
+                    <>
+                      <div className="flex items-center justify-between text-sm text-black/60">
+                        <span>Products subtotal</span>
+                        <span className="font-medium text-black">{formatMoney(productsSubtotal)}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-sm text-black/60">
+                        <span>Setup fees</span>
+                        <span className="font-medium text-black">{formatMoney(setupFeesTotal)}</span>
+                      </div>
+                    </>
+                  ) : null}
                   <div className="flex items-start justify-between gap-4">
                     <div>
                       <div className="text-2xl font-semibold text-black">Total Estimate</div>
