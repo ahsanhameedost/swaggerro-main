@@ -331,12 +331,7 @@ export class StoreCheckoutService {
 
     // Customer order-confirmation with the item breakdown + a tracking link (#26).
     const orderLabel = `SW-${String(order.orderNumber).padStart(3, "0")}`;
-    const orderItems = await this.prisma.catalogOrderItem.findMany({
-      where: { orderId: order.id },
-      orderBy: { sortOrder: "asc" },
-      select: { productName: true, variantName: true, quantity: true, totalPrice: true }
-    });
-    const summaryItems = orderItems.map((item) => ({
+    const summaryItems = order.items.map((item) => ({
       name: item.productName,
       variant: item.variantName,
       quantity: item.quantity,
