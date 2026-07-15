@@ -60,18 +60,29 @@ const NAV_ITEMS: NavItem[] = [
     requiredAnyPermissions: ["orders.self.read"]
   },
   {
+    key: "tracking",
+    label: "Order Tracking",
+    href: "/dashboard/tracking",
+    icon: "Truck",
+    requiredAnyPermissions: ["orders.self.read"]
+  },
+  {
     key: "recipients",
     label: "Recipients",
     href: "/dashboard/recipients",
     icon: "ContactRound",
-    requiredAnyPermissions: ["recipients.read", "recipients.self.read"]
+    // Staff-only in the sidebar — customers manage recipients inside the shipping
+    // flow, so recipients.self.read intentionally does NOT surface this nav item.
+    requiredAnyPermissions: ["recipients.read"]
   },
   {
     key: "inventory",
     label: "Inventory",
     href: "/dashboard/inventory",
     icon: "Boxes",
-    requiredAnyPermissions: ["inventory.read", "inventory.assigned.read", "inventory.self.read"]
+    // Staff-only in the sidebar — customers don't manage warehouse inventory, so
+    // inventory.self.read intentionally does NOT surface this nav item.
+    requiredAnyPermissions: ["inventory.read", "inventory.assigned.read"]
   },
   {
     key: "shipments",

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useMemo, useRef, useState } from "react";
 import {
   Button,
@@ -20,8 +21,9 @@ import {
   Textarea
 } from "@heroui/react";
 import { addToast } from "@heroui/toast";
-import { CheckCircle2, Download, UploadCloud } from "lucide-react";
+import { CheckCircle2, Download, Eye, Sparkles, UploadCloud } from "lucide-react";
 import { useMe } from "@/queries/auth";
+import { parseLogoPlacement } from "@/lib/logo-placement";
 import {
   useApproveCatalogOrderItem,
   useCatalogOrders,
@@ -36,6 +38,8 @@ import {
   DESIGN_PHASES,
   formatDesignPhaseLabel,
   formatItemTypeLabel,
+  formatOrderDisplayName,
+  formatOrderNumber,
   getPhaseStepIndex,
   getPreferredDesignImage
 } from "@/lib/order-flow";
@@ -204,6 +208,7 @@ function RevisionModal({
 }
 
 function CustomerDesignView({ orders }: { orders: CatalogOrder[] }) {
+  const router = useRouter();
   const approveMutation = useApproveCatalogOrderItem();
   const revisionMutation = useRequestCatalogOrderItemRevision();
   const [revisionTarget, setRevisionTarget] = useState<{ orderId: string; item: CatalogOrderItem } | null>(null);
@@ -218,10 +223,17 @@ function CustomerDesignView({ orders }: { orders: CatalogOrder[] }) {
             <CardHeader className="flex flex-col gap-3 p-6 lg:flex-row lg:items-start lg:justify-between">
               <div>
                 <div className="text-xl font-semibold">
-                  {order.project?.swagPackName || order.project?.name || `Order #${order.id}`}
+                  Order# {formatOrderNumber(order.orderNumber)}
+                  {(() => {
+                    const code = formatOrderNumber(order.orderNumber);
+                    const name = formatOrderDisplayName(order);
+                    // Only append a name when it's a real, distinct label (skip the
+                    // redundant "SW-035" / "Order SW-035" fallbacks).
+                    return name && name !== code && name !== `Order ${code}` ? ` · ${name}` : "";
+                  })()}
                 </div>
                 <div className="text-sm text-foreground/60">
-                  Order #{order.id} · {new Date(order.createdAt).toLocaleDateString()}
+                  {new Date(order.createdAt).toLocaleDateString()}
                 </div>
               </div>
 
@@ -251,6 +263,8 @@ function CustomerDesignView({ orders }: { orders: CatalogOrder[] }) {
                           });
                         }
                         addToast({ title: "All final designs approved", color: "success" });
+                        // Approved → straight to checkout to pay.
+                        router.push(`/dashboard/orders/${order.id}/checkout`);
                       } catch (e: any) {
                         addToast({
                           title: "Approval failed",
@@ -384,6 +398,8 @@ function CustomerDesignView({ orders }: { orders: CatalogOrder[] }) {
                                     stage: "FINAL"
                                   });
                                   addToast({ title: "Final design approved", color: "success" });
+                                  // Approved → straight to checkout to pay.
+                                  router.push(`/dashboard/orders/${order.id}/checkout`);
                                 } catch (e: any) {
                                   addToast({
                                     title: "Approval failed",
@@ -544,7 +560,9 @@ function DesignJobCard({
   customerName,
   item,
   step,
-  accent
+  accent,
+  orderNotes,
+  orderLogoUrl
 }: {
   orderId: string;
   orderName: string;
@@ -552,12 +570,19 @@ function DesignJobCard({
   item: CatalogOrderItem;
   step: { label: string; group: "action" | "waiting" | "done" };
   accent: "warning" | "success" | "default";
+  orderNotes?: string | null;
+  orderLogoUrl?: string | null;
 }) {
   const uploadMutation = useCreateCatalogOrderDesignUpload();
   const updateMutation = useUpdateCatalogOrderItemDesign();
   const mockupInputRef = useRef<HTMLInputElement | null>(null);
   const proofInputRef = useRef<HTMLInputElement | null>(null);
   const [pendingKind, setPendingKind] = useState<null | "mockups" | "proofs">(null);
+
+  // The customer's logo + placement designed in the Mockup Studio, parsed from
+  // the order notes so the designer sees exactly where the logo goes.
+  const { placement } = parseLogoPlacement(orderNotes);
+  const hasBranding = Boolean(orderLogoUrl || placement);
 
   const uploadAsset = async (
     file: File,
@@ -610,8 +635,7 @@ function DesignJobCard({
   const busy = updateMutation.isPending || uploadMutation.isPending;
 
   return (
-    <Card className="border border-divider shadow-sm">
-      <CardBody className="flex flex-col gap-5 p-5">
+    <div className="flex flex-col gap-5">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="min-w-0 space-y-1.5">
             <div className="flex flex-wrap items-center gap-2">
@@ -689,6 +713,69 @@ function DesignJobCard({
           </div>
         ) : null}
 
+        {hasBranding ? (
+          <div className="rounded-2xl border border-primary/20 bg-primary/[0.03] p-4">
+            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-foreground/50">
+              <Sparkles className="size-4 text-primary" /> Logo &amp; placement
+            </div>
+            <div className="mt-3 flex flex-col gap-4 sm:flex-row">
+              <div className="flex h-32 w-32 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-divider bg-white">
+                {placement?.mockupUrl ? (
+                  <Image removeWrapper src={placement.mockupUrl} alt="Logo placement preview" className="h-full w-full object-contain" />
+                ) : orderLogoUrl ? (
+                  <Image removeWrapper src={orderLogoUrl} alt="Customer logo" className="h-full w-full object-contain" />
+                ) : null}
+              </div>
+              <div className="min-w-0 flex-1">
+                {placement?.target ? (
+                  <div className="text-sm font-semibold text-foreground">{placement.target}</div>
+                ) : null}
+                {placement ? (
+                  <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
+                    {[
+                      { label: "Horizontal", value: placement.horizontal != null ? `${placement.horizontal}%` : "—" },
+                      { label: "Vertical", value: placement.vertical != null ? `${placement.vertical}%` : "—" },
+                      { label: "Width", value: placement.width != null ? `${placement.width}%` : "—" },
+                      { label: "Rotation", value: placement.rotation != null ? `${placement.rotation}°` : "—" },
+                      { label: "Opacity", value: placement.opacity != null ? `${placement.opacity}%` : "—" },
+                      { label: "Imprint", value: placement.imprint ?? "—" }
+                    ].map((f) => (
+                      <div key={f.label} className="rounded-xl border border-divider bg-background px-3 py-2">
+                        <div className="text-[10px] font-semibold uppercase tracking-wide text-foreground/40">{f.label}</div>
+                        <div className="truncate text-sm font-medium text-foreground">{f.value}</div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-sm text-foreground/60">Logo uploaded by the customer.</div>
+                )}
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {placement?.mockupUrl ? (
+                    <a
+                      href={placement.mockupUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 rounded-full bg-primary px-3.5 py-1.5 text-xs font-semibold text-white"
+                    >
+                      <Eye className="size-3.5" /> Preview mockup
+                    </a>
+                  ) : null}
+                  {orderLogoUrl ? (
+                    <a
+                      href={orderLogoUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 rounded-full border border-divider bg-background px-3.5 py-1.5 text-xs font-semibold text-foreground hover:bg-content2"
+                    >
+                      <Download className="size-3.5" /> Original logo
+                    </a>
+                  ) : null}
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
         <div className="flex flex-wrap items-end gap-4">
           <AssetThumb label="Product" src={item.imageUrl} hint="No image" />
           <AssetThumb label="Mockup" src={item.mockupImageUrl} hint="Not uploaded" />
@@ -737,21 +824,103 @@ function DesignJobCard({
             </Button>
           </div>
         </div>
-      </CardBody>
-    </Card>
+    </div>
+  );
+}
+
+type DesignRow = {
+  key: string;
+  orderId: string;
+  orderNumber: number;
+  orderName: string;
+  customerName: string;
+  item: CatalogOrderItem;
+  step: { label: string; group: "action" | "waiting" | "done" };
+  orderNotes: string | null;
+  orderLogoUrl: string | null;
+};
+
+// Minimal list row — order # + name for history, plus a View button that opens
+// the full editor. Keeps the queue scannable instead of a wall of big cards.
+function DesignJobRow({
+  row,
+  accent,
+  onView
+}: {
+  row: DesignRow;
+  accent: "warning" | "success" | "default";
+  onView: () => void;
+}) {
+  const preview = getPreferredDesignImage(row.item);
+  return (
+    <div className="flex items-center gap-3 rounded-2xl border border-divider bg-background p-3 transition hover:bg-content2">
+      <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-default-100">
+        {preview ? (
+          <Image removeWrapper src={preview} alt={row.item.productName} className="h-full w-full object-contain" />
+        ) : (
+          <span className="px-1 text-center text-[10px] text-foreground/40">No preview</span>
+        )}
+      </div>
+
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+          <span className="font-semibold text-foreground">{formatOrderNumber(row.orderNumber)}</span>
+          <span className="truncate text-foreground/70">{row.orderName}</span>
+        </div>
+        <div className="mt-0.5 truncate text-xs text-foreground/55">
+          {row.item.productName} · {row.item.variantName || "Standard"} · {row.customerName}
+        </div>
+      </div>
+
+      <Chip size="sm" color={accent} variant="flat" className="hidden shrink-0 sm:flex">
+        {row.step.label}
+      </Chip>
+      {row.item.hasOpenRevision ? (
+        <Chip size="sm" color="warning" variant="flat" className="hidden shrink-0 md:flex">
+          Revision
+        </Chip>
+      ) : null}
+
+      <Button
+        size="sm"
+        variant="bordered"
+        startContent={<Eye className="size-4" />}
+        onPress={onView}
+        className="shrink-0"
+      >
+        View
+      </Button>
+    </div>
   );
 }
 
 function TeamDesignView({ orders }: { orders: CatalogOrder[] }) {
-  const rows = orders.flatMap((order) =>
+  const [selectedKey, setSelectedKey] = useState<string | null>(null);
+
+  const rows: DesignRow[] = orders.flatMap((order) =>
     order.items.map((item) => ({
+      key: `${order.id}:${item.id}`,
       orderId: order.id,
-      orderName: order.project?.swagPackName || order.project?.name || order.id,
+      orderNumber: order.orderNumber,
+      orderName: formatOrderDisplayName(order),
       customerName: order.name,
       item,
-      step: designerNextStep(item.designPhase)
+      step: designerNextStep(item.designPhase),
+      orderNotes: order.notes ?? null,
+      orderLogoUrl: order.logoUrl ?? null
     }))
   );
+
+  // Derive the open row from the latest data each render, so uploads / status
+  // changes made in the modal reflect immediately once the query refetches.
+  const selected = rows.find((r) => r.key === selectedKey) ?? null;
+  const selectedAccent = selected
+    ? selected.step.group === "action"
+      ? "warning"
+      : selected.step.group === "done"
+        ? "success"
+        : "default"
+    : "default";
 
   return (
     <div className="flex flex-col gap-8">
@@ -768,22 +937,56 @@ function TeamDesignView({ orders }: { orders: CatalogOrder[] }) {
                 {groupRows.length} · {group.hint}
               </span>
             </div>
-            <div className="grid gap-4">
+            <div className="flex flex-col gap-2">
               {groupRows.map((row) => (
-                <DesignJobCard
-                  key={`${row.orderId}:${row.item.id}`}
-                  orderId={row.orderId}
-                  orderName={row.orderName}
-                  customerName={row.customerName}
-                  item={row.item}
-                  step={row.step}
+                <DesignJobRow
+                  key={row.key}
+                  row={row}
                   accent={chipColor}
+                  onView={() => setSelectedKey(row.key)}
                 />
               ))}
             </div>
           </div>
         );
       })}
+
+      <Modal
+        isOpen={!!selected}
+        onOpenChange={(open) => {
+          if (!open) setSelectedKey(null);
+        }}
+        size="3xl"
+        scrollBehavior="inside"
+      >
+        <ModalContent>
+          {() =>
+            selected ? (
+              <>
+                <ModalHeader className="flex flex-col gap-0.5">
+                  <span className="text-base">
+                    {formatOrderNumber(selected.orderNumber)} · {selected.orderName}
+                  </span>
+                  <span className="text-xs font-normal text-foreground/55">{selected.customerName}</span>
+                </ModalHeader>
+                <ModalBody className="pb-6">
+                  <DesignJobCard
+                    key={selected.key}
+                    orderId={selected.orderId}
+                    orderName={selected.orderName}
+                    customerName={selected.customerName}
+                    item={selected.item}
+                    step={selected.step}
+                    accent={selectedAccent}
+                    orderNotes={selected.orderNotes}
+                    orderLogoUrl={selected.orderLogoUrl}
+                  />
+                </ModalBody>
+              </>
+            ) : null
+          }
+        </ModalContent>
+      </Modal>
     </div>
   );
 }

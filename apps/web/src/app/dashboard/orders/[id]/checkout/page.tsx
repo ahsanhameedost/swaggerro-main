@@ -16,7 +16,6 @@ const PAYMENTS_TEST_MODE = process.env.NEXT_PUBLIC_PAYMENTS_TEST_MODE === "true"
 
 const CHECKOUT_STEPS = [
   { key: "review", label: "Review Order" },
-  { key: "funds", label: "Add Funds" },
   { key: "payment", label: "Payment Method" },
   { key: "summary", label: "Order Summary" }
 ] as const;
@@ -28,11 +27,11 @@ function CheckoutStepper() {
         <div className="h-full w-full rounded-full bg-primary" />
       </div>
 
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-3">
         {CHECKOUT_STEPS.map((step, index) => {
-          const isComplete = index < 2;
-          const isCurrent = index === 2;
-          const isFinal = index === 3;
+          const isComplete = index < 1;
+          const isCurrent = index === 1;
+          const isFinal = index === 2;
 
           return (
             <div key={step.key} className="flex items-center gap-3">

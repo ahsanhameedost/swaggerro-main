@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useRef, useState } from "react";
-import { useParams } from "next/navigation";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
 import {
   Button,
   Card,
@@ -332,8 +332,18 @@ function formatShipmentStatusLabel(
 
 export default function OrderDetailsPage() {
   const params = useParams<{ id: string }>();
+  const router = useRouter();
   const orderId = Array.isArray(params?.id) ? params.id[0] : params?.id;
   const { data: user } = useMe();
+  // Designers don't work off the full order page — everything they need (logo,
+  // placement, mockups, status) lives in the Designs tab. Redirect design-only
+  // users here so old notification/deep links can't strand them on this page.
+  const isDesignOnly =
+    hasAnyPermission(user, ["design.read", "design.assigned.read", "design.write"]) &&
+    !hasPermission(user, "catalog.orders.read");
+  useEffect(() => {
+    if (isDesignOnly) router.replace("/dashboard/designs");
+  }, [isDesignOnly, router]);
   // Staff (admin / manager / designer) see the management view. A customer is a
   // user who can ONLY read their own orders — note SUPER_ADMIN also holds
   // orders.self.read, so staff must be detected via team/design permissions.
@@ -583,14 +593,14 @@ export default function OrderDetailsPage() {
 
       {!isCustomer && (canManageStatus || canAssign) ? (
         <Card className="border border-divider shadow-sm">
-          <CardBody className="flex flex-col gap-4 p-6 lg:flex-row lg:items-end lg:justify-between">
-            <div className="flex flex-wrap gap-4">
+          <CardBody className="flex flex-col gap-4 p-6">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
               {canManageStatus ? (
                 <Select
                   label="Order status"
                   aria-label="Order status"
                   selectedKeys={[order.status]}
-                  className="min-w-[220px]"
+                  className="w-full sm:flex-1"
                   isDisabled={statusMutation.isPending}
                   onSelectionChange={async (keys) => {
                     const next = Array.from(keys as Set<string>)[0] as CatalogOrderStatus;
@@ -617,45 +627,12 @@ export default function OrderDetailsPage() {
                 </Select>
               ) : null}
 
-              {canManageStatus ? (
-                <Select
-                  label="Production stage"
-                  aria-label="Production stage"
-                  selectedKeys={[order.productionStage ?? "NOT_STARTED"]}
-                  className="min-w-[220px]"
-                  isDisabled={productionMutation.isPending}
-                  onSelectionChange={async (keys) => {
-                    const next = Array.from(keys as Set<string>)[0];
-                    if (!next || next === (order.productionStage ?? "NOT_STARTED")) return;
-                    try {
-                      await productionMutation.mutateAsync({ id: order.id, productionStage: next });
-                      addToast({ title: "Production stage updated", color: "success" });
-                    } catch (e: any) {
-                      addToast({
-                        title: "Update failed",
-                        description: e?.message ?? "Unable to update production stage.",
-                        color: "danger"
-                      });
-                    }
-                  }}
-                >
-                  {[
-                    { key: "NOT_STARTED", label: "Not started" },
-                    { key: "READY_FOR_PRODUCTION", label: "Ready for production" },
-                    { key: "IN_PRODUCTION", label: "In production" },
-                    { key: "SHIPPED", label: "Shipped" }
-                  ].map((s) => (
-                    <SelectItem key={s.key}>{s.label}</SelectItem>
-                  ))}
-                </Select>
-              ) : null}
-
               {canAssign ? (
                 <Select
                   label="Assign designer / staff"
                   aria-label="Assign designer or staff"
                   selectedKeys={[order.assignedEmployee?.id ?? "__unassigned__"]}
-                  className="min-w-[260px]"
+                  className="w-full sm:flex-1"
                   isDisabled={assignMutation.isPending}
                   onSelectionChange={async (keys) => {
                     const value = Array.from(keys as Set<string>)[0] as string;
@@ -689,11 +666,46 @@ export default function OrderDetailsPage() {
                   ))}
                 </Select>
               ) : null}
+
+              {/* Production stage only unlocks once the customer has approved the
+                  final design (all items ready to order). */}
+              {canManageStatus && order.allItemsReadyToOrder ? (
+                <Select
+                  label="Production stage"
+                  aria-label="Production stage"
+                  selectedKeys={[order.productionStage ?? "NOT_STARTED"]}
+                  className="w-full sm:flex-1"
+                  isDisabled={productionMutation.isPending}
+                  onSelectionChange={async (keys) => {
+                    const next = Array.from(keys as Set<string>)[0];
+                    if (!next || next === (order.productionStage ?? "NOT_STARTED")) return;
+                    try {
+                      await productionMutation.mutateAsync({ id: order.id, productionStage: next });
+                      addToast({ title: "Production stage updated", color: "success" });
+                    } catch (e: any) {
+                      addToast({
+                        title: "Update failed",
+                        description: e?.message ?? "Unable to update production stage.",
+                        color: "danger"
+                      });
+                    }
+                  }}
+                >
+                  {[
+                    { key: "NOT_STARTED", label: "Not started" },
+                    { key: "READY_FOR_PRODUCTION", label: "Ready for production" },
+                    { key: "IN_PRODUCTION", label: "In production" },
+                    { key: "SHIPPED", label: "Shipped" }
+                  ].map((s) => (
+                    <SelectItem key={s.key}>{s.label}</SelectItem>
+                  ))}
+                </Select>
+              ) : null}
             </div>
 
-            <div className="max-w-sm text-sm text-foreground/60">
-              Approve the order, then assign it to a designer to start the mockup workflow. The
-              designer works the design phases below and the customer sees each update.
+            <div className="text-sm text-foreground/60">
+              Assign a designer to start the mockup workflow. Once the customer approves the final
+              design, the production stage unlocks so you can move the order into production.
             </div>
           </CardBody>
         </Card>

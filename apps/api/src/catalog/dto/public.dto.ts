@@ -33,6 +33,18 @@ export const createPublicProjectUploadSchema = z.object({
   contentType: z.enum(["image/jpeg", "image/png", "image/webp"])
 });
 
+// Public order tracking: match an order by its sequential number + the email on
+// the order (no account required). Accepts "SW-044", "044" or "44".
+export const trackOrderQuerySchema = z.object({
+  orderNumber: z
+    .string()
+    .trim()
+    .min(1)
+    .transform((value) => Number(value.replace(/^SW-?/i, "").replace(/\D/g, "")))
+    .pipe(z.number().int().positive()),
+  email: z.string().trim().email()
+});
+
 export const createPublicOrderSchema = z
   .object({
     name: z.string().trim().min(1).max(120),
@@ -76,6 +88,7 @@ export const createPublicOrderSchema = z
     }
   });
 
+export type TrackOrderQuery = z.infer<typeof trackOrderQuerySchema>;
 export type ListPublicProductsQuery = z.infer<typeof listPublicProductsQuerySchema>;
 export type CreatePublicProjectUploadDto = z.infer<typeof createPublicProjectUploadSchema>;
 export type CreatePublicOrderDto = z.infer<typeof createPublicOrderSchema>;

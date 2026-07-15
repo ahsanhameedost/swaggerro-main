@@ -5,7 +5,8 @@ import { parseOrThrow } from "../common/parse-or-throw";
 import {
   createPublicOrderSchema,
   createPublicProjectUploadSchema,
-  listPublicProductsQuerySchema
+  listPublicProductsQuerySchema,
+  trackOrderQuerySchema
 } from "../dto/public.dto";
 import { CatalogPublicService } from "./public.service";
 
@@ -33,6 +34,16 @@ export class CatalogPublicController {
   @Get("public/products/:slug")
   async getPublicProductBySlug(@Param("slug") slug: string) {
     return { product: await this.publicService.getPublicProductBySlug(slug) };
+  }
+
+  // Account-free order tracking by order number + email.
+  @Get("public/track")
+  async trackOrder(@Query() query: unknown) {
+    return {
+      tracking: await this.publicService.trackOrder(
+        parseOrThrow(trackOrderQuerySchema.safeParse(query), "Enter a valid order number and email")
+      )
+    };
   }
 
   @Post("public/projects/upload-url")

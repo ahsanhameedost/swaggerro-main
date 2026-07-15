@@ -34,6 +34,7 @@ import { formatMoney } from "@/lib/money";
 import {
   ORDER_STATUSES,
   buildUserDisplayName,
+  formatOrderDisplayName,
   formatOrderNumber,
   formatOrderStatusLabel,
   formatOrderTypeLabel,
@@ -233,7 +234,7 @@ export default function OrdersPage() {
                   <TableCell>
                     <div className="space-y-1">
                       <div className="font-medium">
-                        {order.project?.swagPackName || order.project?.name || "-"}
+                        {formatOrderDisplayName(order)}
                       </div>
                       <div className="text-xs text-foreground/50">
                         {new Date(order.createdAt).toLocaleDateString()}

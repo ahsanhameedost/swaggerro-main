@@ -20,6 +20,8 @@ export type EventEmail = {
   subject: string;
   heading: string;
   paragraphs?: string[];
+  // Raw HTML appended after the paragraphs (e.g. an order-summary table).
+  bodyHtml?: string;
   // Relative path (e.g. "/dashboard/orders/x") — resolved to an absolute web URL.
   ctaPath?: string | null;
   ctaLabel?: string;
@@ -122,6 +124,7 @@ export class NotificationEventsService {
       heading: email.heading,
       greeting: firstName ? `Hi ${firstName},` : undefined,
       paragraphs: email.paragraphs,
+      extraHtml: email.bodyHtml,
       cta,
       footerNote: email.footerNote
     });

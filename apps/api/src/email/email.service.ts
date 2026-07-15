@@ -2,6 +2,7 @@ import { Injectable, Logger, OnModuleInit } from "@nestjs/common";
 import * as nodemailer from "nodemailer";
 import type { SentMessageInfo, Transporter } from "nodemailer";
 import { env } from "../env";
+import { renderEmailShell, webBaseUrl } from "./email-layout";
 
 export type CatalogOrderAdminEmailPayload = {
   id: string;
@@ -188,74 +189,52 @@ export class EmailService implements OnModuleInit {
       replyTo: payload.email,
       subject: `New Order Request — ${payload.companyName} / ${payload.contactName}`,
       text: lines.join("\n"),
-      html: `
-        <div style="margin:0;padding:24px;background:#f4f4f5;font-family:Arial,Helvetica,sans-serif;color:#111827;">
-          <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="max-width:980px;margin:0 auto;background:#ffffff;border-radius:18px;overflow:hidden;border:1px solid #e5e7eb;">
-            <tr>
-              <td style="padding:0;">
-                <div style="background:linear-gradient(90deg,#C41E3A 0%,#FD0000 100%);padding:28px 32px;color:#ffffff;">
-                  <div style="font-size:13px;letter-spacing:.08em;text-transform:uppercase;opacity:.85;">SOA Order Request</div>
-                  <h1 style="margin:10px 0 6px;font-size:28px;line-height:1.2;font-weight:700;">New Contact Submission</h1>
-                  <p style="margin:0;font-size:14px;opacity:.92;">A new promotional products request has been submitted from the website.</p>
-                </div>
-              </td>
-            </tr>
-
-            <tr>
-              <td style="padding:28px 32px 12px;">
-                <h2 style="margin:0 0 14px;font-size:18px;color:#111827;">Customer & Project Details</h2>
-                <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="border:1px solid #eef0f3;border-radius:12px;overflow:hidden;background:#fafafa;">
-                  ${summaryRow("Company", payload.companyName)}
-                  ${summaryRow("Contact Name", payload.contactName)}
-                  ${summaryRow("Email", payload.email)}
-                  ${summaryRow("Phone", payload.phone)}
-                  ${summaryRow("Shipping Address", payload.shippingAddress)}
-                  ${summaryRow("City", payload.city)}
-                  ${summaryRow("State", payload.state)}
-                  ${summaryRow("ZIP", payload.zip)}
-                  ${summaryRow("Event / Project", payload.eventName)}
-                  ${summaryRow("In-Hand Date", payload.inHandDate?.toISOString())}
-                  ${summaryRow("Budget", payload.budget)}
-                  ${summaryRow("Artwork Ready", payload.artworkReady)}
-                </table>
-              </td>
-            </tr>
-
-            <tr>
-              <td style="padding:8px 32px 12px;">
-                <h2 style="margin:0 0 14px;font-size:18px;color:#111827;">Additional Notes</h2>
-                <div style="border:1px solid #eef0f3;background:#fafafa;border-radius:12px;padding:16px;color:#374151;white-space:pre-wrap;line-height:1.6;">
-                  ${payload.additionalNotes ? escapeHtml(payload.additionalNotes) : "No additional notes provided."}
-                </div>
-              </td>
-            </tr>
-
-            <tr>
-              <td style="padding:8px 32px 28px;">
-                <h2 style="margin:0 0 14px;font-size:18px;color:#111827;">Requested Products</h2>
-                <div style="border:1px solid #eef0f3;border-radius:12px;overflow:hidden;">
-                  <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="border-collapse:collapse;background:#ffffff;">
-                    <thead>
-                      <tr style="background:#111111;">
-                        <th align="left" style="padding:12px;color:#ffffff;font-size:12px;">#</th>
-                        <th align="left" style="padding:12px;color:#ffffff;font-size:12px;">Category</th>
-                        <th align="left" style="padding:12px;color:#ffffff;font-size:12px;">Qty</th>
-                        <th align="left" style="padding:12px;color:#ffffff;font-size:12px;">Description</th>
-                        <th align="left" style="padding:12px;color:#ffffff;font-size:12px;">Colors</th>
-                        <th align="left" style="padding:12px;color:#ffffff;font-size:12px;">Target Price</th>
-                        <th align="left" style="padding:12px;color:#ffffff;font-size:12px;">Decoration</th>
-                        <th align="left" style="padding:12px;color:#ffffff;font-size:12px;">Notes</th>
-                      </tr>
-                    </thead>
-                    <tbody>${productsRows}</tbody>
-                  </table>
-                </div>
-                <p style="margin:14px 0 0;color:#6b7280;font-size:12px;">Submitted at ${payload.createdAt.toISOString()}</p>
-              </td>
-            </tr>
+      html: renderEmailShell({
+        eyebrow: "Order request",
+        heading: "New contact submission",
+        subheading: "A new promotional products request was submitted from the website.",
+        maxWidth: 900,
+        bodyHtml: `
+          <h2 style="margin:0 0 12px;font-size:16px;color:#0f172a;">Customer &amp; project details</h2>
+          <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="border:1px solid #eef0f3;border-radius:12px;overflow:hidden;background:#fafafa;">
+            ${summaryRow("Company", payload.companyName)}
+            ${summaryRow("Contact Name", payload.contactName)}
+            ${summaryRow("Email", payload.email)}
+            ${summaryRow("Phone", payload.phone)}
+            ${summaryRow("Shipping Address", payload.shippingAddress)}
+            ${summaryRow("City", payload.city)}
+            ${summaryRow("State", payload.state)}
+            ${summaryRow("ZIP", payload.zip)}
+            ${summaryRow("Event / Project", payload.eventName)}
+            ${summaryRow("In-Hand Date", payload.inHandDate?.toISOString())}
+            ${summaryRow("Budget", payload.budget)}
+            ${summaryRow("Artwork Ready", payload.artworkReady)}
           </table>
-        </div>
-      `
+
+          <h2 style="margin:24px 0 12px;font-size:16px;color:#0f172a;">Additional notes</h2>
+          <div style="border:1px solid #eef0f3;background:#fafafa;border-radius:12px;padding:16px;color:#374151;white-space:pre-wrap;line-height:1.6;">${payload.additionalNotes ? escapeHtml(payload.additionalNotes) : "No additional notes provided."}</div>
+
+          <h2 style="margin:24px 0 12px;font-size:16px;color:#0f172a;">Requested products</h2>
+          <div style="border:1px solid #eef0f3;border-radius:12px;overflow:hidden;">
+            <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="border-collapse:collapse;background:#ffffff;">
+              <thead>
+                <tr style="background:#0f172a;">
+                  <th align="left" style="padding:12px;color:#ffffff;font-size:12px;">#</th>
+                  <th align="left" style="padding:12px;color:#ffffff;font-size:12px;">Category</th>
+                  <th align="left" style="padding:12px;color:#ffffff;font-size:12px;">Qty</th>
+                  <th align="left" style="padding:12px;color:#ffffff;font-size:12px;">Description</th>
+                  <th align="left" style="padding:12px;color:#ffffff;font-size:12px;">Colors</th>
+                  <th align="left" style="padding:12px;color:#ffffff;font-size:12px;">Target Price</th>
+                  <th align="left" style="padding:12px;color:#ffffff;font-size:12px;">Decoration</th>
+                  <th align="left" style="padding:12px;color:#ffffff;font-size:12px;">Notes</th>
+                </tr>
+              </thead>
+              <tbody>${productsRows}</tbody>
+            </table>
+          </div>
+          <p style="margin:14px 0 0;color:#6b7280;font-size:12px;">Submitted at ${payload.createdAt.toISOString()}</p>
+        `
+      })
     });
 
     this.logger.log(`sendAdminContactEmail success ${mailInfoSummary(info)}`);
@@ -275,28 +254,16 @@ Thanks for contacting SOA. Your order request has been received successfully.
 Our team is reviewing your submission and will follow up soon.
 
 SOA Team`,
-      html: `
-        <div style="margin:0;padding:24px;background:#f4f4f5;font-family:Arial,Helvetica,sans-serif;color:#111827;">
-          <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="max-width:640px;margin:0 auto;background:#ffffff;border-radius:18px;overflow:hidden;border:1px solid #e5e7eb;">
-            <tr>
-              <td>
-                <div style="background:linear-gradient(90deg,#C41E3A 0%,#FD0000 100%);padding:28px 32px;color:#ffffff;">
-                  <div style="font-size:13px;letter-spacing:.08em;text-transform:uppercase;opacity:.85;">SOA</div>
-                  <h1 style="margin:10px 0 0;font-size:26px;line-height:1.2;font-weight:700;">We received your request</h1>
-                </div>
-              </td>
-            </tr>
-            <tr>
-              <td style="padding:28px 32px;color:#374151;line-height:1.7;">
-                <p style="margin:0 0 14px;">Hi ${escapeHtml(contactName)},</p>
-                <p style="margin:0 0 14px;">Thanks for contacting SOA. Your order request has been received successfully.</p>
-                <p style="margin:0 0 14px;">Our team is reviewing your submission and will follow up soon.</p>
-                <p style="margin:24px 0 0;font-weight:600;color:#111827;">SOA Team</p>
-              </td>
-            </tr>
-          </table>
-        </div>
-      `
+      html: renderEmailShell({
+        eyebrow: "Request received",
+        heading: "We received your request",
+        bodyHtml: `
+          <p style="margin:0 0 14px;">Hi ${escapeHtml(contactName)},</p>
+          <p style="margin:0 0 14px;">Thanks for reaching out to Swaggeroo — your request has been received.</p>
+          <p style="margin:0 0 14px;">Our team is reviewing your submission and will follow up shortly.</p>
+          <p style="margin:22px 0 0;font-weight:600;color:#0f172a;">— The Swaggeroo Team</p>
+        `
+      })
     });
 
     this.logger.log(`sendUserAckEmail success ${mailInfoSummary(info)}`);
@@ -317,28 +284,17 @@ Thanks for joining Swaggeroo.
 Your account has been created successfully and you can now continue from your dashboard.
 
 Swaggeroo Team`,
-      html: `
-        <div style="margin:0;padding:24px;background:#f4f4f5;font-family:Arial,Helvetica,sans-serif;color:#111827;">
-          <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="max-width:640px;margin:0 auto;background:#ffffff;border-radius:18px;overflow:hidden;border:1px solid #e5e7eb;">
-            <tr>
-              <td>
-                <div style="background:linear-gradient(90deg,#C41E3A 0%,#FD0000 100%);padding:28px 32px;color:#ffffff;">
-                  <div style="font-size:13px;letter-spacing:.08em;text-transform:uppercase;opacity:.85;">Swaggeroo</div>
-                  <h1 style="margin:10px 0 0;font-size:26px;line-height:1.2;font-weight:700;">Thanks for joining Swaggeroo</h1>
-                </div>
-              </td>
-            </tr>
-            <tr>
-              <td style="padding:28px 32px;color:#374151;line-height:1.7;">
-                <p style="margin:0 0 14px;">Hi ${escapeHtml(name)},</p>
-                <p style="margin:0 0 14px;">Thanks for joining Swaggeroo. Your account has been created successfully.</p>
-                <p style="margin:0 0 14px;">You can now continue from your dashboard and start building your swag catalog.</p>
-                <p style="margin:24px 0 0;font-weight:600;color:#111827;">Swaggeroo Team</p>
-              </td>
-            </tr>
-          </table>
-        </div>
-      `
+      html: renderEmailShell({
+        eyebrow: "Welcome",
+        heading: "Thanks for joining Swaggeroo",
+        bodyHtml: `
+          <p style="margin:0 0 14px;">Hi ${escapeHtml(name)},</p>
+          <p style="margin:0 0 14px;">Your account is all set up. Welcome aboard!</p>
+          <p style="margin:0 0 14px;">Head to your dashboard to browse the catalog, build a swag pack, and drop in your logo.</p>
+          <p style="margin:22px 0 0;font-weight:600;color:#0f172a;">— The Swaggeroo Team</p>
+        `,
+        cta: { label: "Go to your dashboard", url: `${webBaseUrl()}/dashboard` }
+      })
     });
 
     this.logger.log(`sendSignupWelcomeEmail success ${mailInfoSummary(info)}`);
@@ -380,58 +336,47 @@ Swaggeroo Team`,
       replyTo: payload.email,
       subject: `New catalog order • ${payload.type === "COMBINED" ? "Combined" : payload.type === "SWAG_PACK" ? "Swag Pack" : "Bulk"}`,
       text: lines.join("\n"),
-      html: `
-        <div style="margin:0;padding:24px;background:#f4f4f5;font-family:Arial,Helvetica,sans-serif;color:#111827;">
-          <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="max-width:680px;margin:0 auto;background:#ffffff;border-radius:18px;overflow:hidden;border:1px solid #e5e7eb;">
-            <tr>
-              <td>
-                <div style="background:linear-gradient(90deg,#C41E3A 0%,#FD0000 100%);padding:28px 32px;color:#ffffff;">
-                  <div style="font-size:13px;letter-spacing:.08em;text-transform:uppercase;opacity:.85;">Swaggeroo</div>
-                  <h1 style="margin:10px 0 0;font-size:26px;line-height:1.2;font-weight:700;">New catalog order</h1>
-                </div>
-              </td>
-            </tr>
-            <tr>
-              <td style="padding:28px 32px;color:#374151;line-height:1.7;">
-                <p style="margin:0 0 10px;"><strong>Order ID:</strong> ${escapeHtml(payload.id)}</p>
-                <p style="margin:0 0 10px;"><strong>Type:</strong> ${escapeHtml(payload.type)}</p>
-                <p style="margin:0 0 10px;"><strong>Contact:</strong> ${escapeHtml(payload.name)} (${escapeHtml(payload.email)})</p>
-                <p style="margin:0 0 10px;"><strong>Company:</strong> ${escapeHtml(payload.companyName ?? "-")}</p>
-                <p style="margin:0 0 10px;"><strong>Phone:</strong> ${escapeHtml(payload.phone ?? "-")}</p>
-                <p style="margin:0 0 10px;"><strong>Pack Quantity:</strong> ${payload.packQuantity}</p>
-                <p style="margin:0 0 10px;"><strong>Notes:</strong> ${escapeHtml(payload.notes ?? "-")}</p>
-                <p style="margin:0 0 18px;"><strong>Total:</strong> ${escapeHtml(total)}</p>
-                <table role="presentation" cellspacing="0" cellpadding="8" border="0" width="100%" style="border-collapse:collapse;border:1px solid #e5e7eb;">
-                  <thead>
-                    <tr style="background:#f9fafb;">
-                      <th align="left" style="border-bottom:1px solid #e5e7eb;">Item</th>
-                      <th align="left" style="border-bottom:1px solid #e5e7eb;">Qty</th>
-                      <th align="left" style="border-bottom:1px solid #e5e7eb;">Qty / Pack</th>
-                      <th align="left" style="border-bottom:1px solid #e5e7eb;">Unit</th>
-                      <th align="left" style="border-bottom:1px solid #e5e7eb;">Total</th>
+      html: renderEmailShell({
+        eyebrow: "New order",
+        heading: "New catalog order",
+        maxWidth: 680,
+        bodyHtml: `
+          <p style="margin:0 0 10px;"><strong>Order ID:</strong> ${escapeHtml(payload.id)}</p>
+          <p style="margin:0 0 10px;"><strong>Type:</strong> ${escapeHtml(payload.type)}</p>
+          <p style="margin:0 0 10px;"><strong>Contact:</strong> ${escapeHtml(payload.name)} (${escapeHtml(payload.email)})</p>
+          <p style="margin:0 0 10px;"><strong>Company:</strong> ${escapeHtml(payload.companyName ?? "-")}</p>
+          <p style="margin:0 0 10px;"><strong>Phone:</strong> ${escapeHtml(payload.phone ?? "-")}</p>
+          <p style="margin:0 0 10px;"><strong>Pack Quantity:</strong> ${payload.packQuantity}</p>
+          <p style="margin:0 0 10px;"><strong>Notes:</strong> ${escapeHtml(payload.notes ?? "-")}</p>
+          <p style="margin:0 0 18px;"><strong>Total:</strong> ${escapeHtml(total)}</p>
+          <table role="presentation" cellspacing="0" cellpadding="8" border="0" width="100%" style="border-collapse:collapse;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;">
+            <thead>
+              <tr style="background:#f9fafb;">
+                <th align="left" style="border-bottom:1px solid #e5e7eb;">Item</th>
+                <th align="left" style="border-bottom:1px solid #e5e7eb;">Qty</th>
+                <th align="left" style="border-bottom:1px solid #e5e7eb;">Qty / Pack</th>
+                <th align="left" style="border-bottom:1px solid #e5e7eb;">Unit</th>
+                <th align="left" style="border-bottom:1px solid #e5e7eb;">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${payload.items
+                .map(
+                  (item) => `
+                    <tr>
+                      <td style="border-bottom:1px solid #f3f4f6;">${escapeHtml(item.productName)}${item.variantName ? ` <div style="font-size:12px;color:#6b7280;">${escapeHtml(item.variantName)}</div>` : ""}</td>
+                      <td style="border-bottom:1px solid #f3f4f6;">${item.quantity}</td>
+                      <td style="border-bottom:1px solid #f3f4f6;">${item.quantityPerPack ?? "-"}</td>
+                      <td style="border-bottom:1px solid #f3f4f6;">$${item.unitPrice.toFixed(2)}</td>
+                      <td style="border-bottom:1px solid #f3f4f6;">$${item.totalPrice.toFixed(2)}</td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    ${payload.items
-                      .map(
-                        (item) => `
-                          <tr>
-                            <td style="border-bottom:1px solid #f3f4f6;">${escapeHtml(item.productName)}${item.variantName ? ` <div style="font-size:12px;color:#6b7280;">${escapeHtml(item.variantName)}</div>` : ""}</td>
-                            <td style="border-bottom:1px solid #f3f4f6;">${item.quantity}</td>
-                            <td style="border-bottom:1px solid #f3f4f6;">${item.quantityPerPack ?? "-"}</td>
-                            <td style="border-bottom:1px solid #f3f4f6;">$${item.unitPrice.toFixed(2)}</td>
-                            <td style="border-bottom:1px solid #f3f4f6;">$${item.totalPrice.toFixed(2)}</td>
-                          </tr>
-                        `
-                      )
-                      .join("")}
-                  </tbody>
-                </table>
-              </td>
-            </tr>
+                  `
+                )
+                .join("")}
+            </tbody>
           </table>
-        </div>
-      `
+        `
+      })
     });
 
     this.logger.log(`sendCatalogOrderAdminEmail success ${mailInfoSummary(info)}`);
@@ -449,28 +394,18 @@ Thanks for submitting your Swaggeroo order request.
 Our team received it successfully and will review your project details shortly.
 
 Swaggeroo Team`,
-      html: `
-        <div style="margin:0;padding:24px;background:#f4f4f5;font-family:Arial,Helvetica,sans-serif;color:#111827;">
-          <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="max-width:640px;margin:0 auto;background:#ffffff;border-radius:18px;overflow:hidden;border:1px solid #e5e7eb;">
-            <tr>
-              <td>
-                <div style="background:linear-gradient(90deg,#C41E3A 0%,#FD0000 100%);padding:28px 32px;color:#ffffff;">
-                  <div style="font-size:13px;letter-spacing:.08em;text-transform:uppercase;opacity:.85;">Swaggeroo</div>
-                  <h1 style="margin:10px 0 0;font-size:26px;line-height:1.2;font-weight:700;">We received your order request</h1>
-                </div>
-              </td>
-            </tr>
-            <tr>
-              <td style="padding:28px 32px;color:#374151;line-height:1.7;">
-                <p style="margin:0 0 14px;">Hi ${escapeHtml(name)},</p>
-                <p style="margin:0 0 14px;">Thanks for submitting your Swaggeroo order request.</p>
-                <p style="margin:0 0 14px;">Our team received it successfully and will review your project details shortly.</p>
-                <p style="margin:24px 0 0;font-weight:600;color:#111827;">Swaggeroo Team</p>
-              </td>
-            </tr>
-          </table>
-        </div>
-      `
+      html: renderEmailShell({
+        eyebrow: "Order received",
+        heading: "We received your order request",
+        bodyHtml: `
+          <p style="margin:0 0 14px;">Hi ${escapeHtml(name)},</p>
+          <p style="margin:0 0 14px;">Thanks for submitting your Swaggeroo order — we've received it successfully.</p>
+          <p style="margin:0 0 14px;">Our team is reviewing your project details and will start on your designs shortly. You can follow its progress any time.</p>
+          <p style="margin:22px 0 0;font-weight:600;color:#0f172a;">— The Swaggeroo Team</p>
+        `,
+        cta: { label: "Track your order", url: `${webBaseUrl()}/track` },
+        trackUrl: `${webBaseUrl()}/track`
+      })
     });
 
     this.logger.log(`sendCatalogOrderUserAckEmail success ${mailInfoSummary(info)}`);
@@ -496,36 +431,22 @@ This code expires in 10 minutes.
 If you did not request this, you can ignore this email.
 
 Swaggeroo Team`,
-      html: `
-        <div style="margin:0;padding:24px;background:#f4f4f5;font-family:Arial,Helvetica,sans-serif;color:#111827;">
-          <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="max-width:640px;margin:0 auto;background:#ffffff;border-radius:18px;overflow:hidden;border:1px solid #e5e7eb;">
-            <tr>
-              <td>
-                <div style="background:linear-gradient(90deg,#C41E3A 0%,#FD0000 100%);padding:28px 32px;color:#ffffff;">
-                  <div style="font-size:13px;letter-spacing:.08em;text-transform:uppercase;opacity:.85;">Swaggeroo</div>
-                  <h1 style="margin:10px 0 0;font-size:26px;line-height:1.2;font-weight:700;">Password reset code</h1>
-                </div>
-              </td>
-            </tr>
-            <tr>
-              <td style="padding:28px 32px;color:#374151;line-height:1.7;">
-                <p style="margin:0 0 14px;">Hi ${escapeHtml(name)},</p>
-                <p style="margin:0 0 14px;">We received a request to reset your Swaggeroo password.</p>
-                <p style="margin:0 0 18px;">Use the verification code below to continue:</p>
-
-                <div style="margin:0 0 18px;padding:18px 20px;border:1px solid #e5e7eb;border-radius:16px;background:#fafafa;text-align:center;">
-                  <div style="font-size:30px;line-height:1;font-weight:800;letter-spacing:0.35em;color:#111827;">${escapeHtml(safeCode)}</div>
-                </div>
-
-                <p style="margin:0 0 14px;">This code expires in <strong>10 minutes</strong>.</p>
-                <p style="margin:0;">If you did not request this, you can ignore this email.</p>
-
-                <p style="margin:24px 0 0;font-weight:600;color:#111827;">Swaggeroo Team</p>
-              </td>
-            </tr>
-          </table>
-        </div>
-      `
+      html: renderEmailShell({
+        eyebrow: "Security",
+        heading: "Password reset code",
+        bodyHtml: `
+          <p style="margin:0 0 14px;">Hi ${escapeHtml(name)},</p>
+          <p style="margin:0 0 14px;">We received a request to reset your Swaggeroo password.</p>
+          <p style="margin:0 0 18px;">Use the verification code below to continue:</p>
+          <div style="margin:0 0 18px;padding:18px 20px;border:1px solid #e5e7eb;border-radius:16px;background:#f5f8ff;text-align:center;">
+            <div style="font-size:30px;line-height:1;font-weight:800;letter-spacing:0.35em;color:#005CFE;">${escapeHtml(safeCode)}</div>
+          </div>
+          <p style="margin:0 0 14px;">This code expires in <strong>10 minutes</strong>.</p>
+          <p style="margin:0;">If you didn't request this, you can safely ignore this email.</p>
+          <p style="margin:22px 0 0;font-weight:600;color:#0f172a;">— The Swaggeroo Team</p>
+        `,
+        trackUrl: null
+      })
     });
 
     this.logger.log(`sendPasswordResetCodeEmail success ${mailInfoSummary(info)}`);
@@ -548,29 +469,18 @@ You can now sign in with your new password.
 If you did not make this change, please contact support immediately.
 
 Swaggeroo Team`,
-      html: `
-        <div style="margin:0;padding:24px;background:#f4f4f5;font-family:Arial,Helvetica,sans-serif;color:#111827;">
-          <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="max-width:640px;margin:0 auto;background:#ffffff;border-radius:18px;overflow:hidden;border:1px solid #e5e7eb;">
-            <tr>
-              <td>
-                <div style="background:linear-gradient(90deg,#C41E3A 0%,#FD0000 100%);padding:28px 32px;color:#ffffff;">
-                  <div style="font-size:13px;letter-spacing:.08em;text-transform:uppercase;opacity:.85;">Swaggeroo</div>
-                  <h1 style="margin:10px 0 0;font-size:26px;line-height:1.2;font-weight:700;">Password updated</h1>
-                </div>
-              </td>
-            </tr>
-            <tr>
-              <td style="padding:28px 32px;color:#374151;line-height:1.7;">
-                <p style="margin:0 0 14px;">Hi ${escapeHtml(name)},</p>
-                <p style="margin:0 0 14px;">Your Swaggeroo password has been updated successfully.</p>
-                <p style="margin:0 0 14px;">You can now sign in with your new password.</p>
-                <p style="margin:0;">If you did not make this change, please contact support immediately.</p>
-                <p style="margin:24px 0 0;font-weight:600;color:#111827;">Swaggeroo Team</p>
-              </td>
-            </tr>
-          </table>
-        </div>
-      `
+      html: renderEmailShell({
+        eyebrow: "Security",
+        heading: "Password updated",
+        bodyHtml: `
+          <p style="margin:0 0 14px;">Hi ${escapeHtml(name)},</p>
+          <p style="margin:0 0 14px;">Your Swaggeroo password has been updated successfully — you can now sign in with your new password.</p>
+          <p style="margin:0;">If you didn't make this change, please contact support immediately.</p>
+          <p style="margin:22px 0 0;font-weight:600;color:#0f172a;">— The Swaggeroo Team</p>
+        `,
+        cta: { label: "Sign in", url: `${webBaseUrl()}/login` },
+        trackUrl: null
+      })
     });
 
     this.logger.log(`sendPasswordUpdatedEmail success ${mailInfoSummary(info)}`);
@@ -595,29 +505,19 @@ Customer: ${payload.customerName}
 Please sign in to your dashboard to review the request and start the design process.
 
 Swaggeroo Team`,
-      html: `
-        <div style="margin:0;padding:24px;background:#f4f4f5;font-family:Arial,Helvetica,sans-serif;color:#111827;">
-          <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="max-width:640px;margin:0 auto;background:#ffffff;border-radius:18px;overflow:hidden;border:1px solid #e5e7eb;">
-            <tr>
-              <td>
-                <div style="background:linear-gradient(90deg,#C41E3A 0%,#FD0000 100%);padding:28px 32px;color:#ffffff;">
-                  <div style="font-size:13px;letter-spacing:.08em;text-transform:uppercase;opacity:.85;">Swaggeroo</div>
-                  <h1 style="margin:10px 0 0;font-size:26px;line-height:1.2;font-weight:700;">New order assigned</h1>
-                </div>
-              </td>
-            </tr>
-            <tr>
-              <td style="padding:28px 32px;color:#374151;line-height:1.7;">
-                <p style="margin:0 0 14px;">Hi ${escapeHtml(payload.employeeName)},</p>
-                <p style="margin:0 0 14px;">A new order has been assigned to you.</p>
-                <p style="margin:0 0 8px;"><strong>Order:</strong> ${escapeHtml(payload.orderId)}</p>
-                <p style="margin:0 0 14px;"><strong>Customer:</strong> ${escapeHtml(payload.customerName)}</p>
-                <p style="margin:0;">Please sign in to your dashboard to review the request and continue the design flow.</p>
-              </td>
-            </tr>
-          </table>
-        </div>
-      `
+      html: renderEmailShell({
+        eyebrow: "Design assignment",
+        heading: "New design assigned",
+        bodyHtml: `
+          <p style="margin:0 0 14px;">Hi ${escapeHtml(payload.employeeName)},</p>
+          <p style="margin:0 0 14px;">A new order has been assigned to you.</p>
+          <p style="margin:0 0 8px;"><strong>Order:</strong> ${escapeHtml(payload.orderId)}</p>
+          <p style="margin:0 0 14px;"><strong>Customer:</strong> ${escapeHtml(payload.customerName)}</p>
+          <p style="margin:0;">Open your Designs queue to review the request and start the mockup.</p>
+        `,
+        cta: { label: "Open Designs", url: `${webBaseUrl()}/dashboard/designs` },
+        trackUrl: null
+      })
     });
 
     this.logger.log(`sendEmployeeAssignedOrderEmail success ${mailInfoSummary(info)}`);
@@ -648,30 +548,20 @@ ${payload.notes}
 Please review the revision request in the dashboard.
 
 Swaggeroo Team`,
-      html: `
-        <div style="margin:0;padding:24px;background:#f4f4f5;font-family:Arial,Helvetica,sans-serif;color:#111827;">
-          <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="max-width:640px;margin:0 auto;background:#ffffff;border-radius:18px;overflow:hidden;border:1px solid #e5e7eb;">
-            <tr>
-              <td>
-                <div style="background:linear-gradient(90deg,#C41E3A 0%,#FD0000 100%);padding:28px 32px;color:#ffffff;">
-                  <div style="font-size:13px;letter-spacing:.08em;text-transform:uppercase;opacity:.85;">Swaggeroo</div>
-                  <h1 style="margin:10px 0 0;font-size:26px;line-height:1.2;font-weight:700;">Revision requested</h1>
-                </div>
-              </td>
-            </tr>
-            <tr>
-              <td style="padding:28px 32px;color:#374151;line-height:1.7;">
-                <p style="margin:0 0 14px;">Hi ${escapeHtml(payload.recipientName)},</p>
-                <p style="margin:0 0 14px;">A customer requested changes for an item on order <strong>${escapeHtml(payload.orderId)}</strong>.</p>
-                <p style="margin:0 0 8px;"><strong>Product:</strong> ${escapeHtml(payload.productName)}</p>
-                <p style="margin:0 0 8px;"><strong>Requested by:</strong> ${escapeHtml(payload.requestedByName)}</p>
-                <p style="margin:0 0 8px;"><strong>Notes:</strong></p>
-                <div style="padding:14px 16px;border:1px solid #e5e7eb;border-radius:14px;background:#fafafa;">${escapeHtml(payload.notes)}</div>
-              </td>
-            </tr>
-          </table>
-        </div>
-      `
+      html: renderEmailShell({
+        eyebrow: "Revision requested",
+        heading: "Revision requested",
+        bodyHtml: `
+          <p style="margin:0 0 14px;">Hi ${escapeHtml(payload.recipientName)},</p>
+          <p style="margin:0 0 14px;">A customer requested changes for an item on order <strong>${escapeHtml(payload.orderId)}</strong>.</p>
+          <p style="margin:0 0 8px;"><strong>Product:</strong> ${escapeHtml(payload.productName)}</p>
+          <p style="margin:0 0 8px;"><strong>Requested by:</strong> ${escapeHtml(payload.requestedByName)}</p>
+          <p style="margin:0 0 8px;"><strong>Notes:</strong></p>
+          <div style="padding:14px 16px;border:1px solid #e5e7eb;border-radius:14px;background:#fafafa;white-space:pre-wrap;">${escapeHtml(payload.notes)}</div>
+        `,
+        cta: { label: "Open Designs", url: `${webBaseUrl()}/dashboard/designs` },
+        trackUrl: null
+      })
     });
 
     this.logger.log(`sendDesignRevisionRequestedEmail success ${mailInfoSummary(info)}`);
@@ -726,51 +616,33 @@ Swaggeroo Team`,
       replyTo: payload.email,
       subject: `New seller application — ${payload.companyName}`,
       text: lines.join("\n"),
-      html: `
-        <div style="margin:0;padding:24px;background:#f4f4f5;font-family:Arial,Helvetica,sans-serif;color:#111827;">
-          <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="max-width:720px;margin:0 auto;background:#ffffff;border-radius:18px;overflow:hidden;border:1px solid #e5e7eb;">
-            <tr>
-              <td>
-                <div style="background:linear-gradient(90deg,#1e40af 0%,#3b82f6 100%);padding:28px 32px;color:#ffffff;">
-                  <div style="font-size:13px;letter-spacing:.08em;text-transform:uppercase;opacity:.85;">Swaggeroo Partners</div>
-                  <h1 style="margin:10px 0 0;font-size:26px;line-height:1.2;font-weight:700;">New seller application</h1>
-                </div>
-              </td>
-            </tr>
-            <tr>
-              <td style="padding:24px 32px 8px;">
-                ${payload.logoUrl ? `<div style="margin-bottom:16px;"><img src="${escapeHtml(payload.logoUrl)}" alt="Company logo" style="max-height:64px;max-width:200px;object-fit:contain;" /></div>` : ""}
-                <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="border:1px solid #eef0f3;border-radius:12px;overflow:hidden;background:#fafafa;">
-                  ${row("Company", payload.companyName)}
-                  ${row("Contact", payload.contactName)}
-                  ${row("Email", payload.email)}
-                  ${row("Phone", payload.phone)}
-                  ${row("Industry", payload.industry)}
-                  ${row("Country", payload.country)}
-                  ${row("Website", payload.website)}
-                  ${row("Address", payload.companyAddress)}
-                </table>
-              </td>
-            </tr>
-            <tr>
-              <td style="padding:8px 32px 12px;">
-                <h2 style="margin:0 0 10px;font-size:16px;color:#111827;">Business description</h2>
-                <div style="border:1px solid #eef0f3;background:#fafafa;border-radius:12px;padding:16px;color:#374151;white-space:pre-wrap;line-height:1.6;">${escapeHtml(payload.businessDescription)}</div>
-              </td>
-            </tr>
-            ${
-              payload.additionalInfo
-                ? `<tr><td style="padding:8px 32px 24px;"><h2 style="margin:0 0 10px;font-size:16px;color:#111827;">Additional info</h2><div style="border:1px solid #eef0f3;background:#fafafa;border-radius:12px;padding:16px;color:#374151;white-space:pre-wrap;line-height:1.6;">${escapeHtml(payload.additionalInfo)}</div></td></tr>`
-                : ""
-            }
-            <tr>
-              <td style="padding:0 32px 28px;">
-                <p style="margin:0;color:#6b7280;font-size:12px;">Submitted at ${payload.createdAt.toISOString()}</p>
-              </td>
-            </tr>
+      html: renderEmailShell({
+        eyebrow: "Swaggeroo Partners",
+        heading: "New seller application",
+        maxWidth: 720,
+        bodyHtml: `
+          ${payload.logoUrl ? `<div style="margin-bottom:16px;"><img src="${escapeHtml(payload.logoUrl)}" alt="Company logo" style="max-height:64px;max-width:200px;object-fit:contain;" /></div>` : ""}
+          <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="border:1px solid #eef0f3;border-radius:12px;overflow:hidden;background:#fafafa;">
+            ${row("Company", payload.companyName)}
+            ${row("Contact", payload.contactName)}
+            ${row("Email", payload.email)}
+            ${row("Phone", payload.phone)}
+            ${row("Industry", payload.industry)}
+            ${row("Country", payload.country)}
+            ${row("Website", payload.website)}
+            ${row("Address", payload.companyAddress)}
           </table>
-        </div>
-      `
+          <h2 style="margin:22px 0 10px;font-size:16px;color:#0f172a;">Business description</h2>
+          <div style="border:1px solid #eef0f3;background:#fafafa;border-radius:12px;padding:16px;color:#374151;white-space:pre-wrap;line-height:1.6;">${escapeHtml(payload.businessDescription)}</div>
+          ${
+            payload.additionalInfo
+              ? `<h2 style="margin:22px 0 10px;font-size:16px;color:#0f172a;">Additional info</h2><div style="border:1px solid #eef0f3;background:#fafafa;border-radius:12px;padding:16px;color:#374151;white-space:pre-wrap;line-height:1.6;">${escapeHtml(payload.additionalInfo)}</div>`
+              : ""
+          }
+          <p style="margin:18px 0 0;color:#6b7280;font-size:12px;">Submitted at ${payload.createdAt.toISOString()}</p>
+        `,
+        cta: { label: "Review applications", url: `${webBaseUrl()}/dashboard/partners` }
+      })
     });
 
     this.logger.log(`sendPartnerApplicationAdminEmail success ${mailInfoSummary(info)}`);
@@ -807,39 +679,29 @@ Seller dashboard: ${dashUrl}
 From your seller dashboard you can customize your branding, add products, and manage your store.
 
 Swaggeroo Team`,
-      html: `
-        <div style="margin:0;padding:24px;background:#f4f4f5;font-family:Arial,Helvetica,sans-serif;color:#111827;">
-          <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="max-width:640px;margin:0 auto;background:#ffffff;border-radius:18px;overflow:hidden;border:1px solid #e5e7eb;">
-            <tr>
-              <td>
-                <div style="background:linear-gradient(90deg,#1e40af 0%,#3b82f6 100%);padding:28px 32px;color:#ffffff;">
-                  <div style="font-size:13px;letter-spacing:.08em;text-transform:uppercase;opacity:.85;">Swaggeroo Partners</div>
-                  <h1 style="margin:10px 0 0;font-size:26px;line-height:1.2;font-weight:700;">Your store is live 🎉</h1>
-                </div>
-              </td>
-            </tr>
-            <tr>
-              <td style="padding:28px 32px;color:#374151;line-height:1.7;">
-                <p style="margin:0 0 14px;">Hi ${escapeHtml(payload.contactName)},</p>
-                <p style="margin:0 0 14px;">Your application has been approved and your white-label store <strong>${escapeHtml(payload.storeName)}</strong> is now live.</p>
-                <p style="margin:0 0 8px;"><strong>Storefront:</strong> <a href="${escapeHtml(storeUrl)}" style="color:#1e40af;">${escapeHtml(storeUrl)}</a></p>
-                <p style="margin:0 0 18px;"><strong>Seller dashboard:</strong> <a href="${escapeHtml(dashUrl)}" style="color:#1e40af;">${escapeHtml(dashUrl)}</a></p>
-                ${
-                  payload.setupUrl
-                    ? `<div style="margin:0 0 18px;padding:16px 18px;border:1px solid #e5e7eb;border-radius:14px;background:#fafafa;">
-                        <p style="margin:0 0 10px;font-weight:600;color:#111827;">Set up your account</p>
-                        <p style="margin:0 0 12px;font-size:14px;color:#374151;">Verify your email and choose a username + password to access your dashboard.</p>
-                        <a href="${escapeHtml(payload.setupUrl)}" style="display:inline-block;background:#1e40af;color:#ffffff;text-decoration:none;padding:10px 18px;border-radius:10px;font-weight:600;">Set up account</a>
-                      </div>`
-                    : `<p style="margin:0 0 18px;">Sign in with your existing Swaggeroo account.</p>`
-                }
-                <p style="margin:0 0 14px;">From your seller dashboard you can customize your branding, curate products, and manage your store.</p>
-                <p style="margin:24px 0 0;font-weight:600;color:#111827;">Swaggeroo Team</p>
-              </td>
-            </tr>
-          </table>
-        </div>
-      `
+      html: renderEmailShell({
+        eyebrow: "Swaggeroo Partners",
+        heading: "Your store is live 🎉",
+        bodyHtml: `
+          <p style="margin:0 0 14px;">Hi ${escapeHtml(payload.contactName)},</p>
+          <p style="margin:0 0 14px;">Your application has been approved and your white-label store <strong>${escapeHtml(payload.storeName)}</strong> is now live.</p>
+          <p style="margin:0 0 8px;"><strong>Storefront:</strong> <a href="${escapeHtml(storeUrl)}" style="color:#005CFE;">${escapeHtml(storeUrl)}</a></p>
+          <p style="margin:0 0 18px;"><strong>Seller dashboard:</strong> <a href="${escapeHtml(dashUrl)}" style="color:#005CFE;">${escapeHtml(dashUrl)}</a></p>
+          ${
+            payload.setupUrl
+              ? `<div style="margin:0 0 18px;padding:16px 18px;border:1px solid #e5e7eb;border-radius:14px;background:#f5f8ff;">
+                  <p style="margin:0 0 8px;font-weight:600;color:#0f172a;">Set up your account</p>
+                  <p style="margin:0;font-size:14px;color:#374151;">Verify your email and choose a username + password to access your dashboard using the button below.</p>
+                </div>`
+              : `<p style="margin:0 0 18px;">Sign in with your existing Swaggeroo account.</p>`
+          }
+          <p style="margin:0 0 14px;">From your seller dashboard you can customize your branding, curate products, and manage your store.</p>
+          <p style="margin:22px 0 0;font-weight:600;color:#0f172a;">— The Swaggeroo Team</p>
+        `,
+        cta: payload.setupUrl
+          ? { label: "Set up account", url: payload.setupUrl }
+          : { label: "Open seller dashboard", url: dashUrl }
+      })
     });
 
     this.logger.log(`sendSellerOnboardingEmail success ${mailInfoSummary(info)}`);

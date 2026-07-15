@@ -4,7 +4,7 @@ import {
   NotFoundException
 } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
-import type { CreatePublicOrderDto, ListPublicProductsQuery } from "../dto/public.dto";
+import type { CreatePublicOrderDto, ListPublicProductsQuery, TrackOrderQuery } from "../dto/public.dto";
 import { EmailService } from "../../email/email.service";
 import { PrismaService } from "../../prisma/prisma.service";
 import { StorageService } from "../../storage/storage.service";
@@ -33,6 +33,56 @@ export class CatalogPublicService extends CatalogSharedService {
     private readonly notifications: NotificationsService
   ) {
     super(prisma, storage, emailService);
+  }
+
+  // Public, account-free order tracking. Matches by unique order number and the
+  // email on the order, and returns only fulfillment-relevant fields (no pricing
+  // or contact details beyond the masked recipient).
+  async trackOrder(query: TrackOrderQuery) {
+    const order = await this.prisma.catalogOrder.findUnique({
+      where: { orderNumber: query.orderNumber },
+      include: {
+        project: { select: { name: true, swagPackName: true } },
+        items: { select: { productName: true, designPhase: true, quantity: true }, orderBy: { createdAt: "asc" } },
+        shipments: {
+          select: {
+            status: true,
+            carrier: true,
+            trackingNumber: true,
+            trackingUrl: true,
+            destinationCountryName: true
+          }
+        }
+      }
+    });
+
+    // Same generic error whether the order is missing or the email doesn't match,
+    // so this endpoint can't be used to probe which orders/emails exist.
+    if (!order || order.email.toLowerCase() !== query.email.toLowerCase()) {
+      throw new NotFoundException("No order found for that order number and email.");
+    }
+
+    return {
+      orderNumber: order.orderNumber,
+      status: order.status,
+      productionStage: order.productionStage,
+      paymentStatus: order.paymentStatus,
+      type: order.type,
+      projectName: order.project?.swagPackName ?? order.project?.name ?? null,
+      createdAt: order.createdAt,
+      items: order.items.map((item) => ({
+        productName: item.productName,
+        designPhase: item.designPhase,
+        quantity: item.quantity
+      })),
+      shipments: order.shipments.map((shipment) => ({
+        status: shipment.status,
+        carrier: shipment.carrier,
+        trackingNumber: shipment.trackingNumber,
+        trackingUrl: shipment.trackingUrl,
+        destinationCountryName: shipment.destinationCountryName
+      }))
+    };
   }
 
   async listPublicCategories() {

@@ -350,6 +350,7 @@ const BREADCRUMB_LABELS: Record<string, string> = {
   categories: "Categories",
   collections: "Collections",
   orders: "Orders",
+  tracking: "Order Tracking",
   designs: "Designs",
   recipients: "Recipients",
   inventory: "Inventory",

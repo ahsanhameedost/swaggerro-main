@@ -17,7 +17,7 @@ import {
 import { useMe } from "@/queries/auth";
 import { useCatalogOrders, useCatalogOrderStats } from "@/lib/queries.catalog";
 import { formatMoney } from "@/lib/money";
-import { ORDER_STATUSES, buildUserDisplayName } from "@/lib/order-flow";
+import { ORDER_STATUSES, buildUserDisplayName, formatOrderDisplayName, formatOrderNumber } from "@/lib/order-flow";
 import { hasAnyPermission, hasPermission } from "@/lib/permissions";
 
 function formatCompactMoney(amount: number, currency = "USD") {
@@ -325,24 +325,8 @@ export default function DashboardPage() {
             />
           </div>
         ) : isAssignedTeamView ? (
-          // Designer / assigned-team view — assigned work counts only, never revenue.
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <StatCard
-              color="blue"
-              label="Assigned orders"
-              value={String(stats?.totalOrders ?? 0)}
-              icon={<ShoppingCart className="h-5 w-5" />}
-              hint="Assigned to you"
-              href="/dashboard/orders"
-            />
-            <StatCard
-              color="amber"
-              label="Pending review"
-              value={String(attention?.pendingReview ?? 0)}
-              icon={<Clock className="h-5 w-5" />}
-              hint="Waiting to start"
-              href="/dashboard/orders?status=PENDING_REVIEW"
-            />
+          // Designer / assigned-team view — design work only, no order/revenue stats.
+          <div className="grid gap-4 sm:grid-cols-2">
             <StatCard
               color="violet"
               label="In design"
@@ -507,7 +491,7 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {canReadOrders && (
+        {canReadOrders && !isAssignedTeamView && (
           <Card className="border border-divider shadow-sm">
             <CardHeader className="flex items-center justify-between p-6 pb-2">
               <div>
@@ -520,7 +504,10 @@ export default function DashboardPage() {
                       : "Latest requests visible to your permissions."}
                 </div>
               </div>
-              <Link href="/dashboard/orders" className="text-sm text-primary hover:underline">
+              <Link
+                href={isAssignedTeamView ? "/dashboard/designs" : "/dashboard/orders"}
+                className="text-sm text-primary hover:underline"
+              >
                 View all
               </Link>
             </CardHeader>
@@ -532,8 +519,11 @@ export default function DashboardPage() {
                     className="flex flex-col gap-3 rounded-2xl border border-divider p-4 transition-colors hover:border-foreground/20 lg:flex-row lg:items-center lg:justify-between"
                   >
                     <div className="space-y-1">
-                      <div className="font-semibold">
-                        {order.project?.swagPackName || order.project?.name || `Order #${order.id}`}
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Chip size="sm" variant="flat" color="primary" className="font-semibold">
+                          {formatOrderNumber(order.orderNumber)}
+                        </Chip>
+                        <span className="font-semibold">{formatOrderDisplayName(order)}</span>
                       </div>
                       <div className="text-sm text-foreground/60">
                         {showSales ? `${buildUserDisplayName(order.customer)} · ` : ""}
@@ -556,7 +546,7 @@ export default function DashboardPage() {
                         {order.allItemsReadyToOrder ? "Ready" : "In design"}
                       </Chip>
                       <Link
-                        href={`/dashboard/orders/${order.id}`}
+                        href={isAssignedTeamView ? "/dashboard/designs" : `/dashboard/orders/${order.id}`}
                         className="text-sm text-primary hover:underline"
                       >
                         View

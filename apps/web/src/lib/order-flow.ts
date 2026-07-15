@@ -26,6 +26,22 @@ export function formatOrderNumber(orderNumber: number) {
   return `SW-${String(orderNumber).padStart(3, "0")}`;
 }
 
+/**
+ * Display name for an order. Prefers the SwagPack name; otherwise strips the
+ * auto-appended " catalog order" suffix from the project name (it's redundant
+ * with the order Type label). Falls back to the order code.
+ */
+export function formatOrderDisplayName(order: {
+  orderNumber?: number;
+  project?: { name?: string | null; swagPackName?: string | null } | null;
+}) {
+  const swag = order.project?.swagPackName?.trim();
+  if (swag) return swag;
+  const name = (order.project?.name ?? "").replace(/\s*catalog order\s*$/i, "").trim();
+  if (name) return name;
+  return order.orderNumber != null ? formatOrderNumber(order.orderNumber) : "Order";
+}
+
 /** Turn a status enum into a readable label, e.g. "PENDING_REVIEW" -> "Pending Review". */
 export function formatOrderStatusLabel(status: string) {
   return status
@@ -148,4 +164,26 @@ export function buildUserDisplayName(user?: {
 
 export function getPreferredDesignImage(item: CatalogOrderItem) {
   return item.proofImageUrl || item.mockupImageUrl || item.imageUrl || null;
+}
+
+// Customer-facing fulfillment tracker: Submitted → In design → Approved →
+// In production → Shipped. Shared by the order page and the tracking pages.
+export const FULFILLMENT_STAGES = [
+  "Submitted",
+  "In design",
+  "Approved",
+  "In production",
+  "Shipped"
+] as const;
+
+/** Which fulfillment stage index an order is at, from its status + production stage. */
+export function orderFulfillmentStep(input: {
+  status?: string | null;
+  productionStage?: string | null;
+}) {
+  if (input.productionStage === "SHIPPED") return 4;
+  if (input.productionStage === "IN_PRODUCTION") return 3;
+  if (input.status === "APPROVED" || input.productionStage === "READY_FOR_PRODUCTION") return 2;
+  if (input.status === "IN_REVIEW") return 1;
+  return 0;
 }

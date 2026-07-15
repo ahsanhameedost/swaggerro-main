@@ -73,3 +73,29 @@ export async function submitPublicOrder(input: PublicCatalogCheckoutInput) {
     body: JSON.stringify(input)
   });
 }
+
+export type PublicOrderTracking = {
+  orderNumber: number;
+  status: string;
+  productionStage: string | null;
+  paymentStatus: string;
+  type: "BULK" | "SWAG_PACK" | "COMBINED";
+  projectName: string | null;
+  createdAt: string;
+  items: { productName: string; designPhase: string; quantity: number }[];
+  shipments: {
+    status: string;
+    carrier: string | null;
+    trackingNumber: string | null;
+    trackingUrl: string | null;
+    destinationCountryName: string;
+  }[];
+};
+
+// Account-free tracking lookup by order number (SW-044 / 44) + email.
+export async function trackPublicOrder(orderNumber: string, email: string) {
+  return apiFetch<{ tracking: PublicOrderTracking }>(
+    `/catalog/public/track${buildQuery({ orderNumber, email })}`,
+    { method: "GET" }
+  );
+}
