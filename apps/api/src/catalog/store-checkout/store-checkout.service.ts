@@ -11,6 +11,7 @@ import { PrismaService } from "../../prisma/prisma.service";
 import { env } from "../../env";
 import { NotificationsService } from "../../notifications/notifications.service";
 import { NotificationEventsService } from "../../notifications/notification-events.service";
+import { renderOrderSummaryHtml } from "../../email/email-layout";
 import { computeCommission } from "../common/commission";
 import type {
   ConfirmStoreCheckoutInput,
@@ -328,8 +329,30 @@ export class StoreCheckoutService {
       link: `/dashboard/orders/${order.id}`
     });
 
-    // Customer order-confirmation with a direct tracking link (#26).
+    // Customer order-confirmation with the item breakdown + a tracking link (#26).
     const orderLabel = `SW-${String(order.orderNumber).padStart(3, "0")}`;
+    const orderItems = await this.prisma.catalogOrderItem.findMany({
+      where: { orderId: order.id },
+      orderBy: { sortOrder: "asc" },
+      select: { productName: true, variantName: true, quantity: true, totalPrice: true }
+    });
+    const summaryItems = orderItems.map((item) => ({
+      name: item.productName,
+      variant: item.variantName,
+      quantity: item.quantity,
+      lineTotal: Number(item.totalPrice)
+    }));
+    const itemsSubtotal = summaryItems.reduce((sum, item) => sum + item.lineTotal, 0);
+    const grandTotal = Number(order.totalPrice);
+    const summaryRows: { label: string; value: number; strong?: boolean }[] = [
+      { label: "Subtotal", value: itemsSubtotal }
+    ];
+    if (grandTotal - itemsSubtotal > 0.005) {
+      summaryRows.push({ label: "Shipping, storage & fees", value: grandTotal - itemsSubtotal });
+    }
+    summaryRows.push({ label: "Total paid", value: grandTotal, strong: true });
+    const orderSummaryHtml = renderOrderSummaryHtml({ items: summaryItems, rows: summaryRows });
+
     await this.events.dispatchToUser({
       userId: buyerUserId,
       type: "catalog.order.confirmed",
@@ -340,11 +363,11 @@ export class StoreCheckoutService {
         subject: `Order confirmed — ${orderLabel}`,
         heading: "Thanks — your order is confirmed",
         paragraphs: [
-          `We received your payment of ${amountLabel} for order ${orderLabel}.`,
-          "You can track its status anytime from your dashboard."
+          `We received your payment of ${amountLabel} for order ${orderLabel}. Here's what you ordered:`
         ],
+        bodyHtml: orderSummaryHtml,
         ctaPath: `/dashboard/orders/${order.id}`,
-        ctaLabel: "Track your order"
+        ctaLabel: "View order & track"
       }
     });
 
