@@ -11,6 +11,7 @@ import { PrismaService } from "../../prisma/prisma.service";
 import { env } from "../../env";
 import { NotificationsService } from "../../notifications/notifications.service";
 import { NotificationEventsService } from "../../notifications/notification-events.service";
+import { renderOrderSummaryHtml } from "../../email/email-layout";
 import type {
   ConfirmPublicCheckoutInput,
   CreatePublicCheckoutInput
