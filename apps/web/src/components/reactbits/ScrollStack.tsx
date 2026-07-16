@@ -61,6 +61,12 @@ const ScrollStack = ({
   const cardsRef = useRef<HTMLElement[]>([]);
   const lastTransformsRef = useRef(new Map<number, Transform>());
   const isUpdatingRef = useRef(false);
+  // Eased scroll position used ONLY to drive the card transforms in window mode.
+  // The real page scroll stays native (untouched) — we just interpolate the
+  // value we feed into the stacking math so the cards glide (Lenis-like feel)
+  // instead of snapping with each discrete wheel step. Nothing outside this
+  // component is affected, so no other section can break.
+  const smoothScrollRef = useRef<number | null>(null);
 
   const calculateProgress = useCallback((scrollTop: number, start: number, end: number) => {
     if (scrollTop < start) return 0;
@@ -78,7 +84,9 @@ const ScrollStack = ({
   const getScrollData = useCallback(() => {
     if (useWindowScroll) {
       return {
-        scrollTop: window.scrollY,
+        // Use the eased value once the rAF loop has seeded it; fall back to the
+        // live scroll for the very first synchronous paint.
+        scrollTop: smoothScrollRef.current ?? window.scrollY,
         containerHeight: window.innerHeight,
       };
     }
@@ -229,16 +237,29 @@ const ScrollStack = ({
 
     if (useWindowScroll) {
       // Native window scroll — NO Lenis on the window (a window-level Lenis
-      // hijacked page scrolling and froze it after the pinned section). For
-      // smoothness we drive the transforms from a continuous rAF loop instead of
-      // discrete scroll events (which batch and look jerky). The loop reads the
-      // live scrollY each frame → 60fps motion that tracks the real scroll.
+      // hijacked page scrolling and froze it after the pinned section, and a
+      // site-wide Lenis would affect every other page/section). Instead we run a
+      // continuous rAF loop that eases an internal scroll value toward the real
+      // scrollY and drives the card transforms from that eased value. Result:
+      // the stack glides smoothly (Lenis-like) while the page itself keeps its
+      // native scroll — so nothing else on the site can be affected.
+      const EASE = 0.14; // higher = snappier, lower = floatier
       const loop = () => {
+        const target = window.scrollY;
+        const current = smoothScrollRef.current ?? target;
+        const diff = target - current;
+        // Snap when close enough so idle frames settle exactly on the target
+        // (prevents endless sub-pixel churn and keeps the pin rock-solid).
+        smoothScrollRef.current = Math.abs(diff) < 0.4 ? target : current + diff * EASE;
         updateCardTransforms();
         animationFrameRef.current = requestAnimationFrame(loop);
       };
       animationFrameRef.current = requestAnimationFrame(loop);
-      const onResize = () => updateCardTransforms();
+      const onResize = () => {
+        // Re-sync instantly on resize so layout jumps don't animate.
+        smoothScrollRef.current = window.scrollY;
+        updateCardTransforms();
+      };
       window.addEventListener("resize", onResize);
       onScrollRef.current = onResize;
       return;
@@ -298,6 +319,7 @@ const ScrollStack = ({
       cardsRef.current = [];
       transformsCache.clear();
       isUpdatingRef.current = false;
+      smoothScrollRef.current = null;
     };
   }, [
     itemDistance,
