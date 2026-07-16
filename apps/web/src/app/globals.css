@@ -48,6 +48,31 @@ body {
     -moz-osx-font-smoothing: grayscale;
   }
 
+  /* Tailwind v4 dropped the default `cursor: pointer` on buttons, so clickable
+     controls showed the plain arrow instead of the hand. Restore the hand for
+     all interactive elements (buttons, links, role=button, selects, summary,
+     labels tied to a control). Disabled controls keep the not-allowed cursor. */
+  button,
+  [role="button"],
+  [role="tab"],
+  [role="menuitem"],
+  [role="option"],
+  a[href],
+  label[for],
+  summary,
+  select,
+  ::file-selector-button {
+    cursor: pointer;
+  }
+
+  button:disabled,
+  button[disabled],
+  [aria-disabled="true"],
+  [data-disabled="true"],
+  :disabled {
+    cursor: not-allowed;
+  }
+
   /* typography */
   h1,
   h2,
