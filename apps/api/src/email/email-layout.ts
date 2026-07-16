@@ -218,6 +218,195 @@ export function renderOrderSummaryHtml(opts: {
   `;
 }
 
+// Resolve a stored asset (seller logo, product image) to an absolute URL usable
+// from an external email client. Mirrors the web `resolveStorageUrl`: rebuilds
+// local-storage refs against this API's public base (local + live share one DB,
+// so a URL baked on localhost must be healed to the current host), and passes
+// through any other absolute URL (S3/CDN) unchanged.
+export function emailAssetUrl(url?: string | null, key?: string | null): string | null {
+  const base = (env.API_PUBLIC_URL || "").replace(/\/+$/, "");
+  if (key) return `${base}/storage/local/${key.replace(/^\/+/, "")}`;
+  if (!url) return null;
+  const marker = "/storage/local/";
+  const i = url.indexOf(marker);
+  if (i !== -1 && base) return `${base}${url.slice(i)}`;
+  return url;
+}
+
+// Guard a DB-sourced color before dropping it into an inline style. Seller theme
+// colors come from a color picker, but validate anyway so a bad value can never
+// break the email's CSS. Accepts #rgb / #rrggbb / #rrggbbaa.
+export function safeColor(value: string | null | undefined, fallback: string): string {
+  return value && /^#[0-9a-fA-F]{3,8}$/.test(value.trim()) ? value.trim() : fallback;
+}
+
+/**
+ * Seller-branded email shell — used ONLY for orders placed through a white-label
+ * store, so the logo, accent colors and company name are the SELLER's, not
+ * Swaggeroo's. Same table-based structure as {@link renderEmailShell} (the two-
+ * tone accent bar, dark header, thumbnail row, highlight box, pill CTA), but the
+ * chrome is themed from the store and the footer reads "provided by <store> ·
+ * fulfilled & shipped by Swaggeroo".
+ */
+export function renderStoreBrandedEmail(opts: {
+  store: {
+    name: string;
+    companyName?: string | null;
+    logoUrl?: string | null;
+    logoKey?: string | null;
+    primary: string;
+    primarySoft?: string | null;
+    primaryForeground?: string | null;
+    secondary: string;
+  };
+  greeting?: string;
+  eyebrow?: string;
+  heading: string;
+  subheading?: string;
+  /** Product images (url + optional storage key) shown as a "What's inside" row. */
+  thumbnails?: { url?: string | null; key?: string | null }[];
+  thumbnailsLabel?: string;
+  /** Highlighted box, e.g. the order number (like the reference "claim code"). */
+  highlight?: { label: string; value: string } | null;
+  /** Raw HTML placed in the white body (e.g. an order-summary table). */
+  bodyHtml?: string;
+  cta?: EmailCta | null;
+  footerNote?: string;
+}): { html: string; text: string } {
+  const width = 600;
+  const primary = safeColor(opts.store.primary, BLUE);
+  const secondary = safeColor(opts.store.secondary, NAVY);
+  const primarySoft = safeColor(opts.store.primarySoft, "#f4f6fb");
+  const onPrimary = safeColor(opts.store.primaryForeground, "#ffffff");
+  const brandName = opts.store.companyName?.trim() || opts.store.name;
+  const logo = emailAssetUrl(opts.store.logoUrl, opts.store.logoKey);
+
+  // Header brand mark: the seller's logo inside a white chip, or their name.
+  const headerMark = logo
+    ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="background-color:#ffffff;border-radius:12px;"><tr>
+         <td style="padding:11px 18px;"><img src="${escapeHtml(logo)}" height="34" alt="${escapeHtml(brandName)}" style="display:block;border:0;outline:none;text-decoration:none;height:34px;max-height:34px;width:auto;" /></td>
+       </tr></table>`
+    : `<p style="margin:0;font-family:${FONT};font-size:20px;font-weight:800;letter-spacing:-0.01em;color:#ffffff;">${escapeHtml(brandName)}</p>`;
+
+  const eyebrowHtml = opts.eyebrow
+    ? `<p style="margin:0;font-family:${FONT};font-size:12px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:${primary};">${escapeHtml(opts.eyebrow)}</p>`
+    : "";
+  const greetingHtml = opts.greeting
+    ? `<p style="margin:0 0 14px;font-family:${FONT};font-size:15px;line-height:1.65;color:${BODY};">${escapeHtml(opts.greeting)}</p>`
+    : "";
+  const subheadingHtml = opts.subheading
+    ? `<p style="margin:14px 0 0;font-family:${FONT};font-size:15px;line-height:1.65;color:${BODY};">${escapeHtml(opts.subheading)}</p>`
+    : "";
+
+  const thumbs = (opts.thumbnails ?? [])
+    .map((t) => emailAssetUrl(t.url, t.key))
+    .filter((s): s is string => !!s)
+    .slice(0, 4);
+  const thumbnailsHtml = thumbs.length
+    ? `<tr><td style="background-color:#ffffff;padding:26px 40px 0;">
+         <p style="margin:0 0 12px;font-family:${FONT};font-size:12px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:${MUTED};">${escapeHtml(opts.thumbnailsLabel ?? "What's inside")}</p>
+         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+           ${thumbs
+             .map(
+               (src) =>
+                 `<td width="25%" style="padding:0 4px;"><img src="${escapeHtml(src)}" width="120" height="120" alt="" style="display:block;width:100%;max-width:120px;height:auto;border-radius:12px;border:1px solid ${BORDER};" /></td>`
+             )
+             .join("")}
+           ${Array.from({ length: 4 - thumbs.length }, () => `<td width="25%" style="padding:0 4px;">&nbsp;</td>`).join("")}
+         </tr></table>
+       </td></tr>`
+    : "";
+
+  const highlightHtml = opts.highlight
+    ? `<tr><td align="center" style="background-color:#ffffff;padding:26px 40px 0;">
+         <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="background-color:${primarySoft};border:1px dashed ${primary};border-radius:12px;"><tr>
+           <td align="center" style="padding:16px 32px;">
+             <p style="margin:0 0 5px;font-family:${FONT};font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:${primary};">${escapeHtml(opts.highlight.label)}</p>
+             <p style="margin:0;font-family:'SF Mono',SFMono-Regular,Menlo,Consolas,monospace;font-size:22px;font-weight:700;letter-spacing:0.06em;color:${NAVY};">${escapeHtml(opts.highlight.value)}</p>
+           </td>
+         </tr></table>
+       </td></tr>`
+    : "";
+
+  const bodyBlockHtml = opts.bodyHtml
+    ? `<tr><td style="background-color:#ffffff;padding:24px 40px 0;font-family:${FONT};font-size:15px;line-height:1.65;color:${BODY};">${opts.bodyHtml}</td></tr>`
+    : "";
+
+  const ctaHtml = opts.cta
+    ? `<tr><td align="center" style="background-color:#ffffff;padding:26px 40px 4px;">
+         <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
+           <td style="border-radius:999px;background-color:${primary};">
+             <a href="${escapeHtml(opts.cta.url)}" style="display:inline-block;padding:15px 40px;font-family:${FONT};font-size:15px;font-weight:700;color:${onPrimary};text-decoration:none;">${escapeHtml(opts.cta.label)}</a>
+           </td>
+         </tr></table>
+       </td></tr>`
+    : "";
+
+  const footerNoteHtml = opts.footerNote
+    ? `<tr><td align="center" style="background-color:#ffffff;padding:12px 40px 34px;border-radius:0 0 16px 16px;">
+         <p style="margin:0;font-family:${FONT};font-size:13px;line-height:1.6;color:#5b6472;">${escapeHtml(opts.footerNote)}</p>
+       </td></tr>`
+    : `<tr><td style="background-color:#ffffff;padding:14px 40px 34px;border-radius:0 0 16px 16px;font-size:0;line-height:0;">&nbsp;</td></tr>`;
+
+  const html = `
+  <div style="margin:0;padding:0;background-color:${BG};">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${BG};">
+      <tr><td align="center" style="padding:40px 16px;">
+
+        <table role="presentation" width="${width}" cellpadding="0" cellspacing="0" border="0" style="width:${width}px;max-width:${width}px;box-shadow:0 6px 28px -10px rgba(13,27,61,0.16);border-radius:16px;">
+          <tr><td style="padding:0;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+              <td width="50%" style="background-color:${primary};height:5px;line-height:5px;font-size:0;border-radius:16px 0 0 0;">&nbsp;</td>
+              <td width="50%" style="background-color:${secondary};height:5px;line-height:5px;font-size:0;border-radius:0 16px 0 0;">&nbsp;</td>
+            </tr></table>
+          </td></tr>
+
+          <tr><td align="center" style="background-color:${secondary};padding:24px 40px;">
+            ${headerMark}
+          </td></tr>
+
+          <tr><td style="background-color:#ffffff;padding:34px 40px 0;">
+            ${eyebrowHtml}
+            <h1 style="margin:10px 0 0;font-family:${FONT};font-size:27px;line-height:1.25;font-weight:800;letter-spacing:-0.02em;color:${NAVY};">${escapeHtml(opts.heading)}</h1>
+            ${subheadingHtml}
+          </td></tr>
+
+          ${greetingHtml ? `<tr><td style="background-color:#ffffff;padding:14px 40px 0;">${greetingHtml}</td></tr>` : ""}
+          ${thumbnailsHtml}
+          ${highlightHtml}
+          ${bodyBlockHtml}
+          ${ctaHtml}
+          ${footerNoteHtml}
+        </table>
+
+        <table role="presentation" width="${width}" cellpadding="0" cellspacing="0" border="0" style="width:${width}px;max-width:${width}px;">
+          <tr><td align="center" style="padding:26px 24px 0;">
+            <p style="margin:0 0 6px;font-family:${FONT};font-size:12px;color:${MUTED};">Your order is provided by <strong style="color:${NAVY};">${escapeHtml(brandName)}</strong></p>
+            <p style="margin:0;font-family:${FONT};font-size:11.5px;color:#a2a9b6;">Fulfilled &amp; shipped by <strong style="color:${NAVY};">swag<span style="color:${SKY};">geroo</span></strong></p>
+          </td></tr>
+        </table>
+
+      </td></tr>
+    </table>
+  </div>`;
+
+  const text = [
+    opts.eyebrow ? opts.eyebrow : "",
+    opts.heading,
+    "",
+    ...(opts.greeting ? [opts.greeting, ""] : []),
+    ...(opts.subheading ? [opts.subheading, ""] : []),
+    ...(opts.highlight ? [`${opts.highlight.label}: ${opts.highlight.value}`, ""] : []),
+    ...(opts.cta ? [`${opts.cta.label}: ${opts.cta.url}`, ""] : []),
+    ...(opts.footerNote ? [opts.footerNote, ""] : []),
+    `Provided by ${brandName} · Fulfilled & shipped by Swaggeroo`
+  ]
+    .filter((line) => line !== undefined)
+    .join("\n");
+
+  return { html, text };
+}
+
 export function renderBrandedEmail(opts: {
   heading: string;
   greeting?: string;

@@ -348,6 +348,17 @@ export class StoreCheckoutService {
     }
     summaryRows.push({ label: "Total paid", value: grandTotal, strong: true });
     const orderSummaryHtml = renderOrderSummaryHtml({ items: summaryItems, rows: summaryRows });
+    const productThumbs = summaryItems
+      .map((item) => item.image)
+      .filter((src): src is string => !!src)
+      .slice(0, 4);
+
+    // Store orders send a SELLER-branded confirmation (the store's logo + theme
+    // colors + name), so the buyer sees the brand they ordered from. Swaggeroo
+    // appears only as the fulfillment line in the footer. Non-store orders keep
+    // the standard Swaggeroo template.
+    const store = order.store;
+    const storeBrandName = store?.companyName?.trim() || store?.name || "your store";
 
     await this.events.dispatchToUser({
       userId: buyerUserId,
@@ -356,16 +367,31 @@ export class StoreCheckoutService {
       body: `Your order ${orderLabel} (${amountLabel}) is confirmed.`,
       link: `/dashboard/orders/${order.id}`,
       email: {
-        subject: `Order confirmed · ${orderLabel}`,
-        heading: "Your order is confirmed",
+        subject: `Your ${storeBrandName} order is confirmed · ${orderLabel}`,
+        eyebrow: "You've got swag 🎉",
+        heading: `Thanks for your order from ${storeBrandName}`,
         paragraphs: [
-          `We received your payment of ${amountLabel} for order ${orderLabel}. Here's what you ordered:`
+          `We received your payment of ${amountLabel}. Here's everything you ordered. You can track it anytime from the button below.`
         ],
+        thumbnails: productThumbs,
+        thumbnailsLabel: "In your order",
+        highlight: { label: "Order number", value: orderLabel },
         bodyHtml: orderSummaryHtml,
         ctaPath: `/dashboard/orders/${order.id}`,
         ctaLabel: "Track your order",
-        secondaryCtaPath: "/dashboard",
-        secondaryCtaLabel: "Go to dashboard"
+        footerNote: "Questions about your order? Just reply to this email and we'll help.",
+        storeBranding: store
+          ? {
+              name: store.name,
+              companyName: store.companyName,
+              logoUrl: store.logoUrl,
+              logoKey: store.logoKey,
+              primary: store.themePrimary,
+              primarySoft: store.themePrimarySoft,
+              primaryForeground: store.themePrimaryForeground,
+              secondary: store.themeSecondary
+            }
+          : undefined
       }
     });
 

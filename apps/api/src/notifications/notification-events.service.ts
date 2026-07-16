@@ -4,7 +4,12 @@ import { Queue } from "bullmq";
 import { PrismaService } from "../prisma/prisma.service";
 import { NotificationsService } from "./notifications.service";
 import { EMAIL_QUEUE, JOB_GENERIC_EMAIL } from "../email/email.constants";
-import { renderBrandedEmail, toWebUrl, type EmailCta } from "../email/email-layout";
+import {
+  renderBrandedEmail,
+  renderStoreBrandedEmail,
+  toWebUrl,
+  type EmailCta
+} from "../email/email-layout";
 
 // Retry policy shared with the other queued emails: keep failed jobs for audit.
 const EMAIL_JOB_OPTS = {
@@ -32,6 +37,24 @@ export type EventEmail = {
   secondaryCtaPath?: string | null;
   secondaryCtaLabel?: string;
   footerNote?: string;
+  // Small uppercase label above the heading (e.g. "You've got swag").
+  eyebrow?: string;
+  // Highlighted box (e.g. the order number) — currently rendered by the
+  // store-branded shell only.
+  highlight?: { label: string; value: string } | null;
+  // When present, the email is rendered with the SELLER's branding (their logo
+  // and theme colors) instead of the Swaggeroo shell. Used for orders placed
+  // through a white-label store so the buyer sees the store's brand.
+  storeBranding?: {
+    name: string;
+    companyName?: string | null;
+    logoUrl?: string | null;
+    logoKey?: string | null;
+    primary: string;
+    primarySoft?: string | null;
+    primaryForeground?: string | null;
+    secondary: string;
+  };
 };
 
 /**
@@ -130,17 +153,34 @@ export class NotificationEventsService {
         ? { label: email.secondaryCtaLabel, url: toWebUrl(email.secondaryCtaPath) ?? email.secondaryCtaPath }
         : null;
 
-    const { html, text } = renderBrandedEmail({
-      heading: email.heading,
-      greeting: firstName ? `Hi ${firstName},` : undefined,
-      paragraphs: email.paragraphs,
-      extraHtml: email.bodyHtml,
-      thumbnails: email.thumbnails,
-      thumbnailsLabel: email.thumbnailsLabel,
-      cta,
-      secondaryCta,
-      footerNote: email.footerNote
-    });
+    // White-label store orders render with the seller's own branding instead of
+    // the Swaggeroo shell. Everything else keeps the standard branded template.
+    const { html, text } = email.storeBranding
+      ? renderStoreBrandedEmail({
+          store: email.storeBranding,
+          greeting: firstName ? `Hi ${firstName},` : undefined,
+          eyebrow: email.eyebrow,
+          heading: email.heading,
+          subheading: email.paragraphs?.length ? email.paragraphs.join(" ") : undefined,
+          thumbnails: (email.thumbnails ?? []).map((url) => ({ url })),
+          thumbnailsLabel: email.thumbnailsLabel,
+          highlight: email.highlight ?? null,
+          bodyHtml: email.bodyHtml,
+          cta,
+          footerNote: email.footerNote
+        })
+      : renderBrandedEmail({
+          heading: email.heading,
+          greeting: firstName ? `Hi ${firstName},` : undefined,
+          paragraphs: email.paragraphs,
+          extraHtml: email.bodyHtml,
+          thumbnails: email.thumbnails,
+          thumbnailsLabel: email.thumbnailsLabel,
+          eyebrow: email.eyebrow,
+          cta,
+          secondaryCta,
+          footerNote: email.footerNote
+        });
 
     await this.emailQueue.add(
       JOB_GENERIC_EMAIL,
