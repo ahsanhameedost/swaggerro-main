@@ -427,7 +427,8 @@ export function AppShell({
   const onLogout = async () => {
     try {
       await logout();
-      queryClient.removeQueries({ queryKey: ["me"] });
+      // Reflect logged-out state instantly across all useMe consumers.
+      queryClient.setQueryData(["me"], null);
       addToast({ title: "Logged out", color: "success" });
       router.push("/login");
     } catch (e: unknown) {

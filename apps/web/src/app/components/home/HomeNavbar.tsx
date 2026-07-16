@@ -92,13 +92,16 @@ export default function HomeNavbar() {
     "U";
 
   const handleLogout = async () => {
+    setIsMenuOpen(false);
     try {
       await logoutRequest();
     } catch {
       // ignore network errors; clear local state regardless
     }
-    await queryClient.invalidateQueries({ queryKey: ["me"] });
-    setIsMenuOpen(false);
+    // Flip every useMe consumer (this header included) to logged-out
+    // immediately so the UI updates without a page refresh. `invalidate` alone
+    // kept rendering the previously cached user until the refetch resolved.
+    queryClient.setQueryData(["me"], null);
     router.push("/");
     router.refresh();
   };

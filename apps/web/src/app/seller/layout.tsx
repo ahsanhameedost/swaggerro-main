@@ -31,7 +31,8 @@ export default function SellerLayout({ children }: { children: React.ReactNode }
     } catch {
       // ignore
     }
-    await queryClient.invalidateQueries({ queryKey: ["me"] });
+    // Reflect logged-out state instantly (no refresh needed).
+    queryClient.setQueryData(["me"], null);
     router.push("/login");
     router.refresh();
   };
