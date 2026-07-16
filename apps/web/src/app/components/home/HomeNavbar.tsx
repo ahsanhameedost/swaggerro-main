@@ -226,13 +226,27 @@ export default function HomeNavbar() {
                   <DropdownItem
                     key="profile"
                     isReadOnly
-                    className="cursor-default opacity-100"
+                    showDivider
+                    className="cursor-default opacity-100 data-[hover=true]:bg-transparent"
                     textValue={displayName}
                   >
-                    <p className="font-semibold text-black/90">{displayName}</p>
-                    {user.email ? (
-                      <p className="text-xs text-black/50">{user.email}</p>
-                    ) : null}
+                    <div className="flex items-center gap-3 py-0.5">
+                      <Avatar
+                        name={initials}
+                        src={user?.avatarUrl ?? undefined}
+                        size="sm"
+                        classNames={{
+                          base: "shrink-0 bg-[var(--primary)]",
+                          name: "text-white text-xs font-semibold",
+                        }}
+                      />
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-black/90">{displayName}</p>
+                        {user.email ? (
+                          <p className="truncate text-xs text-black/45">{user.email}</p>
+                        ) : null}
+                      </div>
+                    </div>
                   </DropdownItem>
                   <DropdownItem key="dashboard" as={Link} href="/dashboard">
                     Dashboard

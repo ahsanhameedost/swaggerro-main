@@ -24,7 +24,9 @@ async function getJson(path: string): Promise<any | null> {
 }
 
 export async function getHomeProducts(): Promise<CatalogProductListItem[]> {
-  const data = await getJson(`/catalog/public/products?page=1&pageSize=100`);
+  // The public API caps pageSize at 48 — requesting more returns 400 and the
+  // home page ends up with no products (featured + category sections vanish).
+  const data = await getJson(`/catalog/public/products?page=1&pageSize=48`);
   return (data?.items ?? []) as CatalogProductListItem[];
 }
 

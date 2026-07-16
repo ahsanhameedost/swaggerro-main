@@ -157,8 +157,20 @@ export function CheckoutView(props: CheckoutViewProps) {
 
   const startCheckout = async (e: FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !EMAIL_RE.test(email.trim())) {
-      addToast({ title: "Add your name and a valid email", color: "warning" });
+    const missing: string[] = [];
+    if (!name.trim()) missing.push("full name");
+    if (!EMAIL_RE.test(email.trim())) missing.push("a valid email");
+    if (!phone.trim()) missing.push("phone number");
+    if (!street.trim()) missing.push("street address");
+    if (!city.trim()) missing.push("city");
+    if (!region.trim()) missing.push("state / region");
+    if (!country.trim()) missing.push("country");
+    if (missing.length) {
+      addToast({
+        title: "Please complete the required fields",
+        description: `Missing: ${missing.join(", ")}.`,
+        color: "warning",
+      });
       return;
     }
     setSubmitting(true);
@@ -287,12 +299,14 @@ export function CheckoutView(props: CheckoutViewProps) {
                       <input className={inputClass} value={name} onChange={(e) => setName(e.target.value)} placeholder="Jordan Lee" />
                     </label>
                     <label className="block">
-                      <span className={labelClass}>Email</span>
+                      <span className={labelClass}>
+                        Email <span className="text-danger">*</span>
+                      </span>
                       <input className={inputClass} type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@company.com" />
                     </label>
                     <label className="block">
                       <span className={labelClass}>
-                        Phone <span className="font-normal text-muted-foreground">(optional)</span>
+                        Phone <span className="text-danger">*</span>
                       </span>
                       <input className={inputClass} value={phone} onChange={(e) => setPhone(e.target.value)} />
                     </label>
@@ -311,7 +325,9 @@ export function CheckoutView(props: CheckoutViewProps) {
                   </div>
                   <div className="grid gap-4">
                     <label className="block">
-                      <span className={labelClass}>Street address</span>
+                      <span className={labelClass}>
+                        Street address <span className="text-danger">*</span>
+                      </span>
                       <input className={inputClass} value={street} onChange={(e) => setStreet(e.target.value)} placeholder="123 Main St" />
                     </label>
                     <label className="block">
@@ -322,11 +338,15 @@ export function CheckoutView(props: CheckoutViewProps) {
                     </label>
                     <div className="grid gap-4 sm:grid-cols-2">
                       <label className="block">
-                        <span className={labelClass}>City</span>
+                        <span className={labelClass}>
+                          City <span className="text-danger">*</span>
+                        </span>
                         <input className={inputClass} value={city} onChange={(e) => setCity(e.target.value)} />
                       </label>
                       <label className="block">
-                        <span className={labelClass}>State / region</span>
+                        <span className={labelClass}>
+                          State / region <span className="text-danger">*</span>
+                        </span>
                         <input className={inputClass} value={region} onChange={(e) => setRegion(e.target.value)} />
                       </label>
                       <label className="block">
@@ -334,7 +354,9 @@ export function CheckoutView(props: CheckoutViewProps) {
                         <input className={inputClass} value={postal} onChange={(e) => setPostal(e.target.value)} />
                       </label>
                       <label className="block">
-                        <span className={labelClass}>Country</span>
+                        <span className={labelClass}>
+                          Country <span className="text-danger">*</span>
+                        </span>
                         <input className={inputClass} value={country} onChange={(e) => setCountry(e.target.value)} />
                       </label>
                     </div>

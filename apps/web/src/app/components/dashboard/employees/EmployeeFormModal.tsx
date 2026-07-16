@@ -12,6 +12,7 @@ import {
   Select,
   SelectItem
 } from "@heroui/react";
+import { PasswordInput } from "@/components/ui/password-input";
 import { useForm, Controller } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -183,9 +184,8 @@ export function EmployeeFormModal({
                   errorMessage={errors.phone?.message}
                   {...register("phone")}
                 />
-                <Input
+                <PasswordInput
                   label={isEdit ? "Reset password" : "Password"}
-                  type="password"
                   className="md:col-span-2"
                   placeholder={isEdit ? "Leave blank to keep current password" : undefined}
                   isRequired={!isEdit}

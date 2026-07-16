@@ -4,6 +4,7 @@ import { Suspense, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Button, Divider, Input } from "@heroui/react";
+import { PasswordInput } from "@/components/ui/password-input";
 import { addToast } from "@heroui/toast";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -100,10 +101,9 @@ function LoginContent() {
           {...register("email")}
         />
 
-        <Input
+        <PasswordInput
           label="Password"
           placeholder="Enter your password"
-          type="password"
           startContent={<Lock className="size-4 text-foreground/45" />}
           isInvalid={!!errors.password}
           errorMessage={errors.password?.message}

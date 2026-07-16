@@ -187,7 +187,7 @@ export class EmailService implements OnModuleInit {
       from: env.EMAIL_FROM,
       to: env.ADMIN_EMAIL,
       replyTo: payload.email,
-      subject: `New Order Request — ${payload.companyName} / ${payload.contactName}`,
+      subject: `New Order Request · ${payload.companyName} / ${payload.contactName}`,
       text: lines.join("\n"),
       html: renderEmailShell({
         eyebrow: "Order request",
@@ -259,9 +259,9 @@ SOA Team`,
         heading: "We received your request",
         bodyHtml: `
           <p style="margin:0 0 14px;">Hi ${escapeHtml(contactName)},</p>
-          <p style="margin:0 0 14px;">Thanks for reaching out to Swaggeroo — your request has been received.</p>
+          <p style="margin:0 0 14px;">Thanks for reaching out to Swaggeroo. Your request has been received.</p>
           <p style="margin:0 0 14px;">Our team is reviewing your submission and will follow up shortly.</p>
-          <p style="margin:22px 0 0;font-weight:600;color:#0f172a;">— The Swaggeroo Team</p>
+          <p style="margin:22px 0 0;font-weight:600;color:#0f172a;">The Swaggeroo Team</p>
         `
       })
     });
@@ -291,7 +291,7 @@ Swaggeroo Team`,
           <p style="margin:0 0 14px;">Hi ${escapeHtml(name)},</p>
           <p style="margin:0 0 14px;">Your account is all set up. Welcome aboard!</p>
           <p style="margin:0 0 14px;">Head to your dashboard to browse the catalog, build a swag pack, and drop in your logo.</p>
-          <p style="margin:22px 0 0;font-weight:600;color:#0f172a;">— The Swaggeroo Team</p>
+          <p style="margin:22px 0 0;font-weight:600;color:#0f172a;">The Swaggeroo Team</p>
         `,
         cta: { label: "Go to your dashboard", url: `${webBaseUrl()}/dashboard` }
       })
@@ -399,9 +399,9 @@ Swaggeroo Team`,
         heading: "We received your order request",
         bodyHtml: `
           <p style="margin:0 0 14px;">Hi ${escapeHtml(name)},</p>
-          <p style="margin:0 0 14px;">Thanks for submitting your Swaggeroo order — we've received it successfully.</p>
+          <p style="margin:0 0 14px;">Thanks for submitting your Swaggeroo order. We've received it successfully.</p>
           <p style="margin:0 0 14px;">Our team is reviewing your project details and will start on your designs shortly. You can follow its progress any time.</p>
-          <p style="margin:22px 0 0;font-weight:600;color:#0f172a;">— The Swaggeroo Team</p>
+          <p style="margin:22px 0 0;font-weight:600;color:#0f172a;">The Swaggeroo Team</p>
         `,
         cta: { label: "Track your order", url: `${webBaseUrl()}/track` },
         trackUrl: `${webBaseUrl()}/track`
@@ -443,7 +443,7 @@ Swaggeroo Team`,
           </div>
           <p style="margin:0 0 14px;">This code expires in <strong>10 minutes</strong>.</p>
           <p style="margin:0;">If you didn't request this, you can safely ignore this email.</p>
-          <p style="margin:22px 0 0;font-weight:600;color:#0f172a;">— The Swaggeroo Team</p>
+          <p style="margin:22px 0 0;font-weight:600;color:#0f172a;">The Swaggeroo Team</p>
         `,
         trackUrl: null
       })
@@ -474,9 +474,9 @@ Swaggeroo Team`,
         heading: "Password updated",
         bodyHtml: `
           <p style="margin:0 0 14px;">Hi ${escapeHtml(name)},</p>
-          <p style="margin:0 0 14px;">Your Swaggeroo password has been updated successfully — you can now sign in with your new password.</p>
+          <p style="margin:0 0 14px;">Your Swaggeroo password has been updated successfully. You can now sign in with your new password.</p>
           <p style="margin:0;">If you didn't make this change, please contact support immediately.</p>
-          <p style="margin:22px 0 0;font-weight:600;color:#0f172a;">— The Swaggeroo Team</p>
+          <p style="margin:22px 0 0;font-weight:600;color:#0f172a;">The Swaggeroo Team</p>
         `,
         cta: { label: "Sign in", url: `${webBaseUrl()}/login` },
         trackUrl: null
@@ -614,7 +614,7 @@ Swaggeroo Team`,
       from: env.EMAIL_FROM,
       to: env.ADMIN_EMAIL,
       replyTo: payload.email,
-      subject: `New seller application — ${payload.companyName}`,
+      subject: `New seller application · ${payload.companyName}`,
       text: lines.join("\n"),
       html: renderEmailShell({
         eyebrow: "Swaggeroo Partners",
@@ -667,7 +667,7 @@ Swaggeroo Team`,
     const info = await this.transporter.sendMail({
       from: env.EMAIL_FROM,
       to: payload.to,
-      subject: `Your Swaggeroo store is approved — ${payload.storeName}`,
+      subject: `Your Swaggeroo store is approved · ${payload.storeName}`,
       text: `Hi ${payload.contactName},
 
 Congratulations! Your application has been approved and your white-label store "${payload.storeName}" is being set up.
@@ -696,7 +696,7 @@ Swaggeroo Team`,
               : `<p style="margin:0 0 18px;">Sign in with your existing Swaggeroo account.</p>`
           }
           <p style="margin:0 0 14px;">From your seller dashboard you can customize your branding, curate products, and manage your store.</p>
-          <p style="margin:22px 0 0;font-weight:600;color:#0f172a;">— The Swaggeroo Team</p>
+          <p style="margin:22px 0 0;font-weight:600;color:#0f172a;">The Swaggeroo Team</p>
         `,
         cta: payload.setupUrl
           ? { label: "Set up account", url: payload.setupUrl }

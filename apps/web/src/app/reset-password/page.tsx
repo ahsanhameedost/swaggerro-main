@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Button, Card, CardBody, Chip, Divider, Input } from "@heroui/react";
+import { PasswordInput } from "@/components/ui/password-input";
 import { addToast } from "@heroui/toast";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -250,10 +251,9 @@ export default function ResetPasswordPage() {
               Code verified for <span className="font-medium text-foreground">{email}</span>.
             </div>
 
-            <Input
+            <PasswordInput
               label="New password"
               placeholder="Create a new password"
-              type="password"
               startContent={<Lock className="size-4 text-foreground/45" />}
               isInvalid={!!passwordErrors.password}
               errorMessage={passwordErrors.password?.message}
@@ -264,10 +264,9 @@ export default function ResetPasswordPage() {
               {...registerPassword("password")}
             />
 
-            <Input
+            <PasswordInput
               label="Confirm new password"
               placeholder="Confirm your new password"
-              type="password"
               startContent={<ShieldCheck className="size-4 text-foreground/45" />}
               isInvalid={!!passwordErrors.confirmPassword}
               errorMessage={passwordErrors.confirmPassword?.message}

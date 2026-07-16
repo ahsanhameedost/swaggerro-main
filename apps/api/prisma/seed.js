@@ -212,7 +212,7 @@ async function seedSuperAdmin() {
   const passwordHash = bcrypt.hashSync("Admin@12345", 12);
 
   await prisma.user.upsert({
-    where: { email: "superadmin@example.com" },
+    where: { email: "ahsan@9ostech.com" },
     update: {
       passwordHash,
       firstName: "Super",
@@ -220,7 +220,7 @@ async function seedSuperAdmin() {
       roleId: superAdminRole.id
     },
     create: {
-      email: "superadmin@example.com",
+      email: "ahsan@9ostech.com",
       passwordHash,
       firstName: "Super",
       lastName: "Admin",

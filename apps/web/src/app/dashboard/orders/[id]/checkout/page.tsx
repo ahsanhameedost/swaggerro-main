@@ -3,14 +3,49 @@
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { Button, Card, CardBody, Chip, Divider, Image, Spinner } from "@heroui/react";
-import { ArrowLeft, CheckCircle2, LockKeyhole } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Download, MapPin, LockKeyhole } from "lucide-react";
 import { useCatalogOrder } from "@/lib/queries.catalog";
 import { formatMoney } from "@/lib/money";
+import { downloadApiFile } from "@/lib/download";
 import { useMe } from "@/queries/auth";
 import { StripeCardPaymentForm } from "@/app/components/dashboard/orders/StripeCardPaymentForm";
 import { TestPaymentForm } from "@/app/components/dashboard/orders/TestPaymentForm";
-import { formatItemTypeLabel, formatOrderTypeLabel } from "@/lib/order-flow";
+import { formatItemTypeLabel, formatOrderNumber, formatOrderTypeLabel } from "@/lib/order-flow";
 import { hasPermission } from "@/lib/permissions";
+
+// Lightweight, dependency-free confetti burst for the success screen.
+function Confetti() {
+  const pieces = [
+    { left: "8%", color: "#005CFE", delay: "0s", dur: "2.6s" },
+    { left: "18%", color: "#22c55e", delay: "0.15s", dur: "2.9s" },
+    { left: "28%", color: "#f59e0b", delay: "0.05s", dur: "2.7s" },
+    { left: "38%", color: "#005CFE", delay: "0.25s", dur: "3.1s" },
+    { left: "48%", color: "#ef4444", delay: "0.1s", dur: "2.5s" },
+    { left: "58%", color: "#22c55e", delay: "0.3s", dur: "2.8s" },
+    { left: "68%", color: "#f59e0b", delay: "0.18s", dur: "3s" },
+    { left: "78%", color: "#005CFE", delay: "0.08s", dur: "2.6s" },
+    { left: "88%", color: "#ef4444", delay: "0.22s", dur: "2.9s" },
+    { left: "13%", color: "#22c55e", delay: "0.4s", dur: "2.7s" },
+    { left: "63%", color: "#005CFE", delay: "0.35s", dur: "3.2s" },
+    { left: "83%", color: "#f59e0b", delay: "0.45s", dur: "2.6s" }
+  ];
+  return (
+    <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 z-10 h-0 overflow-visible">
+      {pieces.map((p, i) => (
+        <span
+          key={i}
+          className="cc-confetti"
+          style={{ left: p.left, background: p.color, animationDelay: p.delay, animationDuration: p.dur }}
+        />
+      ))}
+      <style>{`
+        .cc-confetti{position:absolute;top:0;width:8px;height:14px;border-radius:2px;opacity:0;transform:translateY(-24px);animation-name:cc-fall;animation-timing-function:cubic-bezier(.3,.6,.4,1);animation-fill-mode:forwards;}
+        @keyframes cc-fall{0%{opacity:1;transform:translateY(-24px) rotate(0deg)}100%{opacity:0;transform:translateY(360px) rotate(600deg)}}
+        @media (prefers-reduced-motion: reduce){.cc-confetti{display:none}}
+      `}</style>
+    </div>
+  );
+}
 
 const PAYMENTS_TEST_MODE = process.env.NEXT_PUBLIC_PAYMENTS_TEST_MODE === "true";
 
@@ -146,33 +181,55 @@ export default function OrderCheckoutPage() {
           Back to order
         </Link>
 
-        <Card className="border border-success/30 shadow-sm">
-          <CardBody className="space-y-5 p-8">
-            <div className="flex items-center gap-3">
-              <CheckCircle2 className="size-8 text-success" />
-              <div>
-                <div className="text-2xl font-semibold">Payment complete</div>
-                <div className="text-sm text-foreground/60">
-                  Order #{order.id} was paid successfully{order.paidAt ? ` on ${new Date(order.paidAt).toLocaleString()}` : ""}.
-                </div>
+        <Card className="relative overflow-hidden border border-success/30 shadow-sm">
+          <Confetti />
+          <CardBody className="items-center gap-5 p-10 text-center">
+            <div className="flex size-16 items-center justify-center rounded-full bg-success/12">
+              <CheckCircle2 className="size-9 text-success" />
+            </div>
+
+            <div className="space-y-1.5">
+              <div className="font-display text-3xl font-bold tracking-tight">Your order is paid 🎉</div>
+              <div className="text-sm text-foreground/60">
+                Order <span className="font-semibold text-foreground">{formatOrderNumber(order.orderNumber)}</span> is
+                confirmed{order.paidAt ? ` — paid on ${new Date(order.paidAt).toLocaleDateString()}` : ""}. We're getting to
+                work; you can track it any time.
               </div>
             </div>
 
-            <div className="rounded-3xl border border-divider bg-content1 p-5">
-              <div className="mb-2 text-sm font-semibold uppercase tracking-wide text-foreground/50">
+            <div className="w-full max-w-xs rounded-2xl border border-divider bg-content1 p-5">
+              <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-foreground/50">
                 Amount paid
               </div>
-              <div className="text-3xl font-semibold">{formatMoney(order.totalDue, order.currency)}</div>
+              <div className="font-display text-4xl font-bold text-success">
+                {formatMoney(order.totalDue, order.currency)}
+              </div>
             </div>
 
-            <div className="flex flex-wrap gap-3">
+            <div className="flex flex-wrap items-center justify-center gap-3">
               <Link href={`/dashboard/orders/${order.id}`}>
-                <Button color="primary" style={{ backgroundImage: "var(--primary-gradient)" }}>
-                  Back to order
+                <Button
+                  color="primary"
+                  startContent={<MapPin className="size-4" />}
+                  style={{ backgroundImage: "var(--primary-gradient)", color: "#fff" }}
+                >
+                  Track your order
                 </Button>
               </Link>
+              <Button
+                variant="bordered"
+                startContent={<Download className="size-4" />}
+                onPress={() =>
+                  void downloadApiFile(
+                    `/catalog/orders/${order.id}/invoice.pdf`,
+                    `swaggeroo-invoice-${formatOrderNumber(order.orderNumber)}.pdf`
+                  )
+                }
+              >
+                Download invoice
+              </Button>
               <Link href="/dashboard/orders">
-                <Button variant="bordered">My orders</Button>
+                <Button variant="light">My orders</Button>
               </Link>
             </div>
           </CardBody>

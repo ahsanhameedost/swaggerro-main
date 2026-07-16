@@ -254,6 +254,11 @@ export function PackStudio() {
       addToast({ title: "Add at least one product to continue.", color: "warning" });
       return;
     }
+    // Packaging is required before leaving the Packaging & branding step.
+    if (step === 2 && summary.hasMissingPackaging) {
+      addToast({ title: "Choose a packaging option to continue.", color: "warning" });
+      return;
+    }
     setStep((s) => Math.min(STEPS.length - 1, s + 1));
   };
 
@@ -422,9 +427,9 @@ export function PackStudio() {
               <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-card p-4 shadow-sm">
                 <div>
                   <p className="text-sm font-semibold text-foreground">Number of swag packs</p>
-                  <p className="text-xs text-muted-foreground">Minimum 25 packs</p>
+                  <p className="text-xs text-muted-foreground">Minimum 5 packs</p>
                 </div>
-                <Stepper value={summary.packQuantity} min={25} step={25} onChange={setSwagPackQuantity} />
+                <Stepper value={summary.packQuantity} min={5} step={1} onChange={setSwagPackQuantity} />
               </div>
 
               {hasItems ? (
@@ -583,13 +588,6 @@ export function PackStudio() {
                     Upload your logo (PNG, JPG, WEBP)
                   </button>
                 )}
-
-                <Link
-                  href={`/mockup${swagPackItems[0]?.slug ? `?product=${swagPackItems[0].slug}` : ""}`}
-                  className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-border py-2.5 text-sm font-semibold text-foreground transition hover:border-primary/40"
-                >
-                  <Sparkles className="size-4 text-primary" /> Preview your logo
-                </Link>
               </div>
 
               {/* logo placement (read-only, designed in Mockup Studio) */}
@@ -773,20 +771,34 @@ export function PackStudio() {
                   </p>
                 )}
 
-                <button
-                  type="button"
-                  onClick={() => addPackToCart("/project-submission")}
-                  className="mt-4 w-full rounded-xl bg-primary py-3 text-sm font-semibold text-primary-foreground shadow-brand transition hover:bg-primary/90"
-                >
-                  Approve &amp; checkout
-                </button>
-                <button
-                  type="button"
-                  onClick={() => addPackToCart("/cart")}
-                  className="mt-2 w-full rounded-xl border border-border py-2.5 text-sm font-medium transition hover:bg-muted"
-                >
-                  Add to cart
-                </button>
+                {step === STEPS.length - 1 ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => addPackToCart("/project-submission")}
+                      className="mt-4 w-full rounded-xl bg-primary py-3 text-sm font-semibold text-primary-foreground shadow-brand transition hover:bg-primary/90"
+                    >
+                      Approve &amp; checkout
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => addPackToCart("/cart")}
+                      className="mt-2 w-full rounded-xl border border-border py-2.5 text-sm font-medium transition hover:bg-muted"
+                    >
+                      Add to cart
+                    </button>
+                  </>
+                ) : (
+                  // Checkout only appears at the Review step — keep the flow linear
+                  // (Pick → Quantities → Branding → Review) so nothing is skipped.
+                  <button
+                    type="button"
+                    onClick={goNext}
+                    className="mt-4 w-full rounded-xl bg-primary py-3 text-sm font-semibold text-primary-foreground shadow-brand transition hover:bg-primary/90"
+                  >
+                    Continue
+                  </button>
+                )}
               </>
             ) : (
               <p className="mt-4 rounded-xl border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">

@@ -60,7 +60,7 @@ export const createPublicOrderSchema = z
     swagPack: z
       .object({
         name: z.string().trim().min(1).max(160),
-        packQuantity: z.coerce.number().int().min(25).default(25),
+        packQuantity: z.coerce.number().int().min(5).default(5),
         items: z.array(swagPackOrderItemSchema).default([]),
         packaging: swagPackPackagingSchema.optional().nullable()
       })

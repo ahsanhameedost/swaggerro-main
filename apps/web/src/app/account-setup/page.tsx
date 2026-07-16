@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { addToast } from "@heroui/toast";
 import { useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, CheckCircle2, Loader2, Lock, Store, User2 } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Eye, EyeOff, Loader2, Lock, Store, User2 } from "lucide-react";
 import { completeAccountSetup, verifyAccountSetup } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 
@@ -27,6 +27,8 @@ function AccountSetupContent() {
   const [confirm, setConfirm] = useState("");
   const [errors, setErrors] = useState<{ username?: string; password?: string; confirm?: string }>({});
   const [submitting, setSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   useEffect(() => {
     if (!token) {
@@ -146,12 +148,20 @@ function AccountSetupContent() {
           <div className="relative mt-1.5">
             <Lock className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <input
-              type="password"
-              className={cn(inputClass, "pl-9", errors.password && "border-destructive")}
+              type={showPassword ? "text" : "password"}
+              className={cn(inputClass, "pl-9 pr-10", errors.password && "border-destructive")}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="At least 8 characters"
             />
+            <button
+              type="button"
+              aria-label={showPassword ? "Hide password" : "Show password"}
+              onClick={() => setShowPassword((v) => !v)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
+            >
+              {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+            </button>
           </div>
           {errors.password ? <p className="mt-1 text-xs font-medium text-destructive">{errors.password}</p> : null}
         </label>
@@ -161,12 +171,20 @@ function AccountSetupContent() {
           <div className="relative mt-1.5">
             <Lock className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <input
-              type="password"
-              className={cn(inputClass, "pl-9", errors.confirm && "border-destructive")}
+              type={showConfirm ? "text" : "password"}
+              className={cn(inputClass, "pl-9 pr-10", errors.confirm && "border-destructive")}
               value={confirm}
               onChange={(e) => setConfirm(e.target.value)}
               placeholder="Re-enter your password"
             />
+            <button
+              type="button"
+              aria-label={showConfirm ? "Hide password" : "Show password"}
+              onClick={() => setShowConfirm((v) => !v)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
+            >
+              {showConfirm ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+            </button>
           </div>
           {errors.confirm ? <p className="mt-1 text-xs font-medium text-destructive">{errors.confirm}</p> : null}
         </label>

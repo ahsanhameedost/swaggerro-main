@@ -4,6 +4,7 @@ import { Suspense, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Button, Divider, Input } from "@heroui/react";
+import { PasswordInput } from "@/components/ui/password-input";
 import { addToast } from "@heroui/toast";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -160,20 +161,18 @@ function SignupContent() {
         />
 
         <div className="grid gap-4 md:grid-cols-2">
-          <Input
+          <PasswordInput
             label="Password"
             placeholder="Create a password"
-            type="password"
             startContent={<Lock className="size-4 text-foreground/45" />}
             isInvalid={!!errors.password}
             errorMessage={errors.password?.message}
             classNames={sharedInputClassNames}
             {...register("password")}
           />
-          <Input
+          <PasswordInput
             label="Confirm password"
             placeholder="Confirm password"
-            type="password"
             startContent={<Mail className="size-4 text-transparent" />}
             isInvalid={!!errors.confirmPassword}
             errorMessage={errors.confirmPassword?.message}

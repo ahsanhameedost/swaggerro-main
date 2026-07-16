@@ -367,6 +367,8 @@ export default function OrderDetailsPage() {
   const addOnMutation = useRequestCatalogOrderAddOns();
   const resolveAddOnMutation = useResolveCatalogOrderAddOn();
   const [addOnOpen, setAddOnOpen] = useState(false);
+  // Click-to-enlarge lightbox for the customer's mockup/design image.
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
   const assignMutation = useAssignCatalogOrderEmployee();
   const { data: employees = [] } = useEmployees("", canAssign);
   const canPlanShipping = hasAnyPermission(user, [
@@ -667,9 +669,13 @@ export default function OrderDetailsPage() {
                 </Select>
               ) : null}
 
-              {/* Production stage only unlocks once the customer has approved the
-                  final design (all items ready to order). */}
-              {canManageStatus && order.allItemsReadyToOrder ? (
+              {/* Production stage becomes available once the design is approved
+                  (all items ready) or the order is approved/paid — so production
+                  tracking is always manageable at that point. */}
+              {canManageStatus &&
+              (order.allItemsReadyToOrder ||
+                order.status === "APPROVED" ||
+                order.paymentStatus === "PAID") ? (
                 <Select
                   label="Production stage"
                   aria-label="Production stage"
@@ -843,20 +849,25 @@ export default function OrderDetailsPage() {
                           key={item.id}
                           className="grid gap-4 rounded-3xl border border-divider p-5 md:grid-cols-[110px_minmax(0,1fr)_auto]"
                         >
-                          <div className="flex h-[110px] w-[110px] items-center justify-center overflow-hidden rounded-3xl bg-default-100">
-                            {getPreferredDesignImage(item) ? (
+                          {getPreferredDesignImage(item) ? (
+                            <button
+                              type="button"
+                              onClick={() => setLightboxSrc(getPreferredDesignImage(item)!)}
+                              className="group flex h-[110px] w-[110px] cursor-zoom-in items-center justify-center overflow-hidden rounded-3xl bg-default-100"
+                              aria-label={`View ${item.productName} mockup`}
+                            >
                               <Image
                                 removeWrapper
                                 src={getPreferredDesignImage(item)!}
                                 alt={item.productName}
-                                className="h-full w-full object-contain"
+                                className="h-full w-full object-contain transition-transform duration-200 group-hover:scale-105"
                               />
-                            ) : (
-                              <div className="text-xs font-semibold text-foreground/35">
-                                {item.productName.slice(0, 2).toUpperCase()}
-                              </div>
-                            )}
-                          </div>
+                            </button>
+                          ) : (
+                            <div className="flex h-[110px] w-[110px] items-center justify-center overflow-hidden rounded-3xl bg-default-100 text-xs font-semibold text-foreground/35">
+                              {item.productName.slice(0, 2).toUpperCase()}
+                            </div>
+                          )}
 
                           <div className="space-y-2">
                             <div className="flex flex-wrap items-center gap-2">
@@ -876,6 +887,15 @@ export default function OrderDetailsPage() {
                             </div>
                             {item.adminNotes ? (
                               <div className="text-sm text-foreground/70">{item.adminNotes}</div>
+                            ) : null}
+                            {item.mockupImageUrl ? (
+                              <button
+                                type="button"
+                                onClick={() => setLightboxSrc(item.mockupImageUrl!)}
+                                className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
+                              >
+                                <Eye className="size-4" /> View mockup
+                              </button>
                             ) : null}
                           </div>
 
@@ -1101,6 +1121,18 @@ export default function OrderDetailsPage() {
       </div>
 
       <AddOnModal orderId={order.id} isOpen={addOnOpen} onClose={() => setAddOnOpen(false)} />
+
+      <Modal isOpen={!!lightboxSrc} onOpenChange={(open) => (!open ? setLightboxSrc(null) : undefined)} size="4xl">
+        <ModalContent>
+          {() => (
+            <ModalBody className="flex items-center justify-center p-2">
+              {lightboxSrc ? (
+                <Image removeWrapper src={lightboxSrc} alt="Mockup preview" className="max-h-[80vh] w-auto object-contain" />
+              ) : null}
+            </ModalBody>
+          )}
+        </ModalContent>
+      </Modal>
     </div>
   );
 }

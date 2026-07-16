@@ -366,12 +366,18 @@ function CustomerDesignView({ orders }: { orders: CatalogOrder[] }) {
                               isLoading={approveMutation.isPending}
                               onPress={async () => {
                                 try {
-                                  await approveMutation.mutateAsync({
+                                  // Approving the mockup finalizes the design (no
+                                  // separate proof step). Once the whole order is
+                                  // ready, send the customer to checkout.
+                                  const res = await approveMutation.mutateAsync({
                                     orderId: order.id,
                                     itemId: item.id,
                                     stage: "MOCKUP"
                                   });
-                                  addToast({ title: "Mockup approved", color: "success" });
+                                  addToast({ title: "Design approved", color: "success" });
+                                  if (res?.order?.allItemsReadyToOrder) {
+                                    router.push(`/dashboard/orders/${order.id}/checkout`);
+                                  }
                                 } catch (e: any) {
                                   addToast({
                                     title: "Approval failed",
@@ -382,7 +388,7 @@ function CustomerDesignView({ orders }: { orders: CatalogOrder[] }) {
                               }}
                               style={{ backgroundImage: "var(--primary-gradient)" }}
                             >
-                              Approve mockup
+                              Approve design
                             </Button>
                           ) : null}
 
@@ -530,8 +536,6 @@ const TEAM_GROUPS: { key: "action" | "waiting" | "done"; title: string; hint: st
 const DESIGNER_PHASE_OPTIONS: CatalogOrderItem["designPhase"][] = [
   "MOCKUP_IN_PROGRESS",
   "REVIEW_MOCKUP_DESIGN",
-  "FINALIZING_PROOF_DESIGN",
-  "REVIEW_FINAL_DESIGN",
   "READY_TO_ORDER",
   "REVISION_REQUESTED"
 ];
@@ -576,7 +580,6 @@ function DesignJobCard({
   const uploadMutation = useCreateCatalogOrderDesignUpload();
   const updateMutation = useUpdateCatalogOrderItemDesign();
   const mockupInputRef = useRef<HTMLInputElement | null>(null);
-  const proofInputRef = useRef<HTMLInputElement | null>(null);
   const [pendingKind, setPendingKind] = useState<null | "mockups" | "proofs">(null);
 
   // The customer's logo + placement designed in the Mockup Studio, parsed from
@@ -779,7 +782,6 @@ function DesignJobCard({
         <div className="flex flex-wrap items-end gap-4">
           <AssetThumb label="Product" src={item.imageUrl} hint="No image" />
           <AssetThumb label="Mockup" src={item.mockupImageUrl} hint="Not uploaded" />
-          <AssetThumb label="Proof" src={item.proofImageUrl} hint="Not uploaded" />
 
           <div className="flex flex-1 flex-wrap items-center justify-end gap-3">
             <input
@@ -793,17 +795,6 @@ function DesignJobCard({
                 event.currentTarget.value = "";
               }}
             />
-            <input
-              ref={proofInputRef}
-              type="file"
-              accept="image/png,image/jpeg,image/webp"
-              hidden
-              onChange={(event) => {
-                const file = event.target.files?.[0];
-                if (file) void uploadAsset(file, "proofs", "REVIEW_FINAL_DESIGN");
-                event.currentTarget.value = "";
-              }}
-            />
             <Button
               variant="bordered"
               startContent={<UploadCloud className="size-4" />}
@@ -812,15 +803,6 @@ function DesignJobCard({
               onPress={() => mockupInputRef.current?.click()}
             >
               {item.mockupImageUrl ? "Replace mockup" : "Upload mockup"}
-            </Button>
-            <Button
-              variant="bordered"
-              startContent={<UploadCloud className="size-4" />}
-              isLoading={pendingKind === "proofs"}
-              isDisabled={busy}
-              onPress={() => proofInputRef.current?.click()}
-            >
-              {item.proofImageUrl ? "Replace proof" : "Upload proof"}
             </Button>
           </div>
         </div>

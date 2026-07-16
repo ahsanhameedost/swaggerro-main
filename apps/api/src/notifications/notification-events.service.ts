@@ -22,9 +22,15 @@ export type EventEmail = {
   paragraphs?: string[];
   // Raw HTML appended after the paragraphs (e.g. an order-summary table).
   bodyHtml?: string;
+  // Product thumbnail image URLs (up to 4) shown under the heading.
+  thumbnails?: string[];
+  thumbnailsLabel?: string;
   // Relative path (e.g. "/dashboard/orders/x") — resolved to an absolute web URL.
   ctaPath?: string | null;
   ctaLabel?: string;
+  // Optional secondary (outline) button, e.g. "Go to dashboard".
+  secondaryCtaPath?: string | null;
+  secondaryCtaLabel?: string;
   footerNote?: string;
 };
 
@@ -119,13 +125,20 @@ export class NotificationEventsService {
       email.ctaPath && email.ctaLabel
         ? { label: email.ctaLabel, url: toWebUrl(email.ctaPath) ?? email.ctaPath }
         : null;
+    const secondaryCta: EmailCta | null =
+      email.secondaryCtaPath && email.secondaryCtaLabel
+        ? { label: email.secondaryCtaLabel, url: toWebUrl(email.secondaryCtaPath) ?? email.secondaryCtaPath }
+        : null;
 
     const { html, text } = renderBrandedEmail({
       heading: email.heading,
       greeting: firstName ? `Hi ${firstName},` : undefined,
       paragraphs: email.paragraphs,
       extraHtml: email.bodyHtml,
+      thumbnails: email.thumbnails,
+      thumbnailsLabel: email.thumbnailsLabel,
       cta,
+      secondaryCta,
       footerNote: email.footerNote
     });
 

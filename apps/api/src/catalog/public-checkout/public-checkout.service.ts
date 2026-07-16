@@ -255,22 +255,30 @@ export class PublicCheckoutService {
       link: `/dashboard/orders/${order.id}`
     });
 
-    // Build a WooCommerce-style order breakdown for the confirmation email.
+    // Build a WooCommerce-style order breakdown + product thumbnails for the email.
     const orderItems = await this.prisma.catalogOrderItem.findMany({
       where: { orderId: order.id },
       orderBy: { sortOrder: "asc" },
-      select: { productName: true, variantName: true, quantity: true, totalPrice: true }
+      select: {
+        productName: true,
+        variantName: true,
+        quantity: true,
+        totalPrice: true,
+        imageUrl: true,
+        mockupImageUrl: true
+      }
     });
     const summaryItems = orderItems.map((item) => ({
       name: item.productName,
       variant: item.variantName,
       quantity: item.quantity,
-      lineTotal: Number(item.totalPrice)
+      lineTotal: Number(item.totalPrice),
+      image: item.mockupImageUrl ?? item.imageUrl ?? null
     }));
     const itemsSubtotal = summaryItems.reduce((sum, item) => sum + item.lineTotal, 0);
     const grandTotal = Number(order.totalPrice);
     const summaryRows: { label: string; value: number; strong?: boolean }[] = [
-      { label: "Subtotal", value: itemsSubtotal }
+      { label: "Products subtotal", value: itemsSubtotal }
     ];
     if (grandTotal - itemsSubtotal > 0.005) {
       summaryRows.push({ label: "Shipping, storage & fees", value: grandTotal - itemsSubtotal });
@@ -278,7 +286,8 @@ export class PublicCheckoutService {
     summaryRows.push({ label: "Total paid", value: grandTotal, strong: true });
     const orderSummaryHtml = renderOrderSummaryHtml({ items: summaryItems, rows: summaryRows });
 
-    // Customer order-confirmation with the item breakdown + a tracking link (#26).
+    // Customer order-confirmation: thumbnails, full breakdown, and both a
+    // Track-order and a Go-to-dashboard button (the buyer has an account).
     await this.events.dispatchToUser({
       userId: buyerUserId,
       type: "catalog.order.confirmed",
@@ -286,14 +295,16 @@ export class PublicCheckoutService {
       body: `Your order ${orderLabel} (${amountLabel}) is confirmed.`,
       link: `/dashboard/orders/${order.id}`,
       email: {
-        subject: `Order confirmed — ${orderLabel}`,
-        heading: "Thanks — your order is confirmed",
+        subject: `Order confirmed · ${orderLabel}`,
+        heading: "Your order is confirmed",
         paragraphs: [
           `We received your payment of ${amountLabel} for order ${orderLabel}. Here's what you ordered:`
         ],
         bodyHtml: orderSummaryHtml,
         ctaPath: `/dashboard/orders/${order.id}`,
-        ctaLabel: "View order & track"
+        ctaLabel: "Track your order",
+        secondaryCtaPath: "/dashboard",
+        secondaryCtaLabel: "Go to dashboard"
       }
     });
 

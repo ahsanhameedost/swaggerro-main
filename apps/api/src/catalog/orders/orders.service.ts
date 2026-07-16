@@ -326,7 +326,7 @@ export class CatalogOrdersService extends CatalogSharedService {
         body: `Your order ${orderLabel} is now ${statusLabel}.`,
         link: `/dashboard/orders/${order.id}`,
         email: {
-          subject: `Order ${orderLabel} — ${statusLabel}`,
+          subject: `Order ${orderLabel} · ${statusLabel}`,
           heading: `Order ${statusLabel}`,
           paragraphs: [
             `Your order ${orderLabel} is now ${statusLabel}.`,
@@ -372,7 +372,7 @@ export class CatalogOrdersService extends CatalogSharedService {
         body: `Order ${orderLabel} is now ${label.toLowerCase()}.`,
         link: `/dashboard/orders/${order.id}`,
         email: {
-          subject: `Order ${orderLabel} — ${label}`,
+          subject: `Order ${orderLabel} · ${label}`,
           heading: label,
           paragraphs: [`Order ${orderLabel} is now ${label.toLowerCase()}.`],
           ctaPath: `/dashboard/orders/${order.id}`,
@@ -468,7 +468,7 @@ export class CatalogOrdersService extends CatalogSharedService {
       body: `${order.name} wants to add ${input.items.length} item(s) to order ${orderLabel} to save shipping.`,
       link: `/dashboard/orders/${order.id}`,
       email: {
-        subject: `Add-on request — ${orderLabel}`,
+        subject: `Add-on request · ${orderLabel}`,
         heading: "Add-on request to review",
         paragraphs: [
           `${order.name} requested to add ${input.items.length} product(s) to order ${orderLabel} to combine shipping.`,
@@ -524,7 +524,7 @@ export class CatalogOrdersService extends CatalogSharedService {
           : `"${item.productName}" could not be added to order ${orderLabel}.`,
         link: `/dashboard/orders/${order.id}`,
         email: {
-          subject: `${input.approve ? "Added item approved" : "Added item declined"} — ${orderLabel}`,
+          subject: `${input.approve ? "Added item approved" : "Added item declined"} · ${orderLabel}`,
           heading: input.approve ? "Your added item is approved" : "Your added item was declined",
           paragraphs: [
             input.approve
@@ -696,7 +696,7 @@ export class CatalogOrdersService extends CatalogSharedService {
           body: `${item.productName} on order ${orderLabel} is ready for your review.`,
           link: "/dashboard/designs",
           email: {
-            subject: `${isFinal ? "Final design" : "Mockup"} ready to review — ${orderLabel}`,
+            subject: `${isFinal ? "Final design" : "Mockup"} ready to review · ${orderLabel}`,
             heading: isFinal ? "Your final design is ready" : "Your mockup is ready",
             paragraphs: [
               `The ${isFinal ? "final design" : "mockup"} for ${item.productName} on order ${orderLabel} is ready for your review.`,
@@ -773,7 +773,7 @@ export class CatalogOrdersService extends CatalogSharedService {
     const orderLabel = `SW-${String(order.orderNumber).padStart(3, "0")}`;
     const body = `${order.name} requested changes on ${item.productName} (order ${orderLabel}).`;
     const orderEmail = {
-      subject: `Revision requested — ${orderLabel}`,
+      subject: `Revision requested · ${orderLabel}`,
       heading: "Revision requested",
       paragraphs: [body, `Notes: ${input.notes.trim()}`],
       ctaPath: `/dashboard/orders/${order.id}`,
@@ -827,11 +827,14 @@ export class CatalogOrdersService extends CatalogSharedService {
         throw new BadRequestException("This item is not waiting for mockup approval");
       }
 
+      // No separate proof step — approving the mockup finalizes the design and
+      // moves the item straight to ready-to-order.
       await this.prisma.catalogOrderItem.update({
         where: { id: item.id },
         data: {
-          designPhase: "FINALIZING_PROOF_DESIGN",
-          customerApprovedMockupAt: now
+          designPhase: "READY_TO_ORDER",
+          customerApprovedMockupAt: now,
+          customerApprovedFinalAt: now
         }
       });
     } else {
@@ -867,7 +870,7 @@ export class CatalogOrdersService extends CatalogSharedService {
     // Tell the design team (assigned designer, else admins) the customer approved.
     const approvalBody = `${order.name} approved the ${stageLabel} for ${item.productName} (order ${orderLabel}).`;
     const approvalEmail = {
-      subject: `${input.stage === "MOCKUP" ? "Mockup" : "Final design"} approved — ${orderLabel}`,
+      subject: `${input.stage === "MOCKUP" ? "Mockup" : "Final design"} approved · ${orderLabel}`,
       heading: "Design approved",
       paragraphs: [approvalBody],
       ctaPath: `/dashboard/orders/${order.id}`,
@@ -903,7 +906,7 @@ export class CatalogOrdersService extends CatalogSharedService {
         body: `Every design on order ${orderLabel} is approved and ready to order.`,
         link: `/dashboard/orders/${order.id}`,
         email: {
-          subject: `All designs approved — ${orderLabel}`,
+          subject: `All designs approved · ${orderLabel}`,
           heading: "You're ready to order",
           paragraphs: [
             `All designs on order ${orderLabel} are approved and ready to produce.`,
@@ -1196,6 +1199,121 @@ async createOrderPayment(id: string, input: CreateOrderPaymentDto, authUser: Aut
     }
 
     return Buffer.from(await pdf.save());
+  }
+
+  // A clean, branded invoice PDF for an order (paid or not) — SWAGGEROO header,
+  // order/bill-to details, an itemized table, and totals.
+  async downloadOrderInvoicePdf(orderId: string, authUser: AuthUser) {
+    const order = await this.findAccessibleOrderOrThrow(orderId, authUser);
+    const pdf = await PDFDocument.create();
+    const font = await pdf.embedFont(StandardFonts.Helvetica);
+    const boldFont = await pdf.embedFont(StandardFonts.HelveticaBold);
+
+    const PAGE_W = 595.28;
+    const PAGE_H = 841.89;
+    const BRAND = rgb(0, 0.361, 0.996);
+    const INK = rgb(0.09, 0.11, 0.16);
+    const MUTED = rgb(0.42, 0.45, 0.5);
+    const LINE = rgb(0.9, 0.92, 0.95);
+    const orderLabel = `SW-${String(order.orderNumber).padStart(3, "0")}`;
+    const money = (value: Prisma.Decimal | number | string | null | undefined) =>
+      `$${(this.decimalToNumber(value) ?? 0).toFixed(2)}`;
+    const paid = order.paymentStatus === "PAID";
+
+    const page = pdf.addPage([PAGE_W, PAGE_H]);
+    const L = 48;
+    const R = PAGE_W - 48;
+
+    // Header band.
+    page.drawRectangle({ x: 0, y: PAGE_H - 96, width: PAGE_W, height: 96, color: BRAND });
+    page.drawText("SWAGGEROO", { x: L, y: PAGE_H - 44, size: 15, font: boldFont, color: rgb(1, 1, 1) });
+    page.drawText("INVOICE", { x: L, y: PAGE_H - 74, size: 24, font: boldFont, color: rgb(1, 1, 1) });
+    // Paid / due chip on the right.
+    const chipText = paid ? "PAID" : "DUE";
+    const chipW = boldFont.widthOfTextAtSize(chipText, 11) + 22;
+    page.drawRectangle({ x: R - chipW, y: PAGE_H - 62, width: chipW, height: 22, color: rgb(1, 1, 1) });
+    page.drawText(chipText, { x: R - chipW + 11, y: PAGE_H - 56, size: 11, font: boldFont, color: BRAND });
+
+    // Meta: invoice #, dates.
+    let y = PAGE_H - 132;
+    page.drawText(`Invoice ${orderLabel}`, { x: L, y, size: 14, font: boldFont, color: INK });
+    page.drawText(`Issued: ${new Date(order.createdAt).toLocaleDateString()}`, { x: R - 200, y, size: 10, font, color: MUTED });
+    y -= 15;
+    if (paid && order.paidAt) {
+      page.drawText(`Paid: ${new Date(order.paidAt).toLocaleDateString()}`, { x: R - 200, y, size: 10, font, color: MUTED });
+    }
+
+    // Bill to.
+    y -= 26;
+    page.drawText("BILL TO", { x: L, y, size: 9, font: boldFont, color: MUTED });
+    y -= 16;
+    page.drawText(order.name ?? "-", { x: L, y, size: 12, font: boldFont, color: INK });
+    y -= 15;
+    for (const detail of [order.companyName, order.email, order.phone].filter(Boolean) as string[]) {
+      page.drawText(detail, { x: L, y, size: 10, font, color: MUTED });
+      y -= 14;
+    }
+
+    // Items table header.
+    y -= 14;
+    const colQty = R - 190;
+    const colUnit = R - 120;
+    const colAmt = R;
+    page.drawText("ITEM", { x: L, y, size: 9, font: boldFont, color: MUTED });
+    page.drawText("QTY", { x: colQty, y, size: 9, font: boldFont, color: MUTED });
+    page.drawText("UNIT", { x: colUnit, y, size: 9, font: boldFont, color: MUTED });
+    page.drawText("AMOUNT", { x: colAmt - boldFont.widthOfTextAtSize("AMOUNT", 9), y, size: 9, font: boldFont, color: MUTED });
+    y -= 8;
+    page.drawLine({ start: { x: L, y }, end: { x: R, y }, thickness: 1, color: LINE });
+    y -= 18;
+
+    for (const item of order.items) {
+      const name = item.productName ?? "Item";
+      page.drawText(name.length > 46 ? `${name.slice(0, 45)}…` : name, { x: L, y, size: 11, font: boldFont, color: INK });
+      if (item.variantName) {
+        page.drawText(item.variantName, { x: L, y: y - 12, size: 9, font, color: MUTED });
+      }
+      page.drawText(String(item.quantity), { x: colQty, y, size: 11, font, color: INK });
+      page.drawText(money(item.unitPrice), { x: colUnit, y, size: 11, font, color: INK });
+      const amt = money(item.totalPrice);
+      page.drawText(amt, { x: colAmt - font.widthOfTextAtSize(amt, 11), y, size: 11, font, color: INK });
+      y -= item.variantName ? 30 : 22;
+      page.drawLine({ start: { x: L, y: y + 6 }, end: { x: R, y: y + 6 }, thickness: 0.5, color: LINE });
+    }
+
+    // Totals.
+    const itemsSubtotal = order.items.reduce(
+      (sum, item) => sum + (this.decimalToNumber(item.totalPrice) ?? 0),
+      0
+    );
+    const grandTotal = this.decimalToNumber(order.totalPrice) ?? 0;
+    y -= 12;
+    const totalsRow = (label: string, value: string, strong = false) => {
+      const size = strong ? 14 : 11;
+      const f = strong ? boldFont : font;
+      page.drawText(label, { x: colUnit - 40, y, size, font: f, color: strong ? INK : MUTED });
+      page.drawText(value, { x: colAmt - f.widthOfTextAtSize(value, size), y, size, font: f, color: INK });
+      y -= strong ? 22 : 18;
+    };
+    totalsRow("Subtotal", money(itemsSubtotal));
+    if (grandTotal - itemsSubtotal > 0.005) {
+      totalsRow("Shipping, storage & fees", money(grandTotal - itemsSubtotal));
+    }
+    y -= 4;
+    page.drawLine({ start: { x: colUnit - 40, y: y + 12 }, end: { x: R, y: y + 12 }, thickness: 1, color: LINE });
+    totalsRow(paid ? "Total paid" : "Total due", money(grandTotal), true);
+
+    // Footer.
+    page.drawText("Thank you for your order! Questions? Reply to your confirmation email.", {
+      x: L,
+      y: 60,
+      size: 10,
+      font,
+      color: MUTED
+    });
+    page.drawText("Swaggeroo · swaggeroo.com", { x: L, y: 44, size: 10, font: boldFont, color: BRAND });
+
+    return { pdf: Buffer.from(await pdf.save()), orderNumber: orderLabel };
   }
 
   private async buildAccessibleOrderWhere(query: ListOrdersQuery, authUser: AuthUser) {

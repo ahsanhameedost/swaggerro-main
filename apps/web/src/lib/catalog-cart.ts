@@ -104,7 +104,7 @@ export function buildBulkPricedItems(items: BulkCartItem[]) {
 
 export function buildSwagPackPricedItems(items: SwagPackCartItem[], packQuantity: number) {
   return items.map((item) => {
-    const safePackQuantity = Math.max(25, Math.floor(packQuantity || 25));
+    const safePackQuantity = Math.max(5, Math.floor(packQuantity || 5));
     const quantityPerPack = Math.max(1, Math.floor(item.quantityPerPack || 1));
     const totalUnits = safePackQuantity * quantityPerPack;
     const unitPrice = resolveUnitPrice(item.basePrice, safePackQuantity, item.pricingOptions);
@@ -129,7 +129,7 @@ export function buildSwagPackPackagingItem(
     return null;
   }
 
-  const safePackQuantity = Math.max(25, Math.floor(packQuantity || 25));
+  const safePackQuantity = Math.max(5, Math.floor(packQuantity || 5));
   const unitPrice = resolveUnitPrice(packaging.basePrice, safePackQuantity, packaging.pricingOptions);
 
   return {
@@ -151,7 +151,7 @@ type CartSummaryInput = Omit<CatalogCartSnapshot, "swagPackLogoUrl" | "swagPackL
 };
 
 export function calculateCatalogCartSummary(state: CartSummaryInput): CatalogCartSummary {
-  const packQuantity = Math.max(25, Math.floor(state.swagPackQuantity || 25));
+  const packQuantity = Math.max(5, Math.floor(state.swagPackQuantity || 5));
   const swagPackName = state.swagPackName?.trim() || createDefaultSwagPackName();
   const bulkItems = buildBulkPricedItems(state.bulkItems);
   const swagPackItems = buildSwagPackPricedItems(state.swagPackItems, packQuantity);

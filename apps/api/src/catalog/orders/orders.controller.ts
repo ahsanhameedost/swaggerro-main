@@ -273,4 +273,17 @@ export class CatalogOrdersController {
     reply.header("content-disposition", `attachment; filename="order-${id}-mockups.pdf"`);
     return pdf;
   }
+
+  @UseGuards(AuthGuard)
+  @Get("orders/:id/invoice.pdf")
+  async downloadOrderInvoicePdf(
+    @Param("id") id: string,
+    @Req() req: FastifyRequest & { user?: AuthUser },
+    @Res({ passthrough: true }) reply: FastifyReply
+  ) {
+    const { pdf, orderNumber } = await this.ordersService.downloadOrderInvoicePdf(id, req.user!);
+    reply.header("content-type", "application/pdf");
+    reply.header("content-disposition", `attachment; filename="swaggeroo-invoice-${orderNumber}.pdf"`);
+    return pdf;
+  }
 }

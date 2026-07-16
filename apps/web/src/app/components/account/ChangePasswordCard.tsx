@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { addToast } from "@heroui/toast";
-import { KeyRound, Loader2, Lock } from "lucide-react";
+import { Eye, EyeOff, KeyRound, Loader2, Lock } from "lucide-react";
 import { changePassword } from "@/modules/auth/api";
 import { cn } from "@/lib/utils";
 
@@ -86,17 +86,26 @@ function PwField({
   onChange: (v: string) => void;
   error?: string;
 }) {
+  const [visible, setVisible] = useState(false);
   return (
     <label className="block">
       <span className="text-sm font-medium text-foreground">{label}</span>
       <div className="relative mt-1.5">
         <Lock className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
         <input
-          type="password"
-          className={cn(inputClass, error && "border-destructive")}
+          type={visible ? "text" : "password"}
+          className={cn(inputClass, "pr-10", error && "border-destructive")}
           value={value}
           onChange={(e) => onChange(e.target.value)}
         />
+        <button
+          type="button"
+          aria-label={visible ? "Hide password" : "Show password"}
+          onClick={() => setVisible((v) => !v)}
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
+        >
+          {visible ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+        </button>
       </div>
       {error ? <p className="mt-1 text-xs font-medium text-destructive">{error}</p> : null}
     </label>

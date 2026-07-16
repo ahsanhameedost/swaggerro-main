@@ -21,6 +21,7 @@ import {
   TableHeader,
   TableRow
 } from "@heroui/react";
+import { PasswordInput } from "@/components/ui/password-input";
 import { KeyRound, Pencil, Plus, Search, Trash2 } from "lucide-react";
 import { addToast } from "@heroui/toast";
 import { useMe } from "@/queries/auth";
@@ -332,8 +333,7 @@ export default function UsersPage() {
             <p className="text-sm text-foreground/60">
               Set a new password for this user. They can sign in with it immediately and change it later.
             </p>
-            <Input
-              type="password"
+            <PasswordInput
               label="New password"
               placeholder="At least 8 characters"
               value={newPw}

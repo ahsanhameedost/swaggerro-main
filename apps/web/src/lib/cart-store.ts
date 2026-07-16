@@ -164,7 +164,7 @@ export const useCatalogCartStore = create<CatalogCartStore>()(
       bulkItems: [],
       swagPackItems: [],
       swagPackPackaging: null,
-      swagPackQuantity: 25,
+      swagPackQuantity: 5,
       swagPackName: createDefaultSwagPackName(),
       swagPackLogoUrl: null,
       swagPackLogoKey: null,
@@ -213,7 +213,7 @@ export const useCatalogCartStore = create<CatalogCartStore>()(
         }),
       setSwagPackQuantity: (quantity) =>
         set({
-          swagPackQuantity: Math.max(25, Math.floor(quantity || 25))
+          swagPackQuantity: Math.max(5, Math.floor(quantity || 5))
         }),
       setSwagPackName: (name) =>
         set({
@@ -229,7 +229,7 @@ export const useCatalogCartStore = create<CatalogCartStore>()(
         set((state) => ({
           swagPackItems: [],
           swagPackPackaging: null,
-          swagPackQuantity: 25,
+          swagPackQuantity: 5,
           swagPackName: state.swagPackName || createDefaultSwagPackName(),
           swagPackLogoUrl: null,
           swagPackLogoKey: null
@@ -238,7 +238,7 @@ export const useCatalogCartStore = create<CatalogCartStore>()(
         set({
           swagPackItems: [],
           swagPackPackaging: null,
-          swagPackQuantity: 25,
+          swagPackQuantity: 5,
           swagPackName: createDefaultSwagPackName(),
           swagPackLogoUrl: null,
           swagPackLogoKey: null
@@ -248,7 +248,7 @@ export const useCatalogCartStore = create<CatalogCartStore>()(
           bulkItems: [],
           swagPackItems: [],
           swagPackPackaging: null,
-          swagPackQuantity: 25,
+          swagPackQuantity: 5,
           swagPackName: createDefaultSwagPackName(),
           swagPackLogoUrl: null,
           swagPackLogoKey: null,
@@ -258,7 +258,7 @@ export const useCatalogCartStore = create<CatalogCartStore>()(
         set({
           swagPackItems: snapshot.swagPackItems ?? [],
           swagPackPackaging: snapshot.swagPackPackaging ?? null,
-          swagPackQuantity: snapshot.swagPackQuantity ?? 25,
+          swagPackQuantity: snapshot.swagPackQuantity ?? 5,
           swagPackName: snapshot.swagPackName ?? createDefaultSwagPackName(),
           branding: snapshot.branding ?? {
             logoUrl: null,

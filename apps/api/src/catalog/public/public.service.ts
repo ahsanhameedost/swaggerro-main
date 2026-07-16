@@ -265,7 +265,7 @@ export class CatalogPublicService extends CatalogSharedService {
       })
     );
 
-    const swagPackQuantity = swagPackInput?.packQuantity ?? 25;
+    const swagPackQuantity = swagPackInput?.packQuantity ?? 5;
 
     const swagPackOrderItems = swagPackItemsPayload.map((item) =>
       this.resolveCheckoutItem({

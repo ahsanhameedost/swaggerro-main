@@ -490,7 +490,7 @@ export default function CartPage() {
 
                       <div className="space-y-4 rounded-[22px] bg-zinc-50 p-4">
                         <div className="flex items-center justify-between text-sm text-black/60">
-                          <span>Number of Swag Packs (Min 25)</span>
+                          <span>Number of Swag Packs (Min 5)</span>
                           <span className="font-semibold text-black">{summary.packQuantity}</span>
                         </div>
                         <div className="flex items-center justify-between text-sm text-black/60">
