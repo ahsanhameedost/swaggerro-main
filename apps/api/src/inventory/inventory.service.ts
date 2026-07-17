@@ -78,6 +78,7 @@ export class InventoryService {
             return {
               id: item.id,
               orderId: order.id,
+              orderNumber: order.orderNumber,
               user: order.user
                 ? {
                     id: order.user.id,
@@ -108,6 +109,7 @@ export class InventoryService {
       .filter(Boolean) as Array<{
       id: string;
       orderId: string;
+      orderNumber: number;
       user: {
         id: string;
         email: string;
@@ -180,6 +182,7 @@ export class InventoryService {
         order: {
           select: {
             id: true,
+            orderNumber: true,
             userId: true,
             email: true,
             name: true
@@ -241,6 +244,7 @@ export class InventoryService {
         metadata: entry.metadata ?? null,
         order: {
           id: entry.order.id,
+          orderNumber: entry.order.orderNumber,
           userId: entry.order.userId ?? null,
           email: entry.order.email,
           name: entry.order.name

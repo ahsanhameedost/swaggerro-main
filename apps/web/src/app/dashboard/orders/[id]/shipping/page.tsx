@@ -30,6 +30,7 @@ import { SHIPPING_COUNTRIES } from "@/modules/shipping";
 import type { ShipmentEstimate, ShippingPlanner, ShippingShipment } from "@/modules/shipping/types";
 import type { Recipient } from "@/modules/recipients/types";
 import { formatMoney } from "@/lib/money";
+import { formatOrderNumber } from "@/lib/order-flow";
 import { hasAnyPermission, hasPermission } from "@/lib/permissions";
 
 const SERVICE_LEVELS = [
@@ -414,8 +415,8 @@ export default function OrderShippingPlannerPage() {
                 Orders
               </Link>
               <span>/</span>
-              <Link href={`/dashboard/orders/${planner.order.id}`} className="font-medium text-foreground">
-                Order #{planner.order.id}
+              <Link href={`/dashboard/orders/${formatOrderNumber(planner.order.orderNumber)}`} className="font-medium text-foreground">
+                {formatOrderNumber(planner.order.orderNumber)}
               </Link>
               <span>/</span>
               <span>Shipping & storage</span>
@@ -847,7 +848,7 @@ export default function OrderShippingPlannerPage() {
               ) : null}
 
               <div className="flex flex-col gap-3 border-t border-divider pt-4">
-                <Link href={`/dashboard/orders/${planner.order.id}`}>
+                <Link href={`/dashboard/orders/${formatOrderNumber(planner.order.orderNumber)}`}>
                   <Button variant="bordered" className="w-full">
                     Back to order
                   </Button>

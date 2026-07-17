@@ -35,15 +35,24 @@ export const createPublicProjectUploadSchema = z.object({
 
 // Public order tracking: match an order by its sequential number + the email on
 // the order (no account required). Accepts "SW-044", "044" or "44".
-export const trackOrderQuerySchema = z.object({
-  orderNumber: z
-    .string()
-    .trim()
-    .min(1)
-    .transform((value) => Number(value.replace(/^SW-?/i, "").replace(/\D/g, "")))
-    .pipe(z.number().int().positive()),
-  email: z.string().trim().email()
-});
+export const trackOrderQuerySchema = z
+  .object({
+    // Direct "magic link" token = the order's opaque id. When present it alone
+    // authorizes tracking (the unguessable link is the secret), so no email is
+    // needed. Otherwise fall back to order number + email.
+    token: z.string().trim().min(1).optional(),
+    orderNumber: z
+      .string()
+      .trim()
+      .min(1)
+      .transform((value) => Number(value.replace(/^SW-?/i, "").replace(/\D/g, "")))
+      .pipe(z.number().int().positive())
+      .optional(),
+    email: z.string().trim().email().optional()
+  })
+  .refine((q) => !!q.token || (q.orderNumber != null && !!q.email), {
+    message: "Provide a tracking link, or an order number and email."
+  });
 
 export const createPublicOrderSchema = z
   .object({

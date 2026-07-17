@@ -232,9 +232,11 @@ export class CatalogProductsService extends CatalogSharedService {
     };
   }
 
-  async getProductById(id: string) {
-    const product = await this.prisma.catalogProduct.findUnique({
-      where: { id },
+  async getProductById(idOrSlug: string) {
+    // Accept either the CUID id or the human slug so dashboard URLs can use the
+    // readable slug (e.g. /products/insulated-mug).
+    const product = await this.prisma.catalogProduct.findFirst({
+      where: { OR: [{ id: idOrSlug }, { slug: idOrSlug }] },
       include: this.buildProductDetailInclude()
     });
 
@@ -498,6 +500,7 @@ export class CatalogProductsService extends CatalogSharedService {
           widthIn: input.widthIn != null ? new Prisma.Decimal(input.widthIn) : null,
           heightIn: input.heightIn != null ? new Prisma.Decimal(input.heightIn) : null,
           basePrice: input.basePrice != null ? new Prisma.Decimal(input.basePrice) : null,
+          costPrice: input.costPrice != null ? new Prisma.Decimal(input.costPrice) : null,
           compareAtPrice: input.compareAtPrice != null ? new Prisma.Decimal(input.compareAtPrice) : null,
           minQty: input.minQty ?? 1,
           baseStock: input.productCatalogVariants.length ? 0 : input.baseStock ?? 0,
@@ -516,8 +519,12 @@ export class CatalogProductsService extends CatalogSharedService {
 
   async updateProduct(id: string, input: UpdateProductDto) {
     return await this.prisma.$transaction(async (tx) => {
-      const existing = await tx.catalogProduct.findUnique({ where: { id } });
+      // Resolve slug-or-id, then work with the real id for the rest of the update.
+      const existing = await tx.catalogProduct.findFirst({
+        where: { OR: [{ id }, { slug: id }] }
+      });
       if (!existing) throw new NotFoundException("Product not found");
+      id = existing.id;
 
       const data: Prisma.CatalogProductUpdateInput = {};
 
@@ -578,6 +585,11 @@ if (input.categoryId !== undefined) data.category = input.categoryId ? { connect
       if (input.basePrice !== undefined) {
         data.basePrice =
           input.basePrice != null ? new Prisma.Decimal(input.basePrice) : null;
+      }
+
+      if (input.costPrice !== undefined) {
+        data.costPrice =
+          input.costPrice != null ? new Prisma.Decimal(input.costPrice) : null;
       }
 
       if (input.compareAtPrice !== undefined) {

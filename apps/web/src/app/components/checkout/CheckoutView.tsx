@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type CSSProperties, type FormEvent, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent, type ReactNode } from "react";
 import Link from "next/link";
 import { addToast } from "@heroui/toast";
 import {
@@ -10,8 +10,10 @@ import {
   Landmark,
   Loader2,
   Lock,
+  MapPin,
   PackageOpen,
   ShieldCheck,
+  Star,
   Truck,
 } from "lucide-react";
 import { loadStripe, type Stripe } from "@stripe/stripe-js";
@@ -20,6 +22,9 @@ import { getCartItemKey, type BulkCartItem } from "@/lib/cart-store";
 import { resolveUnitPrice } from "@/lib/catalog-pricing";
 import { formatMoney } from "@/lib/money";
 import { cn } from "@/lib/utils";
+import { useCreateRecipient, useRecipients } from "@/queries/recipients";
+import { SHIPPING_COUNTRIES } from "@/modules/shipping/countries";
+import type { Recipient } from "@/modules/recipients/types";
 
 const stripeCache = new Map<string, Promise<Stripe | null>>();
 function getStripe(pk: string) {
@@ -134,6 +139,48 @@ export function CheckoutView(props: CheckoutViewProps) {
   const [session, setSession] = useState<CheckoutSessionLike | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
+  // Snapshot of the completed order for the thank-you screen (captured before the
+  // cart is cleared, so the confirmation can still show the amount + track link).
+  const [completed, setCompleted] = useState<{
+    orderId: string;
+    total: number;
+    currency: string;
+    count: number;
+  } | null>(null);
+
+  const finishOrder = (orderId: string) => {
+    setCompleted({
+      orderId,
+      total,
+      currency,
+      count: items.reduce((sum, i) => sum + i.quantity, 0)
+    });
+    onCleared();
+    setDone(true);
+  };
+
+  // Saved addresses (address book) — fetched only for signed-in customers.
+  const { data: savedAddresses } = useRecipients({}, authed);
+  const createRecipient = useCreateRecipient();
+  const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
+  const [saveAddress, setSaveAddress] = useState(false);
+  const autoApplied = useRef(false);
+
+  // Fill the shipping form from a saved address.
+  const applyRecipient = (r: Recipient) => {
+    setSelectedAddressId(r.id);
+    setName([r.firstName, r.lastName].filter(Boolean).join(" ").trim());
+    setCompany(r.companyName ?? "");
+    if (r.phone) setPhone(r.phone);
+    if (r.email) setEmail((c) => c || r.email!);
+    setStreet(r.addressLine1);
+    setApt(r.addressLine2 ?? "");
+    setCity(r.city);
+    setRegion(r.state ?? "");
+    setPostal(r.postalCode);
+    setCountry(r.countryName);
+    setSaveAddress(false);
+  };
 
   // Prefill from the signed-in account once it resolves.
   useEffect(() => {
@@ -141,6 +188,54 @@ export function CheckoutView(props: CheckoutViewProps) {
     if (props.prefillEmail) setEmail((c) => c || props.prefillEmail!);
     if (props.prefillPhone) setPhone((c) => c || props.prefillPhone!);
   }, [props.prefillName, props.prefillEmail, props.prefillPhone]);
+
+  // Auto-fill the default saved address once, as long as the customer hasn't
+  // already started typing a street. Picks the flagged default, else the first.
+  useEffect(() => {
+    if (autoApplied.current || !authed || street.trim() || !savedAddresses?.length) return;
+    autoApplied.current = true;
+    applyRecipient(savedAddresses.find((r) => r.isDefault) ?? savedAddresses[0]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authed, savedAddresses]);
+
+  // Persist the entered shipping address to the customer's address book. Best
+  // effort — a failure here never blocks the order.
+  const maybeSaveAddress = () => {
+    if (!authed || !saveAddress) return;
+    const parts = name.trim().split(/\s+/);
+    const firstName = parts[0] || "Recipient";
+    const lastName = parts.slice(1).join(" ") || "—";
+    const match = SHIPPING_COUNTRIES.find(
+      (c) => c.name.toLowerCase() === country.trim().toLowerCase()
+    );
+    createRecipient.mutate(
+      {
+        firstName,
+        lastName,
+        companyName: company.trim() || null,
+        email: email.trim() || null,
+        phone: phone.trim() || null,
+        addressLine1: street.trim(),
+        addressLine2: apt.trim() || null,
+        city: city.trim(),
+        state: region.trim() || null,
+        postalCode: postal.trim(),
+        countryCode: match?.code ?? "US",
+        countryName: match?.name ?? country.trim(),
+        notes: null,
+        isDefault: (savedAddresses?.length ?? 0) === 0,
+      },
+      {
+        onSuccess: () => addToast({ title: "Address saved to your account", color: "success" }),
+        onError: () =>
+          addToast({
+            title: "Order continues, but the address wasn't saved",
+            description: "You can add it later from Account Settings.",
+            color: "warning",
+          }),
+      }
+    );
+  };
 
   const composeAddress = () => {
     const line = [
@@ -173,6 +268,7 @@ export function CheckoutView(props: CheckoutViewProps) {
       });
       return;
     }
+    maybeSaveAddress();
     setSubmitting(true);
     try {
       const res = await createSession({
@@ -190,8 +286,7 @@ export function CheckoutView(props: CheckoutViewProps) {
       });
       if (res.testMode) {
         await confirm(res.orderId, "TEST");
-        onCleared();
-        setDone(true);
+        finishOrder(res.orderId);
         return;
       }
       setSession(res);
@@ -215,18 +310,59 @@ export function CheckoutView(props: CheckoutViewProps) {
   if (done) {
     return (
       <div className="bg-muted/20">
-        <div className="mx-auto max-w-md px-6 py-16">
-          <div className="rounded-2xl border border-success/30 bg-card p-8 text-center shadow-sm">
-            <CheckCircle2 className="mx-auto size-12 text-success" />
-            <h1 className="mt-4 font-display text-2xl font-bold">Payment complete</h1>
-            <p className="mt-2 text-muted-foreground">Thanks for your order — a receipt was emailed to you.</p>
-            <Link
-              href={browseHref}
-              className="mt-6 inline-block rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground"
-              style={primaryStyle}
-            >
-              Continue shopping
-            </Link>
+        <div className="mx-auto max-w-lg px-6 py-16">
+          <div className="relative overflow-hidden rounded-3xl border border-success/30 bg-card p-8 text-center shadow-lg sm:p-10">
+            {/* soft success glow */}
+            <div className="pointer-events-none absolute -top-20 left-1/2 h-48 w-48 -translate-x-1/2 rounded-full bg-success/10 blur-3xl" />
+
+            <div className="relative">
+              <div className="mx-auto flex size-20 items-center justify-center rounded-full bg-success/12 ring-8 ring-success/5">
+                <CheckCircle2 className="size-11 text-success" />
+              </div>
+
+              <h1 className="mt-5 font-display text-3xl font-bold tracking-tight">Thank you for your order! 🎉</h1>
+              <p className="mt-2 text-muted-foreground">
+                Your payment went through and a receipt is on its way to your inbox.
+              </p>
+
+              {completed ? (
+                <div className="mx-auto mt-6 w-full max-w-xs rounded-2xl border border-border bg-background p-5">
+                  <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Amount paid
+                  </div>
+                  <div className="font-display text-3xl font-bold text-success">
+                    {formatMoney(completed.total, completed.currency)}
+                  </div>
+                  {completed.count ? (
+                    <div className="mt-1 text-xs text-muted-foreground">
+                      {completed.count} item{completed.count === 1 ? "" : "s"}
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+
+              <p className="mt-5 text-sm text-muted-foreground">
+                We&apos;ll get started right away and email you as your order moves along.
+              </p>
+
+              <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
+                {completed ? (
+                  <Link
+                    href={`/track?token=${completed.orderId}`}
+                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-brand transition hover:opacity-95"
+                    style={primaryStyle}
+                  >
+                    <Truck className="size-4" /> Track your order
+                  </Link>
+                ) : null}
+                <Link
+                  href={browseHref}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-background px-5 py-2.5 text-sm font-semibold text-foreground transition hover:bg-muted/40"
+                >
+                  Continue shopping
+                </Link>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -320,6 +456,50 @@ export function CheckoutView(props: CheckoutViewProps) {
                 </SectionCard>
 
                 <SectionCard step={2} title="Shipping address">
+                  {authed && savedAddresses && savedAddresses.length > 0 ? (
+                    <div className="mb-5">
+                      <span className={labelClass}>
+                        <span className="flex items-center gap-1.5">
+                          <MapPin className="size-4 text-primary" /> Use a saved address
+                        </span>
+                      </span>
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        {savedAddresses.map((r) => {
+                          const active = selectedAddressId === r.id;
+                          return (
+                            <button
+                              type="button"
+                              key={r.id}
+                              onClick={() => applyRecipient(r)}
+                              className={cn(
+                                "rounded-xl border p-3 text-left text-sm transition",
+                                active
+                                  ? "border-primary bg-brand-soft/40 ring-1 ring-primary/30"
+                                  : "border-border hover:bg-muted/40"
+                              )}
+                            >
+                              <span className="flex items-center gap-2 font-medium">
+                                <span className="truncate">
+                                  {[r.firstName, r.lastName].filter(Boolean).join(" ")}
+                                </span>
+                                {r.isDefault ? (
+                                  <span className="inline-flex items-center gap-0.5 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary">
+                                    <Star className="size-2.5" /> Default
+                                  </span>
+                                ) : null}
+                              </span>
+                              <span className="mt-0.5 block truncate text-xs text-muted-foreground">
+                                {[r.addressLine1, r.city, r.postalCode].filter(Boolean).join(", ")}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        Or enter a new address below.
+                      </p>
+                    </div>
+                  ) : null}
                   <div className="mb-4 flex items-center gap-2 rounded-xl border border-border bg-brand-soft/40 px-3.5 py-2.5 text-sm text-foreground">
                     <Truck className="size-4 text-primary" /> Ships to one address.
                   </div>
@@ -371,6 +551,17 @@ export function CheckoutView(props: CheckoutViewProps) {
                         placeholder="Deadlines, delivery instructions…"
                       />
                     </label>
+                    {authed ? (
+                      <label className="flex cursor-pointer items-center gap-2.5 text-sm text-foreground">
+                        <input
+                          type="checkbox"
+                          checked={saveAddress}
+                          onChange={(e) => setSaveAddress(e.target.checked)}
+                          className="size-4 rounded border-input accent-[var(--primary)]"
+                        />
+                        Save this address to my account for next time
+                      </label>
+                    ) : null}
                   </div>
                 </SectionCard>
               </form>
@@ -383,8 +574,7 @@ export function CheckoutView(props: CheckoutViewProps) {
                   primaryStyle={primaryStyle}
                   onConfirm={confirm}
                   onPaid={() => {
-                    onCleared();
-                    setDone(true);
+                    if (session) finishOrder(session.orderId);
                   }}
                 />
               </SectionCard>

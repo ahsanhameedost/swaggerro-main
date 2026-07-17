@@ -25,6 +25,7 @@ import { useUsers } from "@/queries/users";
 import { useShipments, useUpdateShipmentStatus, useUpdateShipmentTracking } from "@/queries/shipping";
 import type { ShippingShipment } from "@/modules/shipping/types";
 import { formatMoney } from "@/lib/money";
+import { formatOrderNumber } from "@/lib/order-flow";
 import { hasAnyPermission, hasPermission } from "@/lib/permissions";
 
 const STATUSES: Array<ShippingShipment["status"]> = [
@@ -303,7 +304,12 @@ export default function ShipmentsPage() {
                   <TableCell>
                     <div className="space-y-2">
                       <div className="font-medium">#{shipment.id}</div>
-                      <div className="text-xs text-foreground/55">Order #{shipment.orderId}</div>
+                      <div className="text-xs text-foreground/55">
+                        Order{" "}
+                        {shipment.order?.orderNumber != null
+                          ? formatOrderNumber(shipment.order.orderNumber)
+                          : `#${shipment.orderId}`}
+                      </div>
                       <div className="text-xs text-foreground/55">
                         {shipment.destinationCountryName} · {shipment.serviceLevel}
                       </div>
@@ -366,7 +372,13 @@ export default function ShipmentsPage() {
                   </TableCell>
                   <TableCell>
                     <div className="flex flex-col gap-2">
-                      <Link href={`/dashboard/orders/${shipment.orderId}`}>
+                      <Link
+                        href={`/dashboard/orders/${
+                          shipment.order?.orderNumber != null
+                            ? formatOrderNumber(shipment.order.orderNumber)
+                            : shipment.orderId
+                        }`}
+                      >
                         <Button size="sm" variant="bordered">
                           View order
                         </Button>

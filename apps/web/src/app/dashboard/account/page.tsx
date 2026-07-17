@@ -8,6 +8,7 @@ import { Camera, KeyRound, Loader2, Mail, Phone, ShieldCheck, User as UserIcon }
 import { useMe, useUpdateProfile } from "@/queries/auth";
 import { groupPermissions, permissionLabel } from "@/lib/permission-labels";
 import { createCatalogImageUpload, uploadFileToPresignedUrl } from "@/lib/catalog";
+import { AddressBookCard } from "@/app/components/dashboard/account/AddressBookCard";
 
 const SUPER_ADMIN_ROLE = "SUPER_ADMIN";
 const AVATAR_TYPES = ["image/jpeg", "image/png", "image/webp"] as const;
@@ -52,6 +53,12 @@ export default function AccountSettingsPage() {
   const isSuperAdmin = user.role === SUPER_ADMIN_ROLE;
   // Mirrors the API guard on PATCH /auth/me — only users with this permission may edit.
   const canEdit = permissions.includes("profile.update");
+  // Address book (recipients) — show whenever the user can read their own/all
+  // recipients; allow add/edit/delete when they can write.
+  const canReadAddresses =
+    permissions.includes("recipients.self.read") || permissions.includes("recipients.read");
+  const canManageAddresses =
+    permissions.includes("recipients.self.write") || permissions.includes("recipients.write");
 
   const dirty =
     firstName.trim() !== (user.firstName ?? "").trim() ||
@@ -331,6 +338,9 @@ export default function AccountSettingsPage() {
             ) : null}
           </CardBody>
         </Card>
+
+        {/* Saved addresses (address book) — reused at checkout */}
+        {canReadAddresses ? <AddressBookCard canManage={canManageAddresses} /> : null}
 
         {/* Access — visible to super admins only */}
         {isSuperAdmin ? (

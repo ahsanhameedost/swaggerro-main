@@ -9,6 +9,7 @@ export type InventoryMovement = {
   metadata?: unknown;
   order: {
     id: string;
+    orderNumber: number;
     userId?: string | null;
     email: string;
     name: string;
@@ -35,6 +36,7 @@ export type InventoryMovement = {
 export type InventoryItem = {
   id: string;
   orderId: string;
+  orderNumber: number;
   user?: {
     id: string;
     email: string;

@@ -11,6 +11,8 @@ import type {
   ListCatalogOrdersParams,
   ListCatalogOrdersResponse,
   RequestOrderItemRevisionInput,
+  RevenueReport,
+  RevenueReportParams,
   UpdateCatalogOrderStatusResponse,
   UpdateOrderItemDesignInput
 } from "./types";
@@ -23,6 +25,12 @@ export async function listCatalogOrders(params: ListCatalogOrdersParams = {}) {
 
 export async function getCatalogOrderStats() {
   return apiFetch<CatalogOrderStats>(`/catalog/orders/stats`, { method: "GET" });
+}
+
+export async function getRevenueReport(params: RevenueReportParams = {}) {
+  return apiFetch<RevenueReport>(`/catalog/orders/report${buildQuery(params as any)}`, {
+    method: "GET"
+  });
 }
 
 export async function getCatalogOrder(id: string) {

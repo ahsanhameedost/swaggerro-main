@@ -13,6 +13,7 @@ import {
 } from "@heroui/react";
 import { addToast } from "@heroui/toast";
 import { logout, type User } from "@/lib/auth";
+import { hasPermission, hasAnyPermission } from "@/lib/permissions";
 import { buildNavForUser, type NavItem } from "@/lib/nav";
 import { useUIStore } from "@/lib/ui-store";
 import * as Icons from "lucide-react";
@@ -269,70 +270,185 @@ function NavGroup({
 }
 
 function getDisplayName(user: User) {
-  return user.firstName?.trim() || user.email.split("@")[0] || "there";
+  const full = [user.firstName, user.lastName].filter(Boolean).join(" ").trim();
+  return full || user.email.split("@")[0] || "there";
+}
+
+function getUserInitials(user: User) {
+  const fromName = [user.firstName?.[0], user.lastName?.[0]]
+    .filter(Boolean)
+    .join("")
+    .toUpperCase();
+  return fromName || getInitial(user.email);
+}
+
+// Prettify a raw role key (e.g. "SUPER_ADMIN" -> "Super Admin") for display.
+function prettyRole(role?: string | null) {
+  if (!role) return null;
+  return role
+    .toLowerCase()
+    .split(/[_\s]+/)
+    .filter(Boolean)
+    .map((word) => word[0].toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
+type QuickLink = { key: string; label: string; href: string; icon: string };
+
+// Role-based shortcuts surfaced inside the profile menu. Each link is gated by a
+// permission predicate so the menu adapts to who is signed in — staff/admins see
+// management shortcuts, customers see their own orders/packs.
+function getRoleLinks(user: User): QuickLink[] {
+  const isStaff = hasPermission(user, "catalog.orders.read");
+  const links: Array<QuickLink & { show: boolean }> = [
+    {
+      key: "users",
+      label: "Manage Users",
+      href: "/dashboard/users",
+      icon: "Users",
+      show: hasPermission(user, "admin.users.read"),
+    },
+    {
+      key: "stores",
+      label: "Stores",
+      href: "/dashboard/stores",
+      icon: "Building2",
+      show: hasPermission(user, "partners.stores.read"),
+    },
+    {
+      key: "permissions",
+      label: "Roles & Permissions",
+      href: "/dashboard/permissions",
+      icon: "ShieldCheck",
+      show: hasPermission(user, "rbac.manage"),
+    },
+    {
+      key: "settings",
+      label: "Platform Settings",
+      href: "/dashboard/settings",
+      icon: "Settings2",
+      show: hasPermission(user, "settings.read"),
+    },
+    {
+      key: "my-orders",
+      label: "My Orders",
+      href: "/dashboard/orders",
+      icon: "ShoppingCart",
+      show: !isStaff && hasAnyPermission(user, ["orders.self.read"]),
+    },
+    {
+      key: "my-swag",
+      label: "My Swag Packs",
+      href: "/dashboard/swag-packs",
+      icon: "Gift",
+      show: !isStaff && hasAnyPermission(user, ["orders.self.read"]),
+    },
+  ];
+  return links.filter((link) => link.show).map(({ show: _show, ...link }) => link);
 }
 
 function ProfileMenu({ user, onLogout }: { user: User; onLogout: () => void }) {
-  const initial = getInitial(user.email);
+  const initials = getUserInitials(user);
+  const displayName = getDisplayName(user);
+  const roleLabel = prettyRole(user.role);
+  const roleLinks = getRoleLinks(user);
+
+  const AvatarBlock = ({ size }: { size: number }) => (
+    <div className="relative shrink-0" style={{ width: size, height: size }}>
+      <Avatar
+        name={initials}
+        src={user.avatarUrl ?? undefined}
+        className="h-full w-full"
+        fallback={
+          <div className="grid h-full w-full place-items-center rounded-full bg-foreground text-background">
+            {initials}
+          </div>
+        }
+      />
+      <span className="absolute bottom-0 right-0 size-2.5 rounded-full border-2 border-background bg-emerald-500" />
+    </div>
+  );
 
   return (
     <Dropdown placement="bottom-end">
       <DropdownTrigger>
         <Button
           variant="light"
-          className="h-10 rounded-2xl px-2 data-[hover=true]:bg-foreground/5"
+          className="h-11 rounded-2xl px-2 data-[hover=true]:bg-foreground/5"
         >
-          <Avatar
-            name={initial}
-            className="h-8 w-8"
-            fallback={
-              <div className="grid h-8 w-8 place-items-center rounded-full bg-foreground text-background">
-                {initial}
-              </div>
-            }
-          />
-          <div className="hidden items-center gap-2 sm:flex">
-            <span className="text-sm font-medium">Hello, {getDisplayName(user)}</span>
-            <Icons.ChevronDown className="size-4 text-foreground/60" />
+          <AvatarBlock size={32} />
+          <div className="hidden flex-col items-start leading-tight sm:flex">
+            <span className="text-sm font-semibold">{displayName}</span>
+            {roleLabel ? (
+              <span className="text-xs text-foreground/50">{roleLabel}</span>
+            ) : null}
           </div>
+          <Icons.ChevronDown className="ml-1 size-4 text-foreground/50" />
         </Button>
       </DropdownTrigger>
 
       <DropdownMenu
         aria-label="Profile menu"
-        className="w-[320px]"
-        itemClasses={{ base: "rounded-2xl" }}
+        className="w-[300px]"
+        itemClasses={{ base: "rounded-2xl gap-3 data-[hover=true]:bg-foreground/5" }}
       >
         <DropdownSection showDivider>
-          <DropdownItem key="meta" isReadOnly className="cursor-default">
+          <DropdownItem key="meta" isReadOnly className="cursor-default data-[hover=true]:bg-transparent">
             <div className="flex items-center gap-3 py-1">
-              <div className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-foreground text-background">
-                <span className="text-base font-semibold">{initial}</span>
-              </div>
+              <AvatarBlock size={44} />
               <div className="min-w-0">
-                <div className="text-base font-semibold leading-tight">
-                  Hi, {user.email.split("@")[0] || "User"}!
-                </div>
-                <div className="truncate text-xs text-foreground/60">{user.email}</div>
+                <div className="truncate text-base font-semibold leading-tight">{displayName}</div>
+                {roleLabel ? (
+                  <div className="text-xs font-medium text-[var(--primary)]">{roleLabel}</div>
+                ) : null}
+                <div className="truncate text-xs text-foreground/50">{user.email}</div>
               </div>
             </div>
           </DropdownItem>
         </DropdownSection>
 
-        <DropdownSection>
+        <DropdownSection showDivider>
           <DropdownItem
-            key="settings"
-            startContent={<Icons.User className="size-4" />}
+            key="dashboard"
+            startContent={<Icons.LayoutDashboard className="size-4 text-foreground/60" />}
+            as={Link}
+            href="/dashboard"
+          >
+            Dashboard
+          </DropdownItem>
+          <DropdownItem
+            key="account"
+            startContent={<Icons.Settings className="size-4 text-foreground/60" />}
             as={Link}
             href="/dashboard/account"
           >
             Account Settings
           </DropdownItem>
+        </DropdownSection>
 
+        {roleLinks.length ? (
+          <DropdownSection showDivider title="Quick access">
+            {roleLinks.map((link) => (
+              <DropdownItem
+                key={link.key}
+                startContent={<Icon name={link.icon} className="size-4 text-foreground/60" />}
+                as={Link}
+                href={link.href}
+              >
+                {link.label}
+              </DropdownItem>
+            ))}
+          </DropdownSection>
+        ) : null}
+
+        <DropdownSection>
           <DropdownItem
             key="logout"
             startContent={<Icons.LogOut className="size-4" />}
-            className="text-[var(--primary)]"
+            classNames={{
+              base: "text-danger data-[hover=true]:bg-danger/10",
+              title: "text-danger font-medium",
+            }}
             onPress={onLogout}
           >
             Log out
@@ -357,6 +473,8 @@ const BREADCRUMB_LABELS: Record<string, string> = {
   shipments: "Shipments",
   shipping: "Shipping Settings",
   stores: "Stores",
+  payouts: "Payouts",
+  finance: "Finance",
   users: "Users",
   employees: "Employees",
   permissions: "Permissions",

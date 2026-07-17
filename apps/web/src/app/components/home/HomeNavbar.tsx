@@ -16,7 +16,7 @@ import {
   DropdownItem,
   Avatar,
 } from "@heroui/react";
-import { ChevronDown, ShoppingBag } from "lucide-react";
+import { ShoppingBag, LayoutDashboard, Settings, LogOut } from "lucide-react";
 import LogoMark from "@/assets/swaggroo-logo.png";
 import Link from "next/link";
 import Image from "next/image";
@@ -90,6 +90,15 @@ export default function HomeNavbar() {
     [user?.firstName?.[0], user?.lastName?.[0]].filter(Boolean).join("").toUpperCase() ||
     user?.email?.[0]?.toUpperCase() ||
     "U";
+  // Prettify the raw role key (e.g. "SUPER_ADMIN" -> "Super Admin") for display.
+  const roleLabel = user?.role
+    ? user.role
+        .toLowerCase()
+        .split(/[_\s]+/)
+        .filter(Boolean)
+        .map((word) => word[0].toUpperCase() + word.slice(1))
+        .join(" ")
+    : null;
 
   const handleLogout = async () => {
     setIsMenuOpen(false);
@@ -208,24 +217,27 @@ export default function HomeNavbar() {
                   <button
                     type="button"
                     aria-label="Account menu"
-                    className="flex items-center gap-2 rounded-full p-1 pr-2 transition-colors hover:bg-navy/5"
+                    className="flex items-center rounded-full outline-none ring-offset-2 transition-transform hover:scale-105 focus-visible:ring-2 focus-visible:ring-primary"
                   >
                     <Avatar
                       name={initials}
                       src={user?.avatarUrl ?? undefined}
                       size="sm"
                       classNames={{
-                        base: "bg-[var(--primary)]",
+                        base: "bg-[var(--primary)] ring-2 ring-white",
                         name: "text-white text-xs font-semibold",
                       }}
                     />
-                    <span className="max-w-[140px] truncate text-sm font-medium text-foreground/85">
-                      {displayName}
-                    </span>
-                    <ChevronDown className="size-4 text-navy/50" />
                   </button>
                 </DropdownTrigger>
-                <DropdownMenu aria-label="Account actions">
+                <DropdownMenu
+                  aria-label="Account actions"
+                  className="w-64 p-1.5"
+                  itemClasses={{
+                    base: "gap-3 rounded-lg px-2.5 py-2 data-[hover=true]:bg-navy/5",
+                    title: "text-sm font-medium text-foreground/85",
+                  }}
+                >
                   <DropdownItem
                     key="profile"
                     isReadOnly
@@ -234,32 +246,54 @@ export default function HomeNavbar() {
                     textValue={displayName}
                   >
                     <div className="flex items-center gap-3 py-0.5">
-                      <Avatar
-                        name={initials}
-                        src={user?.avatarUrl ?? undefined}
-                        size="sm"
-                        classNames={{
-                          base: "shrink-0 bg-[var(--primary)]",
-                          name: "text-white text-xs font-semibold",
-                        }}
-                      />
+                      <div className="relative shrink-0">
+                        <Avatar
+                          name={initials}
+                          src={user?.avatarUrl ?? undefined}
+                          size="md"
+                          classNames={{
+                            base: "bg-[var(--primary)]",
+                            name: "text-white text-sm font-semibold",
+                          }}
+                        />
+                        <span className="absolute bottom-0 right-0 size-3 rounded-full border-2 border-white bg-emerald-500" />
+                      </div>
                       <div className="min-w-0">
                         <p className="truncate text-sm font-semibold text-black/90">{displayName}</p>
+                        {roleLabel ? (
+                          <p className="truncate text-xs font-medium text-primary">{roleLabel}</p>
+                        ) : null}
                         {user.email ? (
                           <p className="truncate text-xs text-black/45">{user.email}</p>
                         ) : null}
                       </div>
                     </div>
                   </DropdownItem>
-                  <DropdownItem key="dashboard" as={Link} href="/dashboard">
+                  <DropdownItem
+                    key="dashboard"
+                    as={Link}
+                    href="/dashboard"
+                    startContent={<LayoutDashboard className="size-[18px] text-navy/60" />}
+                  >
                     Dashboard
                   </DropdownItem>
-                  <DropdownItem key="account" as={Link} href="/dashboard/account">
+                  <DropdownItem
+                    key="account"
+                    as={Link}
+                    href="/dashboard/account"
+                    showDivider
+                    startContent={<Settings className="size-[18px] text-navy/60" />}
+                  >
                     Account Settings
                   </DropdownItem>
                   <DropdownItem
                     key="logout"
-                    className="text-primary data-[hover=true]:bg-primary/10"
+                    color="danger"
+                    classNames={{
+                      base: "text-danger data-[hover=true]:bg-danger/10",
+                      title: "text-danger font-medium",
+                    }}
+                    startContent={<LogOut className="size-[18px] text-danger" />}
                     onPress={handleLogout}
                   >
                     Log out

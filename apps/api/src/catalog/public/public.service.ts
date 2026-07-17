@@ -39,8 +39,10 @@ export class CatalogPublicService extends CatalogSharedService {
   // email on the order, and returns only fulfillment-relevant fields (no pricing
   // or contact details beyond the masked recipient).
   async trackOrder(query: TrackOrderQuery) {
-    const order = await this.prisma.catalogOrder.findUnique({
-      where: { orderNumber: query.orderNumber },
+    // Token (order id) => magic-link lookup; otherwise order number + email.
+    const where = query.token ? { id: query.token } : { orderNumber: query.orderNumber };
+    const order = await this.prisma.catalogOrder.findFirst({
+      where,
       include: {
         project: { select: { name: true, swagPackName: true } },
         items: { select: { productName: true, designPhase: true, quantity: true }, orderBy: { createdAt: "asc" } },
@@ -57,8 +59,10 @@ export class CatalogPublicService extends CatalogSharedService {
     });
 
     // Same generic error whether the order is missing or the email doesn't match,
-    // so this endpoint can't be used to probe which orders/emails exist.
-    if (!order || order.email.toLowerCase() !== query.email.toLowerCase()) {
+    // so this endpoint can't be used to probe which orders/emails exist. For a
+    // token link the unguessable token is the only check.
+    const emailMatches = !query.token && order && order.email.toLowerCase() === query.email?.toLowerCase();
+    if (!order || (!query.token && !emailMatches)) {
       throw new NotFoundException("No order found for that order number and email.");
     }
 
@@ -453,7 +457,7 @@ export class CatalogPublicService extends CatalogSharedService {
           )
         }))
       });
-      await this.emailService.sendCatalogOrderUserAckEmail(order.email, order.name);
+      await this.emailService.sendCatalogOrderUserAckEmail(order.email, order.name, order.id);
     } catch {}
 
     // In-app notifications: alert every super admin, and the customer if they

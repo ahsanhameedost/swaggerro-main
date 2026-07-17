@@ -157,6 +157,7 @@ export type ShippingShipment = {
   orderId: string;
   order?: {
     id: string;
+    orderNumber?: number | null;
     userId?: string | null;
     assignedEmployeeId?: string | null;
     name?: string | null;
@@ -246,6 +247,7 @@ export type ShippingShipment = {
 export type ShippingPlanner = {
   order: {
     id: string;
+    orderNumber: number;
     userId?: string | null;
     name: string;
     email: string;

@@ -51,12 +51,16 @@ const PRODUCTION_STAGE_LABELS: Record<string, string> = {
 
 export default function OrdersPage() {
   const { data: user } = useMe();
-  const isCustomer = hasPermission(user, "orders.self.read");
   const canRead = hasAnyPermission(user, ["catalog.orders.read", "orders.assigned.read", "orders.self.read"]);
   const canUpdate = hasPermission(user, "catalog.orders.update");
   const canAssign = hasPermission(user, "admin.users.write");
-  const isAssignedTeamView =
-    hasPermission(user, "orders.assigned.read") && !hasPermission(user, "catalog.orders.read");
+  // SUPER_ADMIN holds every permission (incl. orders.self.read), so "customer"
+  // must mean self-scoped access WITHOUT all-orders/assigned staff access —
+  // otherwise admins wrongly get the read-only "My Orders" layout.
+  const canReadAllOrders = hasPermission(user, "catalog.orders.read");
+  const isAssignedTeamView = hasPermission(user, "orders.assigned.read") && !canReadAllOrders;
+  const isCustomer =
+    hasPermission(user, "orders.self.read") && !canReadAllOrders && !isAssignedTeamView;
 
   // Dashboard stat cards deep-link here with ?status=… to pre-filter the list.
   const searchParams = useSearchParams();
@@ -215,15 +219,20 @@ export default function OrdersPage() {
                 <TableRow key={order.id}>
                   <TableCell>
                     <div className="space-y-1">
-                      <div className="font-medium">
-                        {isCustomer ? (
-                          <Tooltip content={order.id} placement="top-start">
+                      {isCustomer ? (
+                        <div className="font-medium">
+                          <Tooltip content={formatOrderNumber(order.orderNumber)} placement="top-start">
                             <span>Order #{formatOrderNumber(order.orderNumber)}</span>
                           </Tooltip>
-                        ) : (
-                          order.name
-                        )}
-                      </div>
+                        </div>
+                      ) : (
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Chip size="sm" variant="flat" color="primary" className="font-semibold">
+                            {formatOrderNumber(order.orderNumber)}
+                          </Chip>
+                          <span className="font-medium">{order.name || "—"}</span>
+                        </div>
+                      )}
                       <div className="text-xs text-foreground/50">{order.email}</div>
                       {!isCustomer ? (
                         <div className="text-xs text-foreground/50">{order.companyName || "-"}</div>
@@ -233,9 +242,13 @@ export default function OrdersPage() {
 
                   <TableCell>
                     <div className="space-y-1">
-                      <div className="font-medium">
-                        {formatOrderDisplayName(order)}
-                      </div>
+                      {/* Skip the title when it's just the SW-### number again
+                          (already shown in the Order column for customers). */}
+                      {formatOrderDisplayName(order) !== formatOrderNumber(order.orderNumber) ? (
+                        <div className="font-medium">{formatOrderDisplayName(order)}</div>
+                      ) : (
+                        <div className="font-medium text-foreground/40">—</div>
+                      )}
                       <div className="text-xs text-foreground/50">
                         {new Date(order.createdAt).toLocaleDateString()}
                       </div>
@@ -362,7 +375,7 @@ export default function OrdersPage() {
                   </TableCell>
 
                   <TableCell>
-                    <Link href={`/dashboard/orders/${order.id}`}>
+                    <Link href={`/dashboard/orders/${formatOrderNumber(order.orderNumber)}`}>
                       <Button size="sm" variant="bordered">
                         View
                       </Button>

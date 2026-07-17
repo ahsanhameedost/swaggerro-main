@@ -25,6 +25,14 @@ export const listOrdersQuerySchema = z.object({
   pageSize: z.coerce.number().int().min(1).max(100).default(15)
 });
 
+export const revenueReportQuerySchema = z.object({
+  granularity: z.enum(["day", "week", "month"]).default("month"),
+  // ISO date strings (YYYY-MM-DD). Omit for a sensible default window.
+  from: z.string().trim().min(1).optional(),
+  to: z.string().trim().min(1).optional()
+});
+export type RevenueReportQuery = z.infer<typeof revenueReportQuerySchema>;
+
 export const updateOrderStatusSchema = z.object({
   status: catalogOrderStatusSchema
 });

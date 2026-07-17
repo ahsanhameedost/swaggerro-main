@@ -26,6 +26,7 @@ import { useMe } from "@/queries/auth";
 import { useUsers } from "@/queries/users";
 import { useInventory, useReceiveInventory } from "@/queries/inventory";
 import { formatMoney } from "@/lib/money";
+import { formatOrderNumber } from "@/lib/order-flow";
 import { hasAnyPermission, hasPermission } from "@/lib/permissions";
 import type { InventoryItem, InventoryMovement } from "@/modules/inventory/types";
 
@@ -233,7 +234,7 @@ export default function InventoryPage() {
                       <div className="space-y-1">
                         <div className="font-medium">{item.productName}</div>
                         <div className="text-xs text-foreground/55">{item.variantName || "Standard"}</div>
-                        <div className="text-xs text-foreground/55">Order #{item.orderId}</div>
+                        <div className="text-xs text-foreground/55">Order {formatOrderNumber(item.orderNumber)}</div>
                       </div>
                     </div>
                   </TableCell>
@@ -271,14 +272,14 @@ export default function InventoryPage() {
                   </TableCell>
                   <TableCell>
                     <div className="flex flex-wrap gap-2">
-                      <Link href={`/dashboard/orders/${item.orderId}`}>
+                      <Link href={`/dashboard/orders/${formatOrderNumber(item.orderNumber)}`}>
                         <Button size="sm" variant="bordered">
                           View order
                         </Button>
                       </Link>
 
                       {canShip && item.storedQuantity > 0 ? (
-                        <Link href={`/dashboard/orders/${item.orderId}/shipping`}>
+                        <Link href={`/dashboard/orders/${formatOrderNumber(item.orderNumber)}/shipping`}>
                           <Button
                             size="sm"
                             color="primary"
@@ -347,7 +348,7 @@ export default function InventoryPage() {
                     {movement.orderItem.variantName ? ` · ${movement.orderItem.variantName}` : ""}
                   </div>
                   <div className="text-xs text-foreground/55">
-                    Order #{movement.orderId}
+                    Order {formatOrderNumber(movement.order.orderNumber)}
                     {movement.shipmentId ? ` · Shipment #${movement.shipmentId}` : ""}
                     {movement.note ? ` · ${movement.note}` : ""}
                   </div>

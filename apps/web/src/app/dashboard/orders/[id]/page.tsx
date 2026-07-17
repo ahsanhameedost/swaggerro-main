@@ -43,7 +43,6 @@ import { parseLogoPlacement } from "@/lib/logo-placement";
 import { formatMoney } from "@/lib/money";
 import { hasAnyPermission, hasPermission } from "@/lib/permissions";
 import {
-  DESIGN_PHASES,
   buildUserDisplayName,
   formatDesignPhaseLabel,
   formatItemTypeLabel,
@@ -77,18 +76,13 @@ function TeamItemCard({
   const updateItemMutation = useUpdateCatalogOrderItemDesign();
   const [adminNotes, setAdminNotes] = useState(item.adminNotes ?? "");
   const mockupInputRef = useRef<HTMLInputElement | null>(null);
-  const proofInputRef = useRef<HTMLInputElement | null>(null);
 
-  const uploadAsset = async (
-    file: File,
-    type: "mockups" | "proofs",
-    nextPhase: CatalogOrderDesignPhase
-  ) => {
+  const uploadAsset = async (file: File, nextPhase: CatalogOrderDesignPhase) => {
     try {
       const upload = await uploadMutation.mutateAsync({
         filename: file.name,
         contentType: file.type as "image/jpeg" | "image/png" | "image/webp",
-        type
+        type: "mockups"
       });
 
       await uploadFileToPresignedUrl(upload.uploadUrl, file);
@@ -96,27 +90,16 @@ function TeamItemCard({
       await updateItemMutation.mutateAsync({
         orderId,
         itemId: item.id,
-        input:
-          type === "mockups"
-            ? {
-                mockupImageUrl: upload.publicUrl,
-                mockupImageKey: upload.key,
-                designPhase: nextPhase,
-                adminNotes: adminNotes.trim() || null,
-                resolveOpenRevision: true
-              }
-            : {
-                proofImageUrl: upload.publicUrl,
-                proofImageKey: upload.key,
-                designPhase: nextPhase,
-                adminNotes: adminNotes.trim() || null
-              }
+        input: {
+          mockupImageUrl: upload.publicUrl,
+          mockupImageKey: upload.key,
+          designPhase: nextPhase,
+          adminNotes: adminNotes.trim() || null,
+          resolveOpenRevision: true
+        }
       });
 
-      addToast({
-        title: type === "mockups" ? "Mockup uploaded" : "Proof uploaded",
-        color: "success"
-      });
+      addToast({ title: "Mockup uploaded", color: "success" });
     } catch (e: any) {
       addToast({
         title: "Upload failed",
@@ -185,7 +168,7 @@ function TeamItemCard({
               }}
               className="min-w-[240px]"
             >
-              {["MOCKUP_IN_PROGRESS", ...DESIGN_PHASES.slice(1), "REVISION_REQUESTED"].map((phase) => (
+              {["MOCKUP_IN_PROGRESS", "REVIEW_MOCKUP_DESIGN", "READY_TO_ORDER", "REVISION_REQUESTED"].map((phase) => (
                 <SelectItem key={phase}>{formatDesignPhaseLabel(phase as CatalogOrderDesignPhase)}</SelectItem>
               ))}
             </Select>
@@ -233,25 +216,11 @@ function TeamItemCard({
               onChange={(event) => {
                 const file = event.target.files?.[0];
                 if (file) {
-                  void uploadAsset(file, "mockups", "REVIEW_MOCKUP_DESIGN");
+                  void uploadAsset(file, "REVIEW_MOCKUP_DESIGN");
                 }
                 event.currentTarget.value = "";
               }}
             />
-            <input
-              ref={proofInputRef}
-              type="file"
-              accept="image/png,image/jpeg,image/webp"
-              hidden
-              onChange={(event) => {
-                const file = event.target.files?.[0];
-                if (file) {
-                  void uploadAsset(file, "proofs", "REVIEW_FINAL_DESIGN");
-                }
-                event.currentTarget.value = "";
-              }}
-            />
-
             <Button
               variant="bordered"
               startContent={<UploadCloud className="size-4" />}
@@ -259,15 +228,6 @@ function TeamItemCard({
               isLoading={uploadMutation.isPending}
             >
               {item.mockupImageUrl ? "Replace mockup" : "Upload mockup"}
-            </Button>
-
-            <Button
-              variant="bordered"
-              startContent={<UploadCloud className="size-4" />}
-              onPress={() => proofInputRef.current?.click()}
-              isLoading={uploadMutation.isPending}
-            >
-              {item.proofImageUrl ? "Replace proof" : "Upload proof"}
             </Button>
 
             <Button
@@ -466,7 +426,7 @@ export default function OrderDetailsPage() {
             >
               Download mockup PDF
             </Button>
-            <Link href={`/dashboard/orders/${order.id}/shipping`}>
+            <Link href={`/dashboard/orders/${formatOrderNumber(order.orderNumber)}/shipping`}>
               <Button color="primary" style={{ backgroundImage: "var(--primary-gradient)" }}>
                 {isCustomer ? "Plan shipping & storage" : "Open shipping planner"}
               </Button>
@@ -1060,7 +1020,7 @@ export default function OrderDetailsPage() {
 
               <div className="flex flex-col gap-3">
                 {canPlanShipping ? (
-                  <Link href={`/dashboard/orders/${order.id}/shipping`}>
+                  <Link href={`/dashboard/orders/${formatOrderNumber(order.orderNumber)}/shipping`}>
                     <Button
                       className="w-full"
                       color="primary"
@@ -1094,7 +1054,7 @@ export default function OrderDetailsPage() {
                       Order paid
                     </Button>
                   ) : order.allItemsReadyToOrder ? (
-                    <Link href={`/dashboard/orders/${order.id}/checkout`}>
+                    <Link href={`/dashboard/orders/${formatOrderNumber(order.orderNumber)}/checkout`}>
                       <Button
                         className="w-full"
                         color="primary"
@@ -1283,7 +1243,7 @@ function OrderStageTracker({ order }: { order: CatalogOrder }) {
     : needsPayment
       ? {
           text: "Action needed: complete payment to start production.",
-          href: `/dashboard/orders/${order.id}/checkout`
+          href: `/dashboard/orders/${formatOrderNumber(order.orderNumber)}/checkout`
         }
       : null;
 

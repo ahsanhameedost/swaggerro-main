@@ -513,6 +513,7 @@ export abstract class CatalogSharedService {
 
   protected serializeProductDetail(product: any) {
     const basePrice = this.decimalToNumber(product.basePrice);
+    const costPrice = this.decimalToNumber(product.costPrice);
     const compareAtPrice = this.decimalToNumber(product.compareAtPrice);
     const variantGroups = product.variants.map((variant: any) => ({
       id: variant.id,
@@ -552,6 +553,7 @@ export abstract class CatalogSharedService {
       leadTimeDays: product.leadTimeDays ?? null,
       basePrice,
       basePriceCents: basePrice,
+      costPrice,
       compareAtPrice,
       compareAtPriceCents: compareAtPrice,
       minQty: product.minQty,

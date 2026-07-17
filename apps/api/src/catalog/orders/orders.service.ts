@@ -37,6 +37,7 @@ import { EmailService } from "../../email/email.service";
 import { PrismaService } from "../../prisma/prisma.service";
 import { StorageService } from "../../storage/storage.service";
 import { NotificationsService } from "../../notifications/notifications.service";
+import { buildOrderIdentifierWhere } from "./order-identifier";
 import { NotificationEventsService } from "../../notifications/notification-events.service";
 import { CatalogSharedService } from "../common/catalog-shared.service";
 import { hasPermission } from "../../common/utils/permissions";
@@ -188,10 +189,19 @@ export class CatalogOrdersService extends CatalogSharedService {
         paidAt: true,
         createdAt: true,
         totalPrice: true,
-        items: { select: { designPhase: true } }
+        items: {
+          select: { designPhase: true, quantity: true, product: { select: { costPrice: true } } }
+        }
       },
       orderBy: { createdAt: "desc" }
     });
+
+    // Cost of goods for a paid order = Σ (item qty × product cost). Null cost => 0.
+    const orderCost = (o: (typeof orders)[number]) =>
+      o.items.reduce(
+        (sum, it) => sum + it.quantity * (it.product?.costPrice ? Number(it.product.costPrice) : 0),
+        0
+      );
 
     const now = new Date();
     const monthStart = (monthsAgo: number) =>
@@ -218,6 +228,7 @@ export class CatalogOrdersService extends CatalogSharedService {
     };
 
     let paidRevenue = 0;
+    let paidCost = 0;
     let outstanding = 0;
     let paidOrdersCount = 0;
     let revenueThisMonth = 0;
@@ -243,6 +254,7 @@ export class CatalogOrdersService extends CatalogSharedService {
 
       if (o.paymentStatus === "PAID") {
         paidRevenue += price;
+        paidCost += orderCost(o);
         paidOrdersCount += 1;
 
         const revDate = new Date(o.paidAt ?? o.createdAt);
@@ -271,6 +283,8 @@ export class CatalogOrdersService extends CatalogSharedService {
     return {
       totalOrders: orders.length,
       paidRevenue,
+      paidCost,
+      grossProfit: paidRevenue - paidCost,
       outstanding,
       avgOrderValue: paidOrdersCount ? paidRevenue / paidOrdersCount : 0,
       paidOrdersCount,
@@ -279,6 +293,109 @@ export class CatalogOrdersService extends CatalogSharedService {
       revenueTrend: pct(revenueThisMonth, revenueLastMonth),
       ordersTrend: pct(ordersThisMonth, ordersLastMonth),
       needsAttention: { pendingReview, inDesign, readyToOrder, unpaid }
+    };
+  }
+
+  /**
+   * Period-bucketed revenue / cost / profit report for paid orders, grouped by
+   * day, week (Mon-start), or month across a date range. Powers the Finance
+   * reports. Buckets across the whole range are pre-filled so gaps read as 0.
+   */
+  async getRevenueReport(
+    query: { granularity: "day" | "week" | "month"; from?: string; to?: string },
+    authUser: AuthUser
+  ) {
+    const where = await this.buildAccessibleOrderWhere({} as ListOrdersQuery, authUser);
+    const gran = query.granularity;
+
+    const endOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
+    const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    const to = query.to ? endOfDay(new Date(query.to)) : endOfDay(new Date());
+    // Default window per granularity when no explicit range is given.
+    const defaultFrom = () => {
+      const d = new Date(to);
+      if (gran === "day") d.setDate(d.getDate() - 29);
+      else if (gran === "week") d.setDate(d.getDate() - 7 * 11);
+      else d.setMonth(d.getMonth() - 11);
+      return startOfDay(d);
+    };
+    const from = query.from ? startOfDay(new Date(query.from)) : defaultFrom();
+
+    const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const iso = (d: Date) =>
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    // Monday-anchored week start.
+    const weekStart = (d: Date) => {
+      const s = startOfDay(d);
+      const day = (s.getDay() + 6) % 7; // 0 = Monday
+      s.setDate(s.getDate() - day);
+      return s;
+    };
+    const bucketOf = (d: Date): { key: string; label: string } => {
+      if (gran === "month") {
+        return { key: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`, label: `${MONTHS[d.getMonth()]} ${d.getFullYear()}` };
+      }
+      const anchor = gran === "week" ? weekStart(d) : startOfDay(d);
+      return { key: iso(anchor), label: `${MONTHS[anchor.getMonth()]} ${anchor.getDate()}` };
+    };
+
+    type Bucket = { key: string; label: string; revenue: number; cost: number; orders: number };
+    const map = new Map<string, Bucket>();
+
+    // Pre-fill every bucket across the range so empty periods still show.
+    const cursor = gran === "week" ? weekStart(from) : startOfDay(from);
+    if (gran === "month") cursor.setDate(1);
+    let guard = 0;
+    while (cursor <= to && guard++ < 1000) {
+      const { key, label } = bucketOf(cursor);
+      if (!map.has(key)) map.set(key, { key, label, revenue: 0, cost: 0, orders: 0 });
+      if (gran === "day") cursor.setDate(cursor.getDate() + 1);
+      else if (gran === "week") cursor.setDate(cursor.getDate() + 7);
+      else cursor.setMonth(cursor.getMonth() + 1);
+    }
+
+    const orders = await this.prisma.catalogOrder.findMany({
+      where: { ...where, paymentStatus: "PAID" },
+      select: {
+        totalPrice: true,
+        paidAt: true,
+        createdAt: true,
+        items: { select: { quantity: true, product: { select: { costPrice: true } } } }
+      }
+    });
+
+    for (const o of orders) {
+      const d = new Date(o.paidAt ?? o.createdAt);
+      if (d < from || d > to) continue;
+      const { key, label } = bucketOf(d);
+      const b = map.get(key) ?? { key, label, revenue: 0, cost: 0, orders: 0 };
+      b.revenue += Number(o.totalPrice);
+      b.cost += o.items.reduce(
+        (s, it) => s + it.quantity * (it.product?.costPrice ? Number(it.product.costPrice) : 0),
+        0
+      );
+      b.orders += 1;
+      map.set(key, b);
+    }
+
+    const list = [...map.values()]
+      .sort((a, b) => (a.key < b.key ? -1 : 1))
+      .map((b) => ({ ...b, profit: b.revenue - b.cost }));
+    const totals = list.reduce(
+      (t, b) => ({ revenue: t.revenue + b.revenue, cost: t.cost + b.cost, orders: t.orders + b.orders }),
+      { revenue: 0, cost: 0, orders: 0 }
+    );
+
+    return {
+      granularity: gran,
+      from: from.toISOString(),
+      to: to.toISOString(),
+      buckets: list,
+      totals: {
+        ...totals,
+        profit: totals.revenue - totals.cost,
+        margin: totals.revenue ? ((totals.revenue - totals.cost) / totals.revenue) * 100 : 0
+      }
     };
   }
 
@@ -330,10 +447,10 @@ export class CatalogOrdersService extends CatalogSharedService {
           heading: `Order ${statusLabel}`,
           paragraphs: [
             `Your order ${orderLabel} is now ${statusLabel}.`,
-            "You can view the latest details and next steps from your dashboard."
+            "Tap below to track your order and see the latest progress — no login needed."
           ],
-          ctaPath: `/dashboard/orders/${order.id}`,
-          ctaLabel: "View order"
+          ctaPath: `/track?token=${order.id}`,
+          ctaLabel: "Track your order"
         }
       });
     }
@@ -375,7 +492,7 @@ export class CatalogOrdersService extends CatalogSharedService {
           subject: `Order ${orderLabel} · ${label}`,
           heading: label,
           paragraphs: [`Order ${orderLabel} is now ${label.toLowerCase()}.`],
-          ctaPath: `/dashboard/orders/${order.id}`,
+          ctaPath: `/track?token=${order.id}`,
           ctaLabel: "Track your order"
         }
       });
@@ -531,8 +648,8 @@ export class CatalogOrdersService extends CatalogSharedService {
               ? `"${item.productName}" has been added to order ${orderLabel} and will ship together.`
               : `"${item.productName}" could not be added to order ${orderLabel}. Please reach out if you have questions.`
           ],
-          ctaPath: `/dashboard/orders/${order.id}`,
-          ctaLabel: "View order"
+          ctaPath: `/track?token=${order.id}`,
+          ctaLabel: "Track your order"
         }
       });
     }
@@ -1329,13 +1446,24 @@ async createOrderPayment(id: string, input: CreateOrderPaymentDto, authUser: Aut
       ...assignedEmployeeFilter,
       ...(query.search
         ? {
-            OR: [
-              { id: { contains: query.search, mode: "insensitive" } },
-              { name: { contains: query.search, mode: "insensitive" } },
-              { email: { contains: query.search, mode: "insensitive" } },
-              { companyName: { contains: query.search, mode: "insensitive" } },
-              { project: { name: { contains: query.search, mode: "insensitive" } } }
-            ]
+            OR: (() => {
+              const term = query.search;
+              const or: Prisma.CatalogOrderWhereInput[] = [
+                { id: { contains: term, mode: "insensitive" } },
+                { name: { contains: term, mode: "insensitive" } },
+                { email: { contains: term, mode: "insensitive" } },
+                { companyName: { contains: term, mode: "insensitive" } },
+                { project: { name: { contains: term, mode: "insensitive" } } }
+              ];
+              // Match by order number too: "SW-054", "sw054", or plain "54" all
+              // resolve to the numeric orderNumber (54).
+              const digits = term.replace(/\D/g, "");
+              if (digits) {
+                const n = Number(digits);
+                if (Number.isSafeInteger(n)) or.push({ orderNumber: n });
+              }
+              return or;
+            })()
           }
         : {})
     };
@@ -1362,8 +1490,8 @@ async createOrderPayment(id: string, input: CreateOrderPaymentDto, authUser: Aut
   }
 
   private async findAccessibleOrderOrThrow(id: string, authUser: AuthUser) {
-    const order = await this.prisma.catalogOrder.findUnique({
-      where: { id },
+    const order = await this.prisma.catalogOrder.findFirst({
+      where: buildOrderIdentifierWhere(id),
       include: this.orderInclude
     });
 

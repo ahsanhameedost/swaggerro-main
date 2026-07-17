@@ -147,6 +147,15 @@ const NAV_ITEMS: NavItem[] = [
     requiredPermissions: ["partners.stores.read"]
   },
   {
+    key: "finance",
+    label: "Finance",
+    href: "/dashboard/finance",
+    icon: "Landmark",
+    // Admin-only financial hub: needs both platform revenue access and
+    // store/payout access, so only full admins see it.
+    requiredPermissions: ["catalog.orders.read", "partners.stores.read"]
+  },
+  {
     key: "permissions",
     label: "Permissions",
     href: "/dashboard/permissions",

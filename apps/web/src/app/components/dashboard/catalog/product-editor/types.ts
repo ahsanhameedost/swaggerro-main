@@ -64,6 +64,7 @@ export type ProductEditorState = {
   widthIn: number | null;
   heightIn: number | null;
   basePrice: number | null;
+  costPrice: number | null;
   compareAtPrice: number | null;
   minQty: number;
   baseStock: number;

@@ -149,7 +149,7 @@ export default function OrderCheckoutPage() {
   if (!order.allItemsReadyToOrder) {
     return (
       <div className="flex flex-col gap-6">
-        <Link href={`/dashboard/orders/${order.id}`} className="inline-flex items-center gap-2 text-sm text-foreground/60">
+        <Link href={`/dashboard/orders/${formatOrderNumber(order.orderNumber)}`} className="inline-flex items-center gap-2 text-sm text-foreground/60">
           <ArrowLeft className="size-4" />
           Back to order
         </Link>
@@ -161,7 +161,7 @@ export default function OrderCheckoutPage() {
               You can proceed with the Request once all the Products are Approved.
             </div>
             <div>
-              <Link href={`/dashboard/orders/${order.id}`}>
+              <Link href={`/dashboard/orders/${formatOrderNumber(order.orderNumber)}`}>
                 <Button color="primary" style={{ backgroundImage: "var(--primary-gradient)" }}>
                   Review designs
                 </Button>
@@ -176,7 +176,7 @@ export default function OrderCheckoutPage() {
   if (order.paymentStatus === "PAID") {
     return (
       <div className="flex flex-col gap-6">
-        <Link href={`/dashboard/orders/${order.id}`} className="inline-flex items-center gap-2 text-sm text-foreground/60">
+        <Link href={`/dashboard/orders/${formatOrderNumber(order.orderNumber)}`} className="inline-flex items-center gap-2 text-sm text-foreground/60">
           <ArrowLeft className="size-4" />
           Back to order
         </Link>
@@ -207,7 +207,7 @@ export default function OrderCheckoutPage() {
             </div>
 
             <div className="flex flex-wrap items-center justify-center gap-3">
-              <Link href={`/dashboard/orders/${order.id}`}>
+              <Link href={`/dashboard/orders/${formatOrderNumber(order.orderNumber)}`}>
                 <Button
                   color="primary"
                   startContent={<MapPin className="size-4" />}
@@ -241,7 +241,7 @@ export default function OrderCheckoutPage() {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <Link href={`/dashboard/orders/${order.id}`} className="inline-flex items-center gap-2 text-sm text-foreground/60">
+        <Link href={`/dashboard/orders/${formatOrderNumber(order.orderNumber)}`} className="inline-flex items-center gap-2 text-sm text-foreground/60">
           <ArrowLeft className="size-4" />
           Back
         </Link>
@@ -360,7 +360,7 @@ export default function OrderCheckoutPage() {
           <CardBody className="space-y-5 p-6">
             <div>
               <div className="text-3xl font-semibold">Order Summary</div>
-              <div className="mt-2 text-sm text-foreground/60">Order #{order.id}</div>
+              <div className="mt-2 text-sm text-foreground/60">Order {formatOrderNumber(order.orderNumber)}</div>
             </div>
 
             <div className="space-y-3">

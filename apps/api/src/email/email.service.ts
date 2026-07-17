@@ -382,7 +382,12 @@ Swaggeroo Team`,
     this.logger.log(`sendCatalogOrderAdminEmail success ${mailInfoSummary(info)}`);
   }
 
-  async sendCatalogOrderUserAckEmail(to: string, name: string) {
+  async sendCatalogOrderUserAckEmail(to: string, name: string, orderId?: string) {
+    // A per-order "magic link" — opens tracking pre-loaded, no order number or
+    // email to type. Falls back to the bare tracking page if we have no id.
+    const trackUrl = orderId
+      ? `${webBaseUrl()}/track?token=${encodeURIComponent(orderId)}`
+      : `${webBaseUrl()}/track`;
     const info = await this.transporter.sendMail({
       from: env.EMAIL_FROM,
       to,
@@ -393,6 +398,8 @@ Thanks for submitting your Swaggeroo order request.
 
 Our team received it successfully and will review your project details shortly.
 
+Track your order any time: ${trackUrl}
+
 Swaggeroo Team`,
       html: renderEmailShell({
         eyebrow: "Order received",
@@ -400,11 +407,11 @@ Swaggeroo Team`,
         bodyHtml: `
           <p style="margin:0 0 14px;">Hi ${escapeHtml(name)},</p>
           <p style="margin:0 0 14px;">Thanks for submitting your Swaggeroo order. We've received it successfully.</p>
-          <p style="margin:0 0 14px;">Our team is reviewing your project details and will start on your designs shortly. You can follow its progress any time.</p>
+          <p style="margin:0 0 14px;">Our team is reviewing your project details and will start on your designs shortly. You can follow its progress any time — just tap the button below.</p>
           <p style="margin:22px 0 0;font-weight:600;color:#0f172a;">The Swaggeroo Team</p>
         `,
-        cta: { label: "Track your order", url: `${webBaseUrl()}/track` },
-        trackUrl: `${webBaseUrl()}/track`
+        cta: { label: "Track your order", url: trackUrl },
+        trackUrl
       })
     });
 

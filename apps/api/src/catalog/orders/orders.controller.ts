@@ -21,6 +21,7 @@ import {
   createOrderDesignUploadSchema,
   createOrderPaymentSchema,
   listOrdersQuerySchema,
+  revenueReportQuerySchema,
   requestOrderItemRevisionSchema,
   updateOrderItemDesignSchema,
   updateOrderStatusSchema,
@@ -52,6 +53,19 @@ export class CatalogOrdersController {
   @RequireAnyPermissions("catalog.orders.read", "orders.assigned.read", "orders.self.read")
   async getOrderStats(@Req() req: FastifyRequest & { user?: AuthUser }) {
     return await this.ordersService.getOrderStats(req.user!);
+  }
+
+  @UseGuards(AuthGuard, PermissionsGuard)
+  @Get("orders/report")
+  @RequirePermissions("catalog.orders.read")
+  async getRevenueReport(
+    @Query() query: unknown,
+    @Req() req: FastifyRequest & { user?: AuthUser }
+  ) {
+    return await this.ordersService.getRevenueReport(
+      parseOrThrow(revenueReportQuerySchema.safeParse(query), "Invalid report query"),
+      req.user!
+    );
   }
 
   @UseGuards(AuthGuard, PermissionsGuard)

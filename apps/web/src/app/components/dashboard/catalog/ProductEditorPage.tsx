@@ -528,18 +528,24 @@ export function ProductEditorPage({ mode }: ProductEditorPageProps) {
       if (mode === "create") {
         const response = await createMutation.mutateAsync(payload);
         addToast({ title: "Product created", color: "success" });
-        router.replace(`/dashboard/catalog/products/${response.product.id}`);
+        router.replace(`/dashboard/catalog/products/${response.product.slug ?? response.product.id}`);
         return;
       }
 
       if (!productId) return;
 
-      await updateMutation.mutateAsync({
+      const response = await updateMutation.mutateAsync({
         id: productId,
         input: payload
       });
 
       addToast({ title: "Product updated", color: "success" });
+      // Renaming a product regenerates its slug — keep the readable URL in sync
+      // so a reload still resolves.
+      const nextSlug = response?.product?.slug;
+      if (nextSlug && nextSlug !== productId) {
+        router.replace(`/dashboard/catalog/products/${nextSlug}`);
+      }
     } catch (error: unknown) {
       addToast({
         title: "Unable to save product",

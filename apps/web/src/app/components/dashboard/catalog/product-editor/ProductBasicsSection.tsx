@@ -216,6 +216,116 @@ export function ProductBasicsSection({
                         )}
                     </CardBody>
                 </Card>
+
+                <Card className="shadow-sm">
+                    <CardHeader className="flex flex-col items-start gap-1">
+                        <div className="text-lg font-semibold">Base pricing</div>
+                        <div className="text-sm text-foreground/60">
+                            Selling price, your cost, and quantity rules.
+                        </div>
+                    </CardHeader>
+                    <CardBody className="grid gap-4 sm:grid-cols-2">
+                        <Input
+                            type="number"
+                            step="0.01"
+                            min={0}
+                            label="Base price"
+                            description="Price customers pay per unit. Disabled when variants set their own prices."
+                            startContent={<span className="text-foreground/50">$</span>}
+                            value={state.basePrice == null ? "" : String(state.basePrice)}
+                            isDisabled={hasVariants}
+                            onChange={(event) =>
+                                onStateChange((current) => ({
+                                    ...current,
+                                    basePrice: event.target.value.trim() ? Number(event.target.value) : null
+                                }))
+                            }
+                        />
+
+                        <Input
+                            type="number"
+                            step="0.01"
+                            min={0}
+                            label="Cost price"
+                            description="What this product costs you (COGS). Used for profit & margin in Finance."
+                            startContent={<span className="text-foreground/50">$</span>}
+                            value={state.costPrice == null ? "" : String(state.costPrice)}
+                            onChange={(event) =>
+                                onStateChange((current) => ({
+                                    ...current,
+                                    costPrice: event.target.value.trim() ? Number(event.target.value) : null
+                                }))
+                            }
+                        />
+
+                        <Input
+                            type="number"
+                            step="0.01"
+                            min={0}
+                            label="Compare at price"
+                            description="Optional 'was' price shown struck through to signal a discount."
+                            startContent={<span className="text-foreground/50">$</span>}
+                            value={state.compareAtPrice == null ? "" : String(state.compareAtPrice)}
+                            onChange={(event) =>
+                                onStateChange((current) => ({
+                                    ...current,
+                                    compareAtPrice: event.target.value.trim() ? Number(event.target.value) : null
+                                }))
+                            }
+                        />
+
+                        <Input
+                            type="number"
+                            min={1}
+                            label="Min quantity"
+                            description="Smallest quantity a customer can order."
+                            value={String(state.minQty)}
+                            onChange={(event) =>
+                                onStateChange((current) => ({
+                                    ...current,
+                                    minQty: Math.max(1, Number(event.target.value || 1)),
+                                    productCatalogVariants: current.productCatalogVariants.map((variant) => ({
+                                        ...variant,
+                                        minQty: Math.max(1, variant.minQty)
+                                    }))
+                                }))
+                            }
+                        />
+
+                        <Input
+                            type="number"
+                            min={0}
+                            label="Base stock"
+                            description="On-hand units when the product has no variants."
+                            value={state.baseStock == null ? "" : String(state.baseStock)}
+                            isDisabled={hasVariants}
+                            onChange={(event) =>
+                                onStateChange((current) => ({
+                                    ...current,
+                                    baseStock: Math.max(0, Number(event.target.value || 0))
+                                }))
+                            }
+                        />
+
+                        <Input
+                            type="number"
+                            min={0}
+                            label="Lead time (days)"
+                            description="Estimated days to produce + ship. Drives the shop 'ships in ~N days' badge, shipping-time filter and timeline warnings."
+                            placeholder="e.g. 14"
+                            value={state.leadTimeDays == null ? "" : String(state.leadTimeDays)}
+                            onChange={(event) =>
+                                onStateChange((current) => ({
+                                    ...current,
+                                    leadTimeDays:
+                                        event.target.value === ""
+                                            ? null
+                                            : Math.max(0, Number(event.target.value || 0))
+                                }))
+                            }
+                        />
+                    </CardBody>
+                </Card>
             </div>
 
             <div className="space-y-6">
@@ -391,90 +501,6 @@ export function ProductBasicsSection({
                     </CardBody>
                 </Card>
 
-                <Card className="shadow-sm">
-                    <CardHeader className="flex flex-col items-start gap-1">
-                        <div className="text-lg font-semibold">Base pricing</div>
-                    </CardHeader>
-                    <CardBody className="space-y-4">
-                        <Input
-                            type="number"
-                            step="0.01"
-                            min={0}
-                            label="Base price"
-                            value={state.basePrice == null ? "" : String(state.basePrice)}
-                            isDisabled={hasVariants}
-                            onChange={(event) =>
-                                onStateChange((current) => ({
-                                    ...current,
-                                    basePrice: event.target.value.trim() ? Number(event.target.value) : null
-                                }))
-                            }
-                        />
-
-                        <Input
-                            type="number"
-                            step="0.01"
-                            min={0}
-                            label="Compare at price"
-                            value={state.compareAtPrice == null ? "" : String(state.compareAtPrice)}
-                            onChange={(event) =>
-                                onStateChange((current) => ({
-                                    ...current,
-                                    compareAtPrice: event.target.value.trim() ? Number(event.target.value) : null
-                                }))
-                            }
-                        />
-
-                        <Input
-                            type="number"
-                            min={1}
-                            label="Min quantity"
-                            value={String(state.minQty)}
-                            onChange={(event) =>
-                                onStateChange((current) => ({
-                                    ...current,
-                                    minQty: Math.max(1, Number(event.target.value || 1)),
-                                    productCatalogVariants: current.productCatalogVariants.map((variant) => ({
-                                        ...variant,
-                                        minQty: Math.max(1, variant.minQty)
-                                    }))
-                                }))
-                            }
-                        />
-
-                        <Input
-                            type="number"
-                            min={0}
-                            label="Base stock"
-                            value={state.baseStock == null ? "" : String(state.baseStock)}
-                            isDisabled={hasVariants}
-                            onChange={(event) =>
-                                onStateChange((current) => ({
-                                    ...current,
-                                    baseStock: Math.max(0, Number(event.target.value || 0))
-                                }))
-                            }
-                        />
-
-                        <Input
-                            type="number"
-                            min={0}
-                            label="Lead time (days)"
-                            description="Estimated days to produce + ship. Drives the shop 'ships in ~N days' badge, shipping-time filter and timeline warnings."
-                            placeholder="e.g. 14"
-                            value={state.leadTimeDays == null ? "" : String(state.leadTimeDays)}
-                            onChange={(event) =>
-                                onStateChange((current) => ({
-                                    ...current,
-                                    leadTimeDays:
-                                        event.target.value === ""
-                                            ? null
-                                            : Math.max(0, Number(event.target.value || 0))
-                                }))
-                            }
-                        />
-                    </CardBody>
-                </Card>
 
                 <Card className="shadow-sm">
                     <CardHeader className="flex flex-col items-start gap-1">

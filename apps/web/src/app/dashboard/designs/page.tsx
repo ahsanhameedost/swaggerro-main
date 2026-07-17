@@ -264,7 +264,7 @@ function CustomerDesignView({ orders }: { orders: CatalogOrder[] }) {
                         }
                         addToast({ title: "All final designs approved", color: "success" });
                         // Approved → straight to checkout to pay.
-                        router.push(`/dashboard/orders/${order.id}/checkout`);
+                        router.push(`/dashboard/orders/${formatOrderNumber(order.orderNumber)}/checkout`);
                       } catch (e: any) {
                         addToast({
                           title: "Approval failed",
@@ -278,7 +278,7 @@ function CustomerDesignView({ orders }: { orders: CatalogOrder[] }) {
                     Approve All Final Design
                   </Button>
                 ) : null}
-                <Link href={`/dashboard/orders/${order.id}`}>
+                <Link href={`/dashboard/orders/${formatOrderNumber(order.orderNumber)}`}>
                   <Button variant="bordered">View order</Button>
                 </Link>
               </div>
@@ -376,7 +376,7 @@ function CustomerDesignView({ orders }: { orders: CatalogOrder[] }) {
                                   });
                                   addToast({ title: "Design approved", color: "success" });
                                   if (res?.order?.allItemsReadyToOrder) {
-                                    router.push(`/dashboard/orders/${order.id}/checkout`);
+                                    router.push(`/dashboard/orders/${formatOrderNumber(order.orderNumber)}/checkout`);
                                   }
                                 } catch (e: any) {
                                   addToast({
@@ -405,7 +405,7 @@ function CustomerDesignView({ orders }: { orders: CatalogOrder[] }) {
                                   });
                                   addToast({ title: "Final design approved", color: "success" });
                                   // Approved → straight to checkout to pay.
-                                  router.push(`/dashboard/orders/${order.id}/checkout`);
+                                  router.push(`/dashboard/orders/${formatOrderNumber(order.orderNumber)}/checkout`);
                                 } catch (e: any) {
                                   addToast({
                                     title: "Approval failed",
@@ -512,7 +512,7 @@ function designerNextStep(phase: CatalogOrderItem["designPhase"]): {
     case "REVISION_REQUESTED":
       return { label: "Address revision", group: "action" };
     case "FINALIZING_PROOF_DESIGN":
-      return { label: "Upload final proof", group: "action" };
+      return { label: "Finalizing design", group: "waiting" };
     case "REVIEW_MOCKUP_DESIGN":
       return { label: "Awaiting customer review", group: "waiting" };
     case "REVIEW_FINAL_DESIGN":
@@ -540,9 +540,8 @@ const DESIGNER_PHASE_OPTIONS: CatalogOrderItem["designPhase"][] = [
   "REVISION_REQUESTED"
 ];
 
-// A single design asset slot. Product / Mockup / Proof are shown side by side so
-// it's clear the mockup and proof are separate uploads that never overwrite the
-// original product image.
+// A single design asset slot. Product and Mockup are shown side by side so it's
+// clear the mockup upload never overwrites the original product image.
 function AssetThumb({ label, src, hint }: { label: string; src?: string | null; hint: string }) {
   return (
     <div className="space-y-1.5">
@@ -580,49 +579,35 @@ function DesignJobCard({
   const uploadMutation = useCreateCatalogOrderDesignUpload();
   const updateMutation = useUpdateCatalogOrderItemDesign();
   const mockupInputRef = useRef<HTMLInputElement | null>(null);
-  const [pendingKind, setPendingKind] = useState<null | "mockups" | "proofs">(null);
+  const [pendingKind, setPendingKind] = useState<null | "mockups">(null);
 
   // The customer's logo + placement designed in the Mockup Studio, parsed from
   // the order notes so the designer sees exactly where the logo goes.
   const { placement } = parseLogoPlacement(orderNotes);
   const hasBranding = Boolean(orderLogoUrl || placement);
 
-  const uploadAsset = async (
-    file: File,
-    type: "mockups" | "proofs",
-    nextPhase: CatalogOrderItem["designPhase"]
-  ) => {
-    setPendingKind(type);
+  const uploadAsset = async (file: File, nextPhase: CatalogOrderItem["designPhase"]) => {
+    setPendingKind("mockups");
     try {
       const upload = await uploadMutation.mutateAsync({
         filename: file.name,
         contentType: file.type as "image/jpeg" | "image/png" | "image/webp",
-        type
+        type: "mockups"
       });
       await uploadFileToPresignedUrl(upload.uploadUrl, file);
-      // Mockups and proofs write to their own fields (mockupImageUrl /
-      // proofImageUrl) — the product imageUrl is never touched.
+      // The mockup writes to its own field (mockupImageUrl) — the product
+      // imageUrl is never touched.
       await updateMutation.mutateAsync({
         orderId,
         itemId: item.id,
-        input:
-          type === "mockups"
-            ? {
-                mockupImageUrl: upload.publicUrl,
-                mockupImageKey: upload.key,
-                designPhase: nextPhase,
-                resolveOpenRevision: true
-              }
-            : {
-                proofImageUrl: upload.publicUrl,
-                proofImageKey: upload.key,
-                designPhase: nextPhase
-              }
+        input: {
+          mockupImageUrl: upload.publicUrl,
+          mockupImageKey: upload.key,
+          designPhase: nextPhase,
+          resolveOpenRevision: true
+        }
       });
-      addToast({
-        title: type === "mockups" ? "Mockup uploaded — sent for review" : "Proof uploaded — sent for final review",
-        color: "success"
-      });
+      addToast({ title: "Mockup uploaded — sent for review", color: "success" });
     } catch (e: any) {
       addToast({
         title: "Upload failed",
@@ -791,7 +776,7 @@ function DesignJobCard({
               hidden
               onChange={(event) => {
                 const file = event.target.files?.[0];
-                if (file) void uploadAsset(file, "mockups", "REVIEW_MOCKUP_DESIGN");
+                if (file) void uploadAsset(file, "REVIEW_MOCKUP_DESIGN");
                 event.currentTarget.value = "";
               }}
             />

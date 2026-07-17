@@ -323,6 +323,9 @@ model CatalogProduct {
   isPackaging            Boolean                    @default(false)
   bulkPricingEnabled     Boolean                    @default(true)
   basePrice              Decimal?                   @db.Decimal(10, 2)
+  // What the product costs Swaggeroo (COGS). Used to derive profit/margin in
+  // Finance. Null => cost unknown (treated as 0 for profit math).
+  costPrice              Decimal?                   @db.Decimal(10, 2)
   compareAtPrice         Decimal?                   @db.Decimal(10, 2)
   minQty                 Int                        @default(1)
   baseStock              Int                        @default(0)

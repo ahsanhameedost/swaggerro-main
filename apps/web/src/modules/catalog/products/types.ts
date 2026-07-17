@@ -138,6 +138,7 @@ export type CatalogProductDetail = {
   leadTimeDays?: number | null;
   basePrice?: number | null;
   basePriceCents?: number | null;
+  costPrice?: number | null;
   compareAtPrice?: number | null;
   compareAtPriceCents?: number | null;
   minQty: number;
@@ -202,6 +203,7 @@ export type CreateProductInput = {
   widthIn?: number | null;
   heightIn?: number | null;
   basePrice?: number | null;
+  costPrice?: number | null;
   compareAtPrice?: number | null;
   minQty: number;
   baseStock: number;

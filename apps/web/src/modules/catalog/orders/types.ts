@@ -168,6 +168,8 @@ export type CatalogOrder = {
 export type CatalogOrderStats = {
   totalOrders: number;
   paidRevenue: number;
+  paidCost: number;
+  grossProfit: number;
   outstanding: number;
   avgOrderValue: number;
   paidOrdersCount: number;
@@ -181,6 +183,31 @@ export type CatalogOrderStats = {
     readyToOrder: number;
     unpaid: number;
   };
+};
+
+export type RevenueReportGranularity = "day" | "week" | "month";
+
+export type RevenueReportBucket = {
+  key: string;
+  label: string;
+  revenue: number;
+  cost: number;
+  profit: number;
+  orders: number;
+};
+
+export type RevenueReport = {
+  granularity: RevenueReportGranularity;
+  from: string;
+  to: string;
+  buckets: RevenueReportBucket[];
+  totals: { revenue: number; cost: number; profit: number; orders: number; margin: number };
+};
+
+export type RevenueReportParams = {
+  granularity?: RevenueReportGranularity;
+  from?: string;
+  to?: string;
 };
 
 export type ListCatalogOrdersParams = {

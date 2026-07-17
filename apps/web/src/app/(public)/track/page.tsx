@@ -1,8 +1,12 @@
 "use client";
 
-import { useState } from "react";
-import { MapPin, PackageSearch, Truck } from "lucide-react";
-import { trackPublicOrder, type PublicOrderTracking } from "@/modules/catalog/public/api";
+import { useEffect, useState } from "react";
+import { Loader2, MapPin, PackageSearch, Truck } from "lucide-react";
+import {
+  trackPublicOrder,
+  trackPublicOrderByToken,
+  type PublicOrderTracking
+} from "@/modules/catalog/public/api";
 import { OrderProgress } from "@/components/orders/order-progress";
 import { formatDesignPhaseLabel, formatOrderNumber, formatOrderTypeLabel } from "@/lib/order-flow";
 import { PageBanner } from "@/components/marketing/page-banner";
@@ -13,6 +17,22 @@ export default function TrackOrderPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<PublicOrderTracking | null>(null);
+  const [autoLoading, setAutoLoading] = useState(false);
+
+  // Direct email "magic link": /track?token=<orderId> loads the order straight
+  // away — the customer never has to type an order number or email.
+  useEffect(() => {
+    const token = new URLSearchParams(window.location.search).get("token");
+    if (!token) return;
+    setAutoLoading(true);
+    setError(null);
+    trackPublicOrderByToken(token)
+      .then(({ tracking }) => setResult(tracking))
+      .catch((e) =>
+        setError(e instanceof Error ? e.message : "This tracking link is invalid or expired.")
+      )
+      .finally(() => setAutoLoading(false));
+  }, []);
 
   const onSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -42,6 +62,11 @@ export default function TrackOrderPage() {
       />
       <div className="swag-redesign container py-10 lg:py-14">
         <div className="mx-auto max-w-4xl">
+          {autoLoading ? (
+            <div className="mx-auto flex max-w-2xl items-center justify-center gap-3 rounded-3xl border border-border bg-card p-10 text-sm text-muted-foreground shadow-sm">
+              <Loader2 className="size-5 animate-spin text-primary" /> Loading your order…
+            </div>
+          ) : (
           <form
             onSubmit={onSubmit}
             className="mx-auto max-w-2xl rounded-3xl border border-border bg-card p-6 shadow-sm"
@@ -79,6 +104,7 @@ export default function TrackOrderPage() {
 
             {error ? <p className="mt-3 text-center text-sm text-danger">{error}</p> : null}
           </form>
+          )}
 
           {result ? (
             <div className="mt-6 space-y-5 rounded-3xl border border-border bg-card p-6 shadow-sm">

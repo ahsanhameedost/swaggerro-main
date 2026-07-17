@@ -75,7 +75,7 @@ export default function OrderTrackingPage() {
                       Placed {new Date(order.createdAt).toLocaleDateString()}
                     </div>
                   </div>
-                  <Link href={`/dashboard/orders/${order.id}`}>
+                  <Link href={`/dashboard/orders/${formatOrderNumber(order.orderNumber)}`}>
                     <Button size="sm" variant="bordered">
                       View order
                     </Button>

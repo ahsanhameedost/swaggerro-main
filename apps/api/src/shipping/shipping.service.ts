@@ -6,6 +6,7 @@ import type { AuthUser } from "../common/guards/auth.guard";
 import { randomUUID } from "crypto";
 import { slugify } from "../common/utils/slug";
 import { hasPermission } from "../common/utils/permissions";
+import { buildOrderIdentifierWhere } from "../catalog/orders/order-identifier";
 import type {
   CreateShipmentPaymentDto,
   CreateShippingProfileDto,
@@ -320,6 +321,7 @@ export class ShippingService {
         order: {
           select: {
             id: true,
+            orderNumber: true,
             userId: true,
             assignedEmployeeId: true,
             name: true,
@@ -434,7 +436,7 @@ export class ShippingService {
   async getOrderShippingPlanner(orderId: string, authUser: AuthUser) {
     const order = await this.requireAccessibleOrderForShipping(orderId, authUser);
     const shipments = await this.prisma.shippingShipment.findMany({
-      where: { orderId },
+      where: { orderId: order.id },
       include: {
         recipient: true,
         items: {
@@ -450,6 +452,7 @@ export class ShippingService {
     return {
       order: {
         id: order.id,
+        orderNumber: order.orderNumber,
         userId: order.userId,
         name: order.name,
         email: order.email,
@@ -1100,8 +1103,8 @@ export class ShippingService {
   }
 
   private async requireAccessibleOrderForShipping(orderId: string, authUser: AuthUser) {
-    const order = await this.prisma.catalogOrder.findUnique({
-      where: { id: orderId },
+    const order = await this.prisma.catalogOrder.findFirst({
+      where: buildOrderIdentifierWhere(orderId),
       include: {
         items: {
           orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
@@ -1670,6 +1673,7 @@ export class ShippingService {
       order: shipment.order
         ? {
             id: shipment.order.id,
+            orderNumber: shipment.order.orderNumber ?? null,
             userId: shipment.order.userId ?? null,
             assignedEmployeeId: shipment.order.assignedEmployeeId ?? null,
             name: shipment.order.name ?? null,

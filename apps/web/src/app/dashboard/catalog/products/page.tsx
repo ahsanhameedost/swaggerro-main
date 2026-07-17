@@ -305,7 +305,7 @@ export default function ProductsPage() {
                       <TableCell>
                         <RowActionsDropdown
                           isReadOnly={!canWrite}
-                          onEdit={() => router.push(`/dashboard/catalog/products/${product.id}`)}
+                          onEdit={() => router.push(`/dashboard/catalog/products/${product.slug}`)}
                           onDelete={() => setDeleteTarget({ id: product.id, name: product.name })}
                         />
                       </TableCell>

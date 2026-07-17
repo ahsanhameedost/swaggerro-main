@@ -99,3 +99,11 @@ export async function trackPublicOrder(orderNumber: string, email: string) {
     { method: "GET" }
   );
 }
+
+// Direct "magic link" tracking — the opaque token (order id) alone authorizes it.
+export async function trackPublicOrderByToken(token: string) {
+  return apiFetch<{ tracking: PublicOrderTracking }>(
+    `/catalog/public/track${buildQuery({ token })}`,
+    { method: "GET" }
+  );
+}
