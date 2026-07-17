@@ -181,6 +181,8 @@ const productSchemaBase = z.object({
   widthIn: z.coerce.number().min(0).optional().nullable(),
   heightIn: z.coerce.number().min(0).optional().nullable(),
   basePrice: moneySchema.optional().nullable(),
+  // What the product costs Swaggeroo (COGS) — drives profit/margin in Finance.
+  costPrice: moneySchema.optional().nullable(),
   compareAtPrice: moneySchema.optional().nullable(),
   minQty: z.coerce.number().int().min(1).default(1),
   baseStock: z.coerce.number().int().min(0).default(0),
