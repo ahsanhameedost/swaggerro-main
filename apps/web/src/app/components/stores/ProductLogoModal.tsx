@@ -73,6 +73,13 @@ export function ProductLogoModal({
     basePrice,
     fallbackPercent: product.fallbackPercent,
   });
+  // Intermediate values so the breakdown can SHOW the derivation, not just the
+  // final numbers: markup = price − base, split 50/50 between seller & platform.
+  const markup = Math.max(0, Math.round((effectivePrice - basePrice) * 100) / 100);
+  const yourHalf = commission.sellerEarning; // seller's half of the markup
+  const swagHalf = Math.max(0, Math.round((markup - yourHalf) * 100) / 100); // platform's half
+  const swagTotal = commission.platformEarning; // base + platform's half
+  const pct = (part: number) => (effectivePrice > 0 ? (part / effectivePrice) * 100 : 0);
   // Existing saved logo (remote url) or a freshly picked local file.
   const [logoUrl, setLogoUrl] = useState<string | null>(resolveStorageUrl(product.logoUrl));
   const [logoKey, setLogoKey] = useState<string | null>(null);
@@ -472,28 +479,87 @@ export function ProductLogoModal({
                 </div>
               ) : null}
 
-              {/* Live breakdown */}
-              <div className="space-y-1 rounded-xl bg-muted/50 p-3 text-xs">
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Sale price</span>
-                  <span className="font-medium tabular-nums">{formatMoney(effectivePrice, currency)}</span>
+              {/* Live breakdown — shows HOW the split is worked out, step by step */}
+              {markup > 0 ? (
+                <div className="space-y-3 rounded-xl bg-muted/50 p-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    How this is calculated
+                  </p>
+
+                  {/* Step 1 — base + your price → your markup */}
+                  <div className="space-y-1 text-xs">
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">Base price (Swaggeroo&apos;s floor)</span>
+                      <span className="tabular-nums">{formatMoney(basePrice, currency)}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">Your price</span>
+                      <span className="tabular-nums">{formatMoney(effectivePrice, currency)}</span>
+                    </div>
+                    <div className="flex items-center justify-between border-t border-border pt-1 font-medium text-foreground">
+                      <span>
+                        Your markup ({formatMoney(effectivePrice, currency)} − {formatMoney(basePrice, currency)})
+                      </span>
+                      <span className="tabular-nums">{formatMoney(markup, currency)}</span>
+                    </div>
+                  </div>
+
+                  {/* Step 2 — split the markup 50 / 50 */}
+                  <div className="space-y-1 rounded-lg border border-dashed border-border bg-card/60 p-2 text-xs">
+                    <p className="text-muted-foreground">Markup split 50 / 50:</p>
+                    <div className="flex items-center justify-between">
+                      <span className="flex items-center gap-1.5">
+                        <span className="size-2 rounded-full bg-primary" /> You keep half
+                      </span>
+                      <span className="font-semibold tabular-nums text-primary">{formatMoney(yourHalf, currency)}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="flex items-center gap-1.5">
+                        <span className="size-2 rounded-full bg-foreground/40" /> Swaggeroo keeps half
+                      </span>
+                      <span className="tabular-nums">{formatMoney(swagHalf, currency)}</span>
+                    </div>
+                  </div>
+
+                  {/* Visual split bar — base + Swaggeroo's half vs your half */}
+                  <div className="space-y-1">
+                    <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-muted">
+                      <span className="bg-foreground/25" style={{ width: `${pct(basePrice)}%` }} title="Base price" />
+                      <span className="bg-foreground/45" style={{ width: `${pct(swagHalf)}%` }} title="Swaggeroo's half of the markup" />
+                      <span className="bg-primary" style={{ width: `${pct(yourHalf)}%` }} title="Your half of the markup" />
+                    </div>
+                    <div className="flex justify-between text-[10px] text-muted-foreground">
+                      <span>Base + Swaggeroo&apos;s half</span>
+                      <span className="text-primary">Your earnings</span>
+                    </div>
+                  </div>
+
+                  {/* Totals */}
+                  <div className="space-y-1 border-t border-border pt-2 text-xs">
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">Swaggeroo keeps (base + half)</span>
+                      <span className="tabular-nums">{formatMoney(swagTotal, currency)}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold text-foreground">You earn</span>
+                      <span className="text-base font-bold tabular-nums text-primary">
+                        {formatMoney(yourHalf, currency)}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-muted-foreground">
+                      <span>Customer pays</span>
+                      <span className="tabular-nums">{formatMoney(effectivePrice, currency)}</span>
+                    </div>
+                  </div>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Swaggeroo keeps</span>
-                  <span className="font-medium tabular-nums text-foreground">
-                    {formatMoney(commission.platformEarning, currency)}
-                  </span>
+              ) : (
+                <div className="rounded-xl bg-muted/50 p-3 text-xs text-muted-foreground">
+                  At the {formatMoney(basePrice, currency)} base price you earn{" "}
+                  <span className="font-semibold text-foreground">{formatMoney(0, currency)}</span>. Raise your price
+                  above the base to start earning — you keep{" "}
+                  <span className="font-semibold text-primary">50%</span> of everything above it.
                 </div>
-                <div className="flex items-center justify-between border-t border-border pt-1">
-                  <span className="font-semibold text-foreground">
-                    You earn
-                    {commission.effectivePercent > 0 ? ` (${commission.effectivePercent}% of your markup)` : ""}
-                  </span>
-                  <span className="font-bold tabular-nums text-primary">
-                    {formatMoney(commission.sellerEarning, currency)}
-                  </span>
-                </div>
-              </div>
+              )}
             </div>
           </div>
         </div>
