@@ -161,6 +161,7 @@ export class CatalogOrdersService extends CatalogSharedService {
       this.prisma.catalogOrder.findMany({
         where,
         include: this.orderInclude,
+        relationLoadStrategy: "join",
         orderBy: { createdAt: "desc" },
         skip: (query.page - 1) * query.pageSize,
         take: query.pageSize
@@ -1121,18 +1122,22 @@ async createOrderPayment(id: string, input: CreateOrderPaymentDto, authUser: Aut
   const paymentStatus = this.mapSquarePaymentStatus(payment?.status);
   const paidAt = paymentStatus === "PAID" ? new Date() : null;
 
-  await this.prisma.$transaction(async (tx) => {
-    await tx.catalogOrder.update({
+  // Batched (array) transaction rather than an interactive one: Prisma sends
+  // both writes in a single round-trip instead of BEGIN/stmt/stmt/COMMIT hops —
+  // meaningful over the remote DB. Still atomic.
+  const writes: Prisma.PrismaPromise<unknown>[] = [
+    this.prisma.catalogOrder.update({
       where: { id: order.id },
       data: {
         paymentStatus,
         squarePaymentId: payment?.id ?? null,
         paidAt
       }
-    });
-
-    if (paymentStatus === "PAID") {
-      await tx.shippingShipment.updateMany({
+    })
+  ];
+  if (paymentStatus === "PAID") {
+    writes.push(
+      this.prisma.shippingShipment.updateMany({
         where: {
           orderId: order.id,
           billingType: "INCLUDED_IN_ORDER"
@@ -1141,22 +1146,25 @@ async createOrderPayment(id: string, input: CreateOrderPaymentDto, authUser: Aut
           paymentStatus: "PAID",
           paidAt
         }
-      });
-    }
-  });
+      })
+    );
+  }
+  await this.prisma.$transaction(writes);
 
-  // Notify super admins + the customer once the payment lands.
+  // Notify super admins + the customer once the payment lands. Fire-and-forget:
+  // these are best-effort and must not add network round-trips to the response
+  // the customer is waiting on (notify/notifyMany already swallow their errors).
   if (paymentStatus === "PAID") {
     const orderLabel = `SW-${String(order.orderNumber).padStart(3, "0")}`;
     const totalLabel = `$${totals.totalDue.toFixed(2)}`;
-    await this.notifications.notifyAdmins({
+    void this.notifications.notifyAdmins({
       type: "catalog.order.paid",
       title: "Order paid",
       body: `${order.name} paid ${totalLabel} for order ${orderLabel}.`,
       link: `/dashboard/orders/${order.id}`
     });
     if (order.userId) {
-      await this.notifications.notify({
+      void this.notifications.notify({
         userId: order.userId,
         type: "catalog.order.paid",
         title: "Payment received",
@@ -1492,7 +1500,9 @@ async createOrderPayment(id: string, input: CreateOrderPaymentDto, authUser: Aut
   private async findAccessibleOrderOrThrow(id: string, authUser: AuthUser) {
     const order = await this.prisma.catalogOrder.findFirst({
       where: buildOrderIdentifierWhere(id),
-      include: this.orderInclude
+      include: this.orderInclude,
+      // One JOIN query instead of ~11 sequential round-trips over the remote DB.
+      relationLoadStrategy: "join"
     });
 
     if (!order) {

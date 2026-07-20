@@ -41,7 +41,27 @@ export class NotificationsService {
   }
 
   async notifyMany(userIds: string[], input: Omit<NotificationInput, "userId">) {
-    await Promise.all(userIds.map((userId) => this.notify({ ...input, userId })));
+    if (!userIds.length) return;
+    // One insert for all recipients — over the remote DB, N separate inserts
+    // would each cost a full network round-trip.
+    try {
+      await this.prisma.notification.createMany({
+        data: userIds.map((userId) => ({
+          userId,
+          type: input.type,
+          title: input.title,
+          body: input.body ?? null,
+          link: input.link ?? null,
+          data: input.data ?? Prisma.JsonNull
+        }))
+      });
+    } catch (error) {
+      this.logger.error(
+        `failed to create notifications for ${userIds.length} user(s): ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
+    }
   }
 
   // Notify every super admin (used for platform-wide events like new orders /

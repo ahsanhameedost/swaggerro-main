@@ -1,6 +1,10 @@
 
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  // relationJoins lets heavy `include`s load in ONE JOIN query instead of a
+  // separate round-trip per relation — critical over the remote Azure DB where
+  // each round-trip costs ~200ms (an order detail has ~11 relations).
+  previewFeatures = ["relationJoins"]
 }
 
 datasource db {
