@@ -4,12 +4,14 @@ import { Button } from "@heroui/react";
 import { addToast } from "@heroui/toast";
 import { FlaskConical } from "lucide-react";
 import { useCreateCatalogOrderPayment } from "@/lib/queries.catalog";
+import { createCatalogOrderPaymentIntent } from "@/modules/catalog/orders/api";
 import { formatMoney } from "@/lib/money";
 
 type TestPaymentFormProps = {
   orderId: string;
   amount: number;
   currency: string;
+  couponCode?: string | null;
   isDisabled?: boolean;
   onSuccess?: () => void | Promise<void>;
 };
@@ -23,6 +25,7 @@ export function TestPaymentForm({
   orderId,
   amount,
   currency,
+  couponCode,
   isDisabled = false,
   onSuccess
 }: TestPaymentFormProps) {
@@ -30,6 +33,8 @@ export function TestPaymentForm({
 
   const handleSubmit = async () => {
     try {
+      // Apply/clear the coupon on the order first (stores the discount), then pay.
+      await createCatalogOrderPaymentIntent(orderId, couponCode ?? null);
       await paymentMutation.mutateAsync({
         id: orderId,
         input: { sourceId: "TEST-CARD" }

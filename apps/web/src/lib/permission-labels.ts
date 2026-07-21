@@ -60,6 +60,9 @@ export const PERMISSION_LABELS: Record<string, string> = {
 
   "seller.store.read": "View My Store",
   "seller.store.write": "Manage My Store",
+
+  "coupons.read": "View Coupons",
+  "coupons.write": "Manage Coupons",
 };
 
 /** Friendly label for a permission key (falls back to a prettified key). */
@@ -84,6 +87,7 @@ const GROUP_RULES: Array<{ test: (key: string) => boolean; group: string }> = [
   { test: (k) => k.startsWith("partners.applications"), group: "Seller Applications" },
   { test: (k) => k.startsWith("partners.stores"), group: "Stores" },
   { test: (k) => k.startsWith("seller."), group: "My Store" },
+  { test: (k) => k.startsWith("coupons"), group: "Coupons" },
   { test: (k) => k.startsWith("profile"), group: "Account" },
 ];
 

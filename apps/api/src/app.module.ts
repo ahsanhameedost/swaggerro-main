@@ -22,6 +22,7 @@ import { PayoutsModule } from "./payouts/payouts.module";
 import { PaymentsModule } from "./payments/payments.module";
 import { SavedSwagPacksModule } from "./saved-swag-packs/saved-swag-packs.module";
 import { SettingsModule } from "./settings/settings.module";
+import { CouponsModule } from "./coupons/coupons.module";
 
 @Module({
   imports: [
@@ -56,7 +57,8 @@ import { SettingsModule } from "./settings/settings.module";
     PayoutsModule,
     PaymentsModule,
     SavedSwagPacksModule,
-    SettingsModule
+    SettingsModule,
+    CouponsModule
   ],
   controllers: [HealthController]
 })

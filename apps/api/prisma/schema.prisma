@@ -588,6 +588,11 @@ model CatalogOrder {
   // Marketplace attribution snapshot (set when a store order is paid).
   commissionPercent  Decimal?              @db.Decimal(5, 2)
   sellerEarningCents Int?
+  // Coupon applied at checkout (optional). discountAmount is what was taken off
+  // the order total; couponCode is snapshotted so the record survives coupon edits.
+  couponId           String?
+  couponCode         String?
+  discountAmount     Decimal               @default(0) @db.Decimal(10, 2)
   items              CatalogOrderItem[]
   shipments          ShippingShipment[]
   inventoryLedgerEntries InventoryLedgerEntry[]
@@ -1010,6 +1015,7 @@ model Store {
   products               StoreProduct[]
   orders                 CatalogOrder[]
   payouts                SellerPayout[]
+  coupons                Coupon[]
   // Products this seller owns (future: sellers adding their own catalog items).
   ownedProducts          CatalogProduct[]   @relation("StoreOwnedProducts")
   createdAt              DateTime           @default(now())
@@ -1094,4 +1100,45 @@ model StoreProduct {
   @@index([storeId])
   @@index([productId])
   @@map("store_products")
+}
+
+// ── Coupons ──────────────────────────────────────────────────────────────────
+// Discount codes redeemable at checkout. A coupon is either PLATFORM-wide
+// (storeId null — created by an admin, usable on the main shop and any store) or
+// scoped to a single seller STORE (storeId set — created by that seller, usable
+// only on their storefront). Absorption: platform coupons are funded by
+// Swaggeroo; store coupons are funded out of the seller's earnings.
+enum CouponDiscountType {
+  PERCENT // discountValue is a percent (0–100), optionally capped by maxDiscount
+  FIXED // discountValue is a flat currency amount
+}
+
+model Coupon {
+  id             String             @id @default(cuid())
+  code           String             @unique // stored uppercased
+  description    String?
+  discountType   CouponDiscountType @default(PERCENT)
+  discountValue  Decimal            @db.Decimal(10, 2)
+  // null => platform-wide (admin) coupon; set => scoped to this seller store.
+  storeId        String?
+  store          Store?             @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  createdByUserId String?
+  // Optional: restrict redemption to a single user (admin "coupon for X").
+  assignedUserId String?
+  // Optional: limit the coupon to specific products; empty => whole order.
+  productIds     String[]           @default([])
+  // Optional guards.
+  minSubtotal    Decimal?           @db.Decimal(10, 2)
+  maxDiscount    Decimal?           @db.Decimal(10, 2) // caps a PERCENT coupon
+  usageLimit     Int? // total redemptions allowed across everyone
+  usedCount      Int                @default(0)
+  startsAt       DateTime?
+  expiresAt      DateTime?
+  active         Boolean            @default(true)
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  @@index([storeId])
+  @@index([assignedUserId])
+  @@map("coupons")
 }

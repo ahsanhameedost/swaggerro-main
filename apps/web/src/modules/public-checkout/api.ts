@@ -14,6 +14,7 @@ export type CreatePublicCheckoutInput = {
   shippingAddress?: string | null;
   notes?: string | null;
   items: PublicCheckoutItemInput[];
+  couponCode?: string | null;
 };
 
 export type PublicCheckoutSession = {

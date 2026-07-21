@@ -11,6 +11,7 @@ import { PrismaService } from "../../prisma/prisma.service";
 import { env } from "../../env";
 import { NotificationsService } from "../../notifications/notifications.service";
 import { NotificationEventsService } from "../../notifications/notification-events.service";
+import { CouponsService } from "../../coupons/coupons.service";
 import { renderOrderSummaryHtml } from "../../email/email-layout";
 import { computeCommission } from "../common/commission";
 import type {
@@ -25,7 +26,8 @@ export class StoreCheckoutService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly notifications: NotificationsService,
-    private readonly events: NotificationEventsService
+    private readonly events: NotificationEventsService,
+    private readonly coupons: CouponsService
   ) {}
 
   private getStripeClient() {
@@ -142,7 +144,27 @@ export class StoreCheckoutService {
     }
 
     if (totalCents <= 0) throw new BadRequestException("Invalid order total");
-    const total = totalCents / 100;
+
+    // Optional coupon. A store coupon (belonging to THIS store) or a platform
+    // coupon both work here; who funds it is decided at confirm time from the
+    // coupon's scope (store coupon → seller's earnings; platform → Swaggeroo).
+    let discountCents = 0;
+    let couponId: string | null = null;
+    let couponCode: string | null = null;
+    if (input.couponCode?.trim()) {
+      const resolved = await this.coupons.validateForCheckout({
+        code: input.couponCode,
+        lines: orderItems.map((oi) => ({ productId: oi.productId, lineTotal: oi.totalPrice })),
+        storeId: store.id,
+        userId: buyerUserId
+      });
+      discountCents = Math.min(totalCents, Math.round(resolved.discountAmount * 100));
+      couponId = resolved.couponId;
+      couponCode = resolved.code;
+    }
+    const chargeCents = totalCents - discountCents;
+    const total = chargeCents / 100; // amount actually charged (post-discount)
+    const discountAmount = discountCents / 100;
 
     const noteParts = [
       input.notes?.trim() || null,
@@ -176,6 +198,9 @@ export class StoreCheckoutService {
           notes: noteParts.join(" | ") || null,
           packQuantity: 1,
           totalPrice: new Prisma.Decimal(total),
+          couponId,
+          couponCode,
+          discountAmount: new Prisma.Decimal(discountAmount),
           currency: "USD",
           stockReserved: true,
           items: {
@@ -212,7 +237,7 @@ export class StoreCheckoutService {
 
     const stripe = this.getStripeClient();
     const intent = await stripe.paymentIntents.create({
-      amount: totalCents,
+      amount: chargeCents,
       currency: "usd",
       metadata: { orderId: order.id, storeId: store.id, kind: "store_checkout" },
       receipt_email: input.email.trim(),
@@ -296,6 +321,18 @@ export class StoreCheckoutService {
       });
       sellerEarningCents += Math.round(split.sellerEarning * 100) * item.quantity;
     }
+    // Coupon absorption: a seller's OWN store coupon comes out of their earnings
+    // (they ran the promo); a platform coupon is funded by Swaggeroo, so the
+    // seller's earning is unchanged (the platform simply keeps less of the lower
+    // charged total). totalCents below is already the discounted amount charged.
+    const discountCents = Math.round(Number(order.discountAmount ?? 0) * 100);
+    if (discountCents > 0 && order.couponId) {
+      const coupon = await this.prisma.coupon.findUnique({
+        where: { id: order.couponId },
+        select: { storeId: true }
+      });
+      if (coupon?.storeId) sellerEarningCents -= discountCents;
+    }
     sellerEarningCents = Math.max(0, Math.min(sellerEarningCents, totalCents));
     // Snapshot the seller's effective take as a percentage (for payout display).
     const effectiveSellerPercent =
@@ -311,6 +348,9 @@ export class StoreCheckoutService {
         sellerEarningCents
       }
     });
+
+    // Count the coupon redemption now the payment landed (best-effort).
+    if (order.couponId) await this.coupons.redeem(order.couponId);
 
     const amountLabel = `$${(totalCents / 100).toFixed(2)}`;
     if (order.store?.ownerUserId) {
@@ -340,11 +380,19 @@ export class StoreCheckoutService {
     }));
     const itemsSubtotal = summaryItems.reduce((sum, item) => sum + item.lineTotal, 0);
     const grandTotal = Number(order.totalPrice);
+    const discount = Number(order.discountAmount ?? 0);
     const summaryRows: { label: string; value: number; strong?: boolean }[] = [
       { label: "Products subtotal", value: itemsSubtotal }
     ];
-    if (grandTotal - itemsSubtotal > 0.005) {
-      summaryRows.push({ label: "Shipping, storage & fees", value: grandTotal - itemsSubtotal });
+    if (discount > 0.005) {
+      summaryRows.push({
+        label: order.couponCode ? `Discount (${order.couponCode})` : "Discount",
+        value: -discount
+      });
+    }
+    const feesLike = grandTotal - (itemsSubtotal - discount);
+    if (feesLike > 0.005) {
+      summaryRows.push({ label: "Shipping, storage & fees", value: feesLike });
     }
     summaryRows.push({ label: "Total paid", value: grandTotal, strong: true });
     const orderSummaryHtml = renderOrderSummaryHtml({ items: summaryItems, rows: summaryRows });

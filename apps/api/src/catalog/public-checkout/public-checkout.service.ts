@@ -11,6 +11,7 @@ import { PrismaService } from "../../prisma/prisma.service";
 import { env } from "../../env";
 import { NotificationsService } from "../../notifications/notifications.service";
 import { NotificationEventsService } from "../../notifications/notification-events.service";
+import { CouponsService } from "../../coupons/coupons.service";
 import { renderOrderSummaryHtml } from "../../email/email-layout";
 import type {
   ConfirmPublicCheckoutInput,
@@ -24,7 +25,8 @@ export class PublicCheckoutService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly notifications: NotificationsService,
-    private readonly events: NotificationEventsService
+    private readonly events: NotificationEventsService,
+    private readonly coupons: CouponsService
   ) {}
 
   private getStripeClient() {
@@ -120,7 +122,28 @@ export class PublicCheckoutService {
     }
 
     if (totalCents <= 0) throw new BadRequestException("Invalid order total");
-    const total = totalCents / 100;
+    const subtotal = totalCents / 100;
+
+    // Optional coupon. Validated against the live cart; discount is clamped to the
+    // subtotal so the charge can never go negative. Platform (non-store) order →
+    // Swaggeroo funds the discount.
+    let discountCents = 0;
+    let couponId: string | null = null;
+    let couponCode: string | null = null;
+    if (input.couponCode?.trim()) {
+      const resolved = await this.coupons.validateForCheckout({
+        code: input.couponCode,
+        lines: orderItems.map((oi) => ({ productId: oi.productId, lineTotal: oi.totalPrice })),
+        storeId: null,
+        userId: buyerUserId
+      });
+      discountCents = Math.min(totalCents, Math.round(resolved.discountAmount * 100));
+      couponId = resolved.couponId;
+      couponCode = resolved.code;
+    }
+    const chargeCents = totalCents - discountCents;
+    const total = chargeCents / 100; // amount actually charged (post-discount)
+    const discountAmount = discountCents / 100;
 
     const noteParts = [
       input.notes?.trim() || null,
@@ -153,6 +176,9 @@ export class PublicCheckoutService {
           notes: noteParts.join(" | ") || null,
           packQuantity: 1,
           totalPrice: new Prisma.Decimal(total),
+          couponId,
+          couponCode,
+          discountAmount: new Prisma.Decimal(discountAmount),
           currency: "USD",
           stockReserved: true,
           items: {
@@ -189,7 +215,7 @@ export class PublicCheckoutService {
 
     const stripe = this.getStripeClient();
     const intent = await stripe.paymentIntents.create({
-      amount: totalCents,
+      amount: chargeCents,
       currency: "usd",
       metadata: { orderId: order.id, kind: "public_checkout" },
       receipt_email: input.email.trim(),
@@ -246,6 +272,9 @@ export class PublicCheckoutService {
       }
     });
 
+    // Count the coupon redemption now that the payment landed (best-effort).
+    if (order.couponId) await this.coupons.redeem(order.couponId);
+
     const amountLabel = `$${(totalCents / 100).toFixed(2)}`;
     const orderLabel = `SW-${String(order.orderNumber).padStart(3, "0")}`;
     await this.notifications.notifyAdmins({
@@ -277,11 +306,20 @@ export class PublicCheckoutService {
     }));
     const itemsSubtotal = summaryItems.reduce((sum, item) => sum + item.lineTotal, 0);
     const grandTotal = Number(order.totalPrice);
+    const discount = Number(order.discountAmount ?? 0);
     const summaryRows: { label: string; value: number; strong?: boolean }[] = [
       { label: "Products subtotal", value: itemsSubtotal }
     ];
-    if (grandTotal - itemsSubtotal > 0.005) {
-      summaryRows.push({ label: "Shipping, storage & fees", value: grandTotal - itemsSubtotal });
+    if (discount > 0.005) {
+      summaryRows.push({
+        label: order.couponCode ? `Discount (${order.couponCode})` : "Discount",
+        value: -discount
+      });
+    }
+    // Any residual difference beyond the discount (shipping/fees) — usually none here.
+    const feesLike = grandTotal - (itemsSubtotal - discount);
+    if (feesLike > 0.005) {
+      summaryRows.push({ label: "Shipping, storage & fees", value: feesLike });
     }
     summaryRows.push({ label: "Total paid", value: grandTotal, strong: true });
     const orderSummaryHtml = renderOrderSummaryHtml({ items: summaryItems, rows: summaryRows });

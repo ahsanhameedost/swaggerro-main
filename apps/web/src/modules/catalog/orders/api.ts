@@ -152,8 +152,9 @@ export type CatalogOrderPaymentIntent = {
   publishableKey: string | null;
 };
 
-export async function createCatalogOrderPaymentIntent(id: string) {
+export async function createCatalogOrderPaymentIntent(id: string, couponCode?: string | null) {
   return apiFetch<CatalogOrderPaymentIntent>(`/catalog/orders/${id}/payment-intent`, {
-    method: "POST"
+    method: "POST",
+    body: JSON.stringify({ couponCode: couponCode ?? null })
   });
 }

@@ -15,6 +15,7 @@ export type CreateStoreCheckoutInput = {
   shippingAddress?: string | null;
   notes?: string | null;
   items: StoreCheckoutItemInput[];
+  couponCode?: string | null;
 };
 
 export type StoreCheckoutSession = {

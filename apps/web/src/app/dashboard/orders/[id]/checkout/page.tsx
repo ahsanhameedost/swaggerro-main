@@ -1,10 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { Button, Card, CardBody, Chip, Divider, Image, Spinner } from "@heroui/react";
-import { ArrowLeft, CheckCircle2, Download, MapPin, LockKeyhole } from "lucide-react";
+import { Button, Card, CardBody, Chip, Divider, Image, Input, Spinner } from "@heroui/react";
+import { addToast } from "@heroui/toast";
+import { ArrowLeft, CheckCircle2, Download, Loader2, MapPin, LockKeyhole } from "lucide-react";
 import { useCatalogOrder } from "@/lib/queries.catalog";
+import { validateCoupon } from "@/modules/coupons/api";
 import { formatMoney } from "@/lib/money";
 import { downloadApiFile } from "@/lib/download";
 import { useMe } from "@/queries/auth";
@@ -101,6 +104,37 @@ export default function OrderCheckoutPage() {
   const isCustomer = hasPermission(user, "orders.self.read");
   const { data, isLoading, isError, error } = useCatalogOrder(orderId ?? "", !!orderId && isCustomer);
   const order = data?.order;
+
+  // Coupon (optional) — previewed against this order's items, then applied at
+  // payment time via the payment-intent call so the charge reflects the discount.
+  const [couponInput, setCouponInput] = useState("");
+  const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discount: number } | null>(null);
+  const [couponError, setCouponError] = useState<string | null>(null);
+  const [applyingCoupon, setApplyingCoupon] = useState(false);
+
+  const applyCoupon = async () => {
+    const code = couponInput.trim();
+    if (!code || !order) return;
+    setApplyingCoupon(true);
+    setCouponError(null);
+    try {
+      const res = await validateCoupon({
+        code,
+        storeId: null,
+        lines: order.items.map((i) => ({
+          productId: (i as { productId?: string }).productId ?? i.id,
+          lineTotal: i.totalPrice,
+        })),
+      });
+      setAppliedCoupon({ code: res.code, discount: res.discountAmount });
+      addToast({ title: `Coupon ${res.code} applied`, color: "success" });
+    } catch (err: any) {
+      setAppliedCoupon(null);
+      setCouponError(err?.message ?? "That coupon can't be used.");
+    } finally {
+      setApplyingCoupon(false);
+    }
+  };
 
   if (isLoadingUser) {
     return (
@@ -238,6 +272,9 @@ export default function OrderCheckoutPage() {
     );
   }
 
+  const discount = appliedCoupon ? Math.min(appliedCoupon.discount, order.totalDue) : 0;
+  const payTotal = Math.max(0, order.totalDue - discount);
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -337,18 +374,20 @@ export default function OrderCheckoutPage() {
               {PAYMENTS_TEST_MODE ? (
                 <TestPaymentForm
                   orderId={order.id}
-                  amount={order.totalDue}
+                  amount={payTotal}
                   currency={order.currency}
+                  couponCode={appliedCoupon?.code ?? null}
                   onSuccess={() => router.refresh()}
                 />
               ) : (
                 <StripeCardPaymentForm
                   orderId={order.id}
-                  amount={order.totalDue}
+                  amount={payTotal}
                   currency={order.currency}
                   customerName={order.name}
                   email={order.email}
                   phone={order.phone}
+                  couponCode={appliedCoupon?.code ?? null}
                   onSuccess={() => router.refresh()}
                 />
               )}
@@ -405,13 +444,62 @@ export default function OrderCheckoutPage() {
                 <span className="text-foreground/60">Estimated taxes & fees</span>
                 <span>{formatMoney(order.taxesAndFees, order.currency)}</span>
               </div>
+              {discount > 0 ? (
+                <div className="flex items-center justify-between font-medium text-success">
+                  <span>Discount ({appliedCoupon?.code})</span>
+                  <span>−{formatMoney(discount, order.currency)}</span>
+                </div>
+              ) : null}
             </div>
 
             <Divider />
 
+            {/* Coupon code */}
+            {appliedCoupon ? (
+              <div className="flex items-center justify-between rounded-2xl border border-success/40 bg-success/5 px-3 py-2 text-sm">
+                <span className="flex items-center gap-1.5 font-medium text-success">
+                  <CheckCircle2 className="size-4" /> {appliedCoupon.code} applied
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAppliedCoupon(null);
+                    setCouponInput("");
+                  }}
+                  className="text-xs font-medium text-foreground/60 hover:text-foreground"
+                >
+                  Remove
+                </button>
+              </div>
+            ) : (
+              <div>
+                <div className="flex gap-2">
+                  <Input
+                    size="sm"
+                    placeholder="Coupon code"
+                    value={couponInput}
+                    onValueChange={(v) => {
+                      setCouponInput(v.toUpperCase());
+                      setCouponError(null);
+                    }}
+                    className="flex-1"
+                  />
+                  <Button
+                    size="sm"
+                    variant="bordered"
+                    isDisabled={applyingCoupon || !couponInput.trim()}
+                    onPress={() => void applyCoupon()}
+                  >
+                    {applyingCoupon ? <Loader2 className="size-4 animate-spin" /> : "Apply"}
+                  </Button>
+                </div>
+                {couponError ? <p className="mt-1.5 text-xs text-danger">{couponError}</p> : null}
+              </div>
+            )}
+
             <div className="flex items-center justify-between text-3xl font-semibold">
               <span>Total</span>
-              <span>{formatMoney(order.totalDue, order.currency)}</span>
+              <span>{formatMoney(payTotal, order.currency)}</span>
             </div>
 
             <div className="rounded-3xl border border-divider bg-content1 px-4 py-3 text-xs text-foreground/55">

@@ -1,0 +1,148 @@
+/* Animated, self-explanatory illustrations for each guide flow. Pure CSS so the
+   component can stay server-rendered; all motion is gated behind
+   prefers-reduced-motion so it holds still for users who ask for that. */
+
+.fv-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 1.25rem;
+  border: 1px solid var(--border);
+  background: var(--card);
+  padding: 1.5rem;
+  box-shadow: 0 1px 2px rgba(13, 27, 61, 0.05);
+}
+
+.fv-glow {
+  position: absolute;
+  inset: -30% 20% auto;
+  height: 12rem;
+  border-radius: 9999px;
+  background: radial-gradient(circle, color-mix(in srgb, var(--primary) 22%, transparent), transparent 70%);
+  filter: blur(8px);
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.fv-hero {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  padding: 0.5rem 0 1.5rem;
+}
+.fv-hero-badge {
+  display: flex;
+  height: 4.5rem;
+  width: 4.5rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 1.5rem;
+  background: var(--brand-soft);
+  color: var(--primary);
+  box-shadow: 0 12px 30px -12px color-mix(in srgb, var(--primary) 60%, transparent);
+}
+
+/* step track */
+.fv-track {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.fv-line {
+  position: absolute;
+  top: 1.125rem;
+  left: 12%;
+  right: 12%;
+  height: 2px;
+  background: var(--border);
+  overflow: hidden;
+}
+.fv-line::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  transform-origin: left center;
+  background: linear-gradient(90deg, var(--primary), color-mix(in srgb, var(--primary) 40%, transparent));
+}
+.fv-node {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  flex: 1;
+  text-align: center;
+}
+.fv-dot {
+  display: flex;
+  height: 2.25rem;
+  width: 2.25rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--muted-foreground);
+}
+.fv-node-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--muted-foreground);
+  line-height: 1.1;
+}
+.fv-caption {
+  margin-top: 1.25rem;
+  border-top: 1px solid var(--border);
+  padding-top: 0.75rem;
+  text-align: center;
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .fv-hero-badge {
+    animation: fvBob 4.5s ease-in-out infinite;
+  }
+  .fv-glow {
+    animation: fvGlow 4.5s ease-in-out infinite;
+  }
+  .fv-line::after {
+    animation: fvFill 3.6s ease-in-out infinite;
+  }
+  /* The pop lives on the inner dot so the flex node layout stays put.
+     Nodes activate in sequence via staggered delays. */
+  .fv-node .fv-dot { animation: fvDot 3.6s ease-in-out infinite; }
+  .fv-node:nth-child(2) .fv-dot { animation-delay: 0.2s; }
+  .fv-node:nth-child(3) .fv-dot { animation-delay: 1.2s; }
+  .fv-node:nth-child(4) .fv-dot { animation-delay: 2.2s; }
+}
+
+@keyframes fvBob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+@keyframes fvGlow {
+  0%, 100% { opacity: 0.45; }
+  50% { opacity: 0.85; }
+}
+@keyframes fvFill {
+  0% { transform: scaleX(0); }
+  70%, 100% { transform: scaleX(1); }
+}
+@keyframes fvDot {
+  0%, 66%, 100% {
+    border-color: var(--border);
+    background: var(--card);
+    color: var(--muted-foreground);
+    transform: scale(0.92);
+  }
+  10%, 30% {
+    border-color: var(--primary);
+    background: var(--brand-soft);
+    color: var(--primary);
+    transform: scale(1.08);
+  }
+}

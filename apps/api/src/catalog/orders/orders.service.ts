@@ -39,6 +39,7 @@ import { StorageService } from "../../storage/storage.service";
 import { NotificationsService } from "../../notifications/notifications.service";
 import { buildOrderIdentifierWhere } from "./order-identifier";
 import { NotificationEventsService } from "../../notifications/notification-events.service";
+import { CouponsService } from "../../coupons/coupons.service";
 import { CatalogSharedService } from "../common/catalog-shared.service";
 import { hasPermission } from "../../common/utils/permissions";
 import { env } from "../../env";
@@ -84,6 +85,8 @@ type OrderTotals = {
   shippingCostCents: number;
   taxesAndFees: number;
   taxesAndFeesCents: number;
+  discountAmount: number;
+  discountCents: number;
   totalDue: number;
   totalDueCents: number;
   warehouseQuantity: number;
@@ -99,7 +102,8 @@ export class CatalogOrdersService extends CatalogSharedService {
     storage: StorageService,
     emailService: EmailService,
     private readonly notifications: NotificationsService,
-    private readonly events: NotificationEventsService
+    private readonly events: NotificationEventsService,
+    private readonly coupons: CouponsService
   ) {
     super(prisma, storage, emailService);
   }
@@ -1051,13 +1055,13 @@ export class CatalogOrdersService extends CatalogSharedService {
 // Step 1 of the Stripe flow: create a PaymentIntent for the order's amount and
 // return its client secret so the browser can confirm the card. Step 2 is
 // createOrderPayment, which verifies the confirmed intent server-side.
-async createOrderPaymentIntent(id: string, authUser: AuthUser) {
+async createOrderPaymentIntent(id: string, authUser: AuthUser, couponCode?: string | null) {
   if (!hasPermission(authUser, "orders.self.read")) {
     throw new ForbiddenException("Only customers can pay for orders");
   }
 
   const order = await this.findAccessibleOrderOrThrow(id, authUser);
-  const totals = this.calculateOrderTotals(order);
+  let totals = this.calculateOrderTotals(order);
 
   if (!totals.allItemsReadyToOrder) {
     throw new BadRequestException(
@@ -1070,6 +1074,11 @@ async createOrderPaymentIntent(id: string, authUser: AuthUser) {
   if (order.paymentStatus === "PAID") {
     throw new BadRequestException("This order has already been paid");
   }
+
+  // Apply (or clear) the coupon, then recompute totals so the intent amount and
+  // the later payment verification both use the discounted total.
+  await this.applyOrderCoupon(order, couponCode, authUser);
+  totals = this.calculateOrderTotals(order);
 
   if (env.PAYMENTS_TEST_MODE) {
     // No real intent in mock mode — the test form posts a TEST sourceId directly.
@@ -1091,6 +1100,49 @@ async createOrderPaymentIntent(id: string, authUser: AuthUser) {
     clientSecret: intent.client_secret,
     publishableKey: env.STRIPE_PUBLISHABLE_KEY ?? null
   };
+}
+
+// Validate + persist (or clear) a coupon on an existing order, mutating the
+// in-memory order so the caller can recompute totals. Bulk orders are platform
+// orders (Swaggeroo funds the discount); a coupon's discount is centralized in
+// calculateOrderTotals, so it flows to both the charge and the displayed total.
+private async applyOrderCoupon(
+  order: OrderWithRelations,
+  couponCode: string | null | undefined,
+  authUser: AuthUser
+) {
+  const code = couponCode?.trim();
+  if (code) {
+    const lines = (order.items ?? [])
+      .filter((i) => !(i as any).pendingAddOn)
+      .map((i) => ({ productId: i.productId, lineTotal: Number(i.totalPrice) }));
+    const resolved = await this.coupons.validateForCheckout({
+      code,
+      lines,
+      storeId: order.storeId ?? null,
+      userId: order.userId ?? authUser.sub
+    });
+    await this.prisma.catalogOrder.update({
+      where: { id: order.id },
+      data: {
+        couponId: resolved.couponId,
+        couponCode: resolved.code,
+        discountAmount: new Prisma.Decimal(resolved.discountAmount)
+      }
+    });
+    (order as any).couponId = resolved.couponId;
+    (order as any).couponCode = resolved.code;
+    (order as any).discountAmount = resolved.discountAmount;
+  } else if ((order as any).couponId || Number((order as any).discountAmount ?? 0) > 0) {
+    // No code supplied → remove any previously-applied coupon.
+    await this.prisma.catalogOrder.update({
+      where: { id: order.id },
+      data: { couponId: null, couponCode: null, discountAmount: new Prisma.Decimal(0) }
+    });
+    (order as any).couponId = null;
+    (order as any).couponCode = null;
+    (order as any).discountAmount = 0;
+  }
 }
 
 async createOrderPayment(id: string, input: CreateOrderPaymentDto, authUser: AuthUser) {
@@ -1155,6 +1207,9 @@ async createOrderPayment(id: string, input: CreateOrderPaymentDto, authUser: Aut
   // these are best-effort and must not add network round-trips to the response
   // the customer is waiting on (notify/notifyMany already swallow their errors).
   if (paymentStatus === "PAID") {
+    // Count the coupon redemption now the payment landed (best-effort).
+    if ((order as any).couponId) void this.coupons.redeem((order as any).couponId);
+
     const orderLabel = `SW-${String(order.orderNumber).padStart(3, "0")}`;
     const totalLabel = `$${totals.totalDue.toFixed(2)}`;
     void this.notifications.notifyAdmins({
@@ -1643,7 +1698,9 @@ async createOrderPayment(id: string, input: CreateOrderPaymentDto, authUser: Aut
     }
   }
 
-private calculateOrderTotals(order: Pick<OrderWithRelations, "items" | "totalPrice" | "shipments">) {
+private calculateOrderTotals(
+  order: Pick<OrderWithRelations, "items" | "totalPrice" | "shipments"> & { discountAmount?: unknown }
+) {
   const subtotal = this.requireNumber(
     this.decimalToNumber(order.totalPrice),
     "Order total price is missing"
@@ -1685,7 +1742,15 @@ private calculateOrderTotals(order: Pick<OrderWithRelations, "items" | "totalPri
   const shipmentCount = (order.shipments ?? []).filter((shipment) => shipment.status !== "CANCELLED").length;
   const taxesAndFees = 0;
   const taxesAndFeesCents = 0;
-  const totalDueCents = subtotalCents + storageCostCents + shippingCostCents + taxesAndFeesCents;
+  // Coupon discount (0 for every order without one — so this is a no-op for
+  // existing orders). Clamped so the total can never go below zero.
+  const grossCents = subtotalCents + storageCostCents + shippingCostCents + taxesAndFeesCents;
+  const discountCents = Math.max(
+    0,
+    Math.min(grossCents, this.toMoneyCents(this.decimalToNumber((order as any).discountAmount) ?? 0))
+  );
+  const discountAmount = discountCents / 100;
+  const totalDueCents = grossCents - discountCents;
   const totalDue = totalDueCents / 100;
   const allItemsReadyToOrder =
     activeItems.length > 0 && activeItems.every((item) => item.designPhase === "READY_TO_ORDER");
@@ -1700,6 +1765,8 @@ private calculateOrderTotals(order: Pick<OrderWithRelations, "items" | "totalPri
     shippingCostCents,
     taxesAndFees,
     taxesAndFeesCents,
+    discountAmount,
+    discountCents,
     totalDue,
     totalDueCents,
     warehouseQuantity: storageQuantity,

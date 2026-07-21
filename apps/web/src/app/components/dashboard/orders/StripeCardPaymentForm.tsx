@@ -22,6 +22,7 @@ type StripeCardPaymentFormProps = {
   customerName?: string;
   email?: string;
   phone?: string | null;
+  couponCode?: string | null;
   isDisabled?: boolean;
   onSuccess?: () => void | Promise<void>;
 };
@@ -38,18 +39,19 @@ function getStripe(publishableKey: string) {
 }
 
 export function StripeCardPaymentForm(props: StripeCardPaymentFormProps) {
-  const { orderId } = props;
+  const { orderId, couponCode } = props;
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [publishableKey, setPublishableKey] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Create a PaymentIntent for this order and fetch its client secret.
+  // Create a PaymentIntent for this order and fetch its client secret. Recreated
+  // when the coupon changes so the charged amount reflects the discount.
   useEffect(() => {
     let active = true;
     setLoading(true);
     setLoadError(null);
-    createCatalogOrderPaymentIntent(orderId)
+    createCatalogOrderPaymentIntent(orderId, couponCode ?? null)
       .then((res) => {
         if (!active) return;
         const pk = res.publishableKey ?? process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? null;
@@ -69,7 +71,7 @@ export function StripeCardPaymentForm(props: StripeCardPaymentFormProps) {
     return () => {
       active = false;
     };
-  }, [orderId]);
+  }, [orderId, couponCode]);
 
   const stripePromise = useMemo(
     () => (publishableKey ? getStripe(publishableKey) : null),

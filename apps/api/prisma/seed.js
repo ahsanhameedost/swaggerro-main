@@ -58,6 +58,9 @@ const PERMISSIONS = [
   { key: "partners.stores.read", description: "Read all white-label stores" },
   { key: "partners.stores.write", description: "Manage all white-label stores" },
 
+  { key: "coupons.read", description: "Read coupons" },
+  { key: "coupons.write", description: "Create and manage coupons" },
+
   { key: "seller.store.read", description: "Read own white-label store" },
   { key: "seller.store.write", description: "Manage own white-label store" },
 

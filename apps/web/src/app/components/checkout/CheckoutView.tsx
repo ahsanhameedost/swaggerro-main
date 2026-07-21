@@ -20,6 +20,7 @@ import { loadStripe, type Stripe } from "@stripe/stripe-js";
 import { Elements, PaymentElement, useElements, useStripe } from "@stripe/react-stripe-js";
 import { getCartItemKey, type BulkCartItem } from "@/lib/cart-store";
 import { resolveUnitPrice } from "@/lib/catalog-pricing";
+import { validateCoupon } from "@/modules/coupons/api";
 import { formatMoney } from "@/lib/money";
 import { cn } from "@/lib/utils";
 import { useCreateRecipient, useRecipients } from "@/queries/recipients";
@@ -55,6 +56,7 @@ export interface CheckoutDetailsPayload {
     quantity: number;
     setupFee?: number;
   }[];
+  couponCode?: string | null;
 }
 
 export interface CheckoutViewProps {
@@ -123,6 +125,44 @@ export function CheckoutView(props: CheckoutViewProps) {
   const lineTotal = (i: BulkCartItem) => unitOf(i) * i.quantity + (i.setupFee ?? 0);
   const total = useMemo(() => items.reduce((sum, i) => sum + lineTotal(i), 0), [items]);
   const currency = items[0]?.currency ?? "USD";
+  // Store items carry a storeId; scope the coupon to that store (null for the
+  // main shop). All items in one checkout belong to the same store.
+  const storeId = items[0]?.storeId ?? null;
+
+  // Coupon state — validated against the live cart before it's applied.
+  const [couponInput, setCouponInput] = useState("");
+  const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discount: number } | null>(null);
+  const [couponError, setCouponError] = useState<string | null>(null);
+  const [applyingCoupon, setApplyingCoupon] = useState(false);
+  const discount = appliedCoupon ? Math.min(appliedCoupon.discount, total) : 0;
+  const payTotal = Math.max(0, total - discount);
+
+  const applyCoupon = async () => {
+    const code = couponInput.trim();
+    if (!code) return;
+    setApplyingCoupon(true);
+    setCouponError(null);
+    try {
+      const res = await validateCoupon({
+        code,
+        storeId,
+        lines: items.map((i) => ({ productId: i.productId, lineTotal: lineTotal(i) })),
+      });
+      setAppliedCoupon({ code: res.code, discount: res.discountAmount });
+      addToast({ title: `Coupon ${res.code} applied`, color: "success" });
+    } catch (err: any) {
+      setAppliedCoupon(null);
+      setCouponError(err?.message ?? "That coupon can't be used.");
+    } finally {
+      setApplyingCoupon(false);
+    }
+  };
+
+  const removeCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponInput("");
+    setCouponError(null);
+  };
 
   const [name, setName] = useState(props.prefillName ?? "");
   const [email, setEmail] = useState(props.prefillEmail ?? "");
@@ -151,7 +191,7 @@ export function CheckoutView(props: CheckoutViewProps) {
   const finishOrder = (orderId: string) => {
     setCompleted({
       orderId,
-      total,
+      total: payTotal,
       currency,
       count: items.reduce((sum, i) => sum + i.quantity, 0)
     });
@@ -283,6 +323,7 @@ export function CheckoutView(props: CheckoutViewProps) {
           quantity: i.quantity,
           setupFee: i.setupFee ?? 0,
         })),
+        couponCode: appliedCoupon?.code ?? null,
       });
       if (res.testMode) {
         await confirm(res.orderId, "TEST");
@@ -569,7 +610,7 @@ export function CheckoutView(props: CheckoutViewProps) {
               <SectionCard step={3} title="Payment">
                 <PaymentPanel
                   session={session}
-                  amount={total}
+                  amount={payTotal}
                   currency={currency}
                   primaryStyle={primaryStyle}
                   onConfirm={confirm}
@@ -605,18 +646,71 @@ export function CheckoutView(props: CheckoutViewProps) {
               ))}
             </div>
 
+            {/* Coupon code */}
+            <div className="mt-4 border-t border-border pt-4">
+              {appliedCoupon ? (
+                <div className="flex items-center justify-between rounded-xl border border-success/40 bg-success/5 px-3 py-2 text-sm">
+                  <span className="flex items-center gap-1.5 font-medium text-success">
+                    <CheckCircle2 className="size-4" /> {appliedCoupon.code}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={removeCoupon}
+                    className="text-xs font-medium text-muted-foreground hover:text-foreground"
+                  >
+                    Remove
+                  </button>
+                </div>
+              ) : (
+                <div>
+                  <div className="flex gap-2">
+                    <input
+                      value={couponInput}
+                      onChange={(e) => {
+                        setCouponInput(e.target.value.toUpperCase());
+                        setCouponError(null);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          void applyCoupon();
+                        }
+                      }}
+                      placeholder="Coupon code"
+                      className="h-10 flex-1 rounded-xl border border-input bg-background px-3 text-sm uppercase outline-none transition focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/25"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => void applyCoupon()}
+                      disabled={applyingCoupon || !couponInput.trim()}
+                      className="inline-flex h-10 items-center gap-1.5 rounded-xl border border-border px-3.5 text-sm font-semibold transition hover:bg-muted/50 disabled:opacity-50"
+                    >
+                      {applyingCoupon ? <Loader2 className="size-4 animate-spin" /> : "Apply"}
+                    </button>
+                  </div>
+                  {couponError ? <p className="mt-1.5 text-xs text-danger">{couponError}</p> : null}
+                </div>
+              )}
+            </div>
+
             <div className="mt-4 space-y-2 border-t border-border pt-4 text-sm">
               <div className="flex items-center justify-between text-muted-foreground">
                 <span>Subtotal</span>
                 <span className="tabular-nums text-foreground">{formatMoney(total, currency)}</span>
               </div>
+              {discount > 0 ? (
+                <div className="flex items-center justify-between text-success">
+                  <span>Discount ({appliedCoupon?.code})</span>
+                  <span className="tabular-nums">−{formatMoney(discount, currency)}</span>
+                </div>
+              ) : null}
               <div className="flex items-center justify-between text-muted-foreground">
                 <span>Shipping</span>
                 <span className="font-medium text-success">Free</span>
               </div>
               <div className="flex items-center justify-between border-t border-border pt-2 text-base font-bold">
                 <span>Total</span>
-                <span className="tabular-nums">{formatMoney(total, currency)}</span>
+                <span className="tabular-nums">{formatMoney(payTotal, currency)}</span>
               </div>
             </div>
 

@@ -17,7 +17,9 @@ export const createPublicCheckoutSchema = z.object({
   phone: z.string().trim().max(40).optional().nullable(),
   shippingAddress: z.string().trim().max(1000).optional().nullable(),
   notes: z.string().trim().max(2000).optional().nullable(),
-  items: z.array(publicCheckoutItemSchema).min(1, "Cart is empty").max(100)
+  items: z.array(publicCheckoutItemSchema).min(1, "Cart is empty").max(100),
+  // Optional coupon code applied at checkout.
+  couponCode: z.string().trim().max(40).optional().nullable()
 });
 
 export const confirmPublicCheckoutSchema = z.object({

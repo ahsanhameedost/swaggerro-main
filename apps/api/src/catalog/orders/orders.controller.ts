@@ -224,9 +224,14 @@ export class CatalogOrdersController {
   @Post("orders/:id/payment-intent")
   async createOrderPaymentIntent(
     @Param("id") id: string,
+    @Body() body: unknown,
     @Req() req: FastifyRequest & { user?: AuthUser }
   ) {
-    return await this.ordersService.createOrderPaymentIntent(id, req.user!);
+    const couponCode =
+      body && typeof body === "object" && typeof (body as { couponCode?: unknown }).couponCode === "string"
+        ? ((body as { couponCode?: string }).couponCode ?? null)
+        : null;
+    return await this.ordersService.createOrderPaymentIntent(id, req.user!, couponCode);
   }
 
   // Stripe step 2 (or test mode): verify the confirmed intent / mock and mark paid.
