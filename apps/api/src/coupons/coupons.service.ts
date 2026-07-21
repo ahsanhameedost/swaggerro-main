@@ -52,8 +52,6 @@ export class CouponsService {
       scope: c.storeId ? ("store" as const) : ("platform" as const),
       assignedUserId: c.assignedUserId,
       productIds: c.productIds,
-      categoryIds: c.categoryIds,
-      collectionIds: c.collectionIds,
       minSubtotal: this.decimal(c.minSubtotal as unknown as number | null),
       maxDiscount: this.decimal(c.maxDiscount as unknown as number | null),
       usageLimit: c.usageLimit,
@@ -98,8 +96,6 @@ export class CouponsService {
         createdByUserId: opts.createdByUserId,
         assignedUserId,
         productIds: input.productIds ?? [],
-        categoryIds: input.categoryIds ?? [],
-        collectionIds: input.collectionIds ?? [],
         minSubtotal: input.minSubtotal != null ? new Prisma.Decimal(input.minSubtotal) : null,
         maxDiscount: input.maxDiscount != null ? new Prisma.Decimal(input.maxDiscount) : null,
         usageLimit: input.usageLimit ?? null,
@@ -155,8 +151,6 @@ export class CouponsService {
     if (input.discountType !== undefined) data.discountType = input.discountType;
     if (input.discountValue !== undefined) data.discountValue = new Prisma.Decimal(input.discountValue);
     if (input.productIds !== undefined) data.productIds = input.productIds ?? [];
-    if (input.categoryIds !== undefined) data.categoryIds = input.categoryIds ?? [];
-    if (input.collectionIds !== undefined) data.collectionIds = input.collectionIds ?? [];
     if (input.minSubtotal !== undefined)
       data.minSubtotal = input.minSubtotal != null ? new Prisma.Decimal(input.minSubtotal) : null;
     if (input.maxDiscount !== undefined)
@@ -219,18 +213,7 @@ export class CouponsService {
       );
     }
 
-    // Resolve which items this coupon applies to. When the coupon scopes to
-    // categories/collections we expand them to product ids *now* (dynamic), so a
-    // product added to a scoped collection later is covered automatically.
-    const { restricted, productIds: eligibleProductIds } = await this.resolveEligibleProductIds(
-      coupon
-    );
-    // A restricted coupon that currently resolves to no products applies to
-    // nothing — never fall back to whole-order (empty productIds would do that).
-    const eligible =
-      restricted && eligibleProductIds.length === 0
-        ? 0
-        : eligibleSubtotal(eligibleProductIds, input.lines);
+    const eligible = eligibleSubtotal(coupon.productIds, input.lines);
     if (eligible <= 0)
       throw new BadRequestException("This coupon doesn't apply to the items in your cart.");
 
@@ -239,7 +222,7 @@ export class CouponsService {
         discountType: coupon.discountType,
         discountValue: Number(coupon.discountValue),
         maxDiscount: coupon.maxDiscount != null ? Number(coupon.maxDiscount) : null,
-        productIds: eligibleProductIds,
+        productIds: coupon.productIds,
       },
       eligible
     );
@@ -252,42 +235,6 @@ export class CouponsService {
       discountAmount,
       fundedBy: coupon.storeId ? "SELLER" : "PLATFORM",
     };
-  }
-
-  /**
-   * Expand a coupon's scope (explicit products + categories + collections) into a
-   * flat set of eligible product ids. `restricted` is true when the coupon scopes
-   * to *anything* — the caller must treat an empty result as "applies to nothing"
-   * rather than "whole order".
-   */
-  private async resolveEligibleProductIds(
-    coupon: Pick<CouponRecord, "productIds" | "categoryIds" | "collectionIds">
-  ): Promise<{ restricted: boolean; productIds: string[] }> {
-    const restricted =
-      coupon.productIds.length > 0 ||
-      coupon.categoryIds.length > 0 ||
-      coupon.collectionIds.length > 0;
-    if (!restricted) return { restricted: false, productIds: [] };
-
-    const ids = new Set<string>(coupon.productIds);
-
-    if (coupon.categoryIds.length > 0) {
-      const byCategory = await this.prisma.catalogProduct.findMany({
-        where: { categoryId: { in: coupon.categoryIds } },
-        select: { id: true },
-      });
-      for (const p of byCategory) ids.add(p.id);
-    }
-
-    if (coupon.collectionIds.length > 0) {
-      const byCollection = await this.prisma.catalogProductCollection.findMany({
-        where: { collectionId: { in: coupon.collectionIds } },
-        select: { productId: true },
-      });
-      for (const link of byCollection) ids.add(link.productId);
-    }
-
-    return { restricted: true, productIds: Array.from(ids) };
   }
 
   /** Increment usage. Best-effort — a failure must never fail a paid order. */

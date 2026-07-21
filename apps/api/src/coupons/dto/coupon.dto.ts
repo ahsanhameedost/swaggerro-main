@@ -16,8 +16,6 @@ const baseCouponObject = z.object({
   storeId: z.string().optional().nullable(),
   assignedUserId: z.string().optional().nullable(),
   productIds: z.array(z.string()).max(200).optional().default([]),
-  categoryIds: z.array(z.string()).max(200).optional().default([]),
-  collectionIds: z.array(z.string()).max(200).optional().default([]),
   minSubtotal: z.coerce.number().min(0).max(1_000_000).optional().nullable(),
   maxDiscount: z.coerce.number().min(0).max(1_000_000).optional().nullable(),
   usageLimit: z.coerce.number().int().min(1).max(1_000_000).optional().nullable(),

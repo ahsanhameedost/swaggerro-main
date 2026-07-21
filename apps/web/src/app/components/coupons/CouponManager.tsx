@@ -19,7 +19,6 @@ import { addToast } from "@heroui/toast";
 import { Pencil, Plus, Ticket, Trash2 } from "lucide-react";
 import type { Coupon, CouponInput } from "@/modules/coupons/api";
 import { formatMoney } from "@/lib/money";
-import { CouponScopePicker, type CouponScope } from "./CouponScopePicker";
 
 type Props = {
   coupons: Coupon[];
@@ -29,9 +28,6 @@ type Props = {
   onDelete: (id: string) => Promise<unknown>;
   // Admin can restrict a coupon to a specific user; sellers cannot.
   canRestrictUser?: boolean;
-  // Which catalog list the scope picker reads: admin (all products) or public
-  // (published catalog, used by sellers).
-  scopeVariant?: "admin" | "public";
   title?: string;
   subtitle?: string;
 };
@@ -47,9 +43,6 @@ type FormState = {
   expiresAt: string;
   assignedUserId: string;
   active: boolean;
-  productIds: string[];
-  categoryIds: string[];
-  collectionIds: string[];
 };
 
 const emptyForm: FormState = {
@@ -63,9 +56,6 @@ const emptyForm: FormState = {
   expiresAt: "",
   assignedUserId: "",
   active: true,
-  productIds: [],
-  categoryIds: [],
-  collectionIds: [],
 };
 
 function toForm(c: Coupon): FormState {
@@ -80,9 +70,6 @@ function toForm(c: Coupon): FormState {
     expiresAt: c.expiresAt ? c.expiresAt.slice(0, 10) : "",
     assignedUserId: c.assignedUserId ?? "",
     active: c.active,
-    productIds: c.productIds ?? [],
-    categoryIds: c.categoryIds ?? [],
-    collectionIds: c.collectionIds ?? [],
   };
 }
 
@@ -93,7 +80,6 @@ export function CouponManager({
   onUpdate,
   onDelete,
   canRestrictUser = false,
-  scopeVariant = "admin",
   title = "Coupons",
   subtitle = "Create discount codes customers redeem at checkout.",
 }: Props) {
@@ -148,9 +134,6 @@ export function CouponManager({
       expiresAt: form.expiresAt ? new Date(form.expiresAt).toISOString() : null,
       assignedUserId: canRestrictUser ? form.assignedUserId.trim() || null : null,
       active: form.active,
-      productIds: form.productIds,
-      categoryIds: form.categoryIds,
-      collectionIds: form.collectionIds,
     };
   };
 
@@ -245,17 +228,6 @@ export function CouponManager({
                       <Chip size="sm" variant="flat" color={c.scope === "store" ? "secondary" : "primary"}>
                         {c.scope === "store" ? "Store" : "Platform"}
                       </Chip>
-                      {(() => {
-                        const n =
-                          (c.productIds?.length ?? 0) +
-                          (c.categoryIds?.length ?? 0) +
-                          (c.collectionIds?.length ?? 0);
-                        return (
-                          <div className="mt-1 text-xs text-foreground/50">
-                            {n === 0 ? "Whole order" : `${n} item${n > 1 ? "s" : ""} scoped`}
-                          </div>
-                        );
-                      })()}
                     </td>
                     <td className="px-4 py-3 tabular-nums text-foreground/70">
                       {c.usedCount}
@@ -369,22 +341,6 @@ export function CouponManager({
                   value={form.description}
                   onValueChange={(v) => set("description", v)}
                   placeholder="Internal note — what this code is for"
-                />
-                <CouponScopePicker
-                  variant={scopeVariant}
-                  value={{
-                    productIds: form.productIds,
-                    categoryIds: form.categoryIds,
-                    collectionIds: form.collectionIds,
-                  }}
-                  onChange={(next: CouponScope) =>
-                    setForm((f) => ({
-                      ...f,
-                      productIds: next.productIds,
-                      categoryIds: next.categoryIds,
-                      collectionIds: next.collectionIds,
-                    }))
-                  }
                 />
                 <div className="flex items-center justify-between rounded-2xl border border-divider px-4 py-3">
                   <div>
