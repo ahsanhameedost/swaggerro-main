@@ -12,6 +12,8 @@ export type Coupon = {
   scope: "platform" | "store";
   assignedUserId: string | null;
   productIds: string[];
+  categoryIds: string[];
+  collectionIds: string[];
   minSubtotal: number | null;
   maxDiscount: number | null;
   usageLimit: number | null;
@@ -30,6 +32,8 @@ export type CouponInput = {
   storeId?: string | null;
   assignedUserId?: string | null;
   productIds?: string[];
+  categoryIds?: string[];
+  collectionIds?: string[];
   minSubtotal?: number | null;
   maxDiscount?: number | null;
   usageLimit?: number | null;

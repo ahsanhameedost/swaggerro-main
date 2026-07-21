@@ -20,6 +20,7 @@ export default function SellerCouponsPage() {
         coupons={data?.coupons ?? []}
         isLoading={isLoading}
         canRestrictUser={false}
+        scopeVariant="public"
         title="Store coupons"
         subtitle="Discount codes for your storefront. The discount comes out of your earnings on each sale."
         onCreate={(input) => createMutation.mutateAsync(input)}

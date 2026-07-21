@@ -1125,8 +1125,13 @@ model Coupon {
   createdByUserId String?
   // Optional: restrict redemption to a single user (admin "coupon for X").
   assignedUserId String?
-  // Optional: limit the coupon to specific products; empty => whole order.
+  // Optional scoping. The coupon's eligible items are the UNION of these three:
+  // explicit products, every product in the listed categories, and every product
+  // in the listed collections (resolved live at checkout — so items added to a
+  // collection later are covered automatically). All three empty => whole order.
   productIds     String[]           @default([])
+  categoryIds    String[]           @default([])
+  collectionIds  String[]           @default([])
   // Optional guards.
   minSubtotal    Decimal?           @db.Decimal(10, 2)
   maxDiscount    Decimal?           @db.Decimal(10, 2) // caps a PERCENT coupon
