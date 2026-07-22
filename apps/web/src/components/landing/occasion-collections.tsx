@@ -19,7 +19,7 @@ export function OccasionCollections({ collections }: { collections: CollectionCa
       <SectionHeading
         eyebrow="Shop by occasion"
         title="The right swag for the moment"
-        subtitle="Onboarding a new hire, running a booth, or sending a thank-you — start from a curated collection instead of a blank page."
+        subtitle="Onboarding a new hire, running a booth, or sending a thank-you? Start from a curated collection instead of a blank page."
       />
 
       <div className="mt-12 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">

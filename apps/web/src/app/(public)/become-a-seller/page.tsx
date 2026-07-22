@@ -359,7 +359,7 @@ export default function BecomeASellerPage() {
           Thanks for applying to partner with Swaggeroo. Our team is reviewing your application and the
           Swaggeroo side of the approval. Once approved, we&apos;ll email{" "}
           <span className="font-medium text-foreground">{form.email}</span> a secure link to set up your
-          account — verify your email, choose a username and password — and unlock your seller dashboard at{" "}
+          account (verify your email, choose a username and password) and unlock your seller dashboard at{" "}
           <span className="font-medium text-foreground">
             {STORE_URL_PREFIX}
             {form.slug}
@@ -402,7 +402,7 @@ export default function BecomeASellerPage() {
         <h1 className="mt-3 font-display text-3xl font-bold tracking-tight sm:text-4xl">Sell with Swaggeroo</h1>
         <p className="mt-3 max-w-xl text-muted-foreground">
           Apply to launch your own white-label storefront. Tell us about your business and claim your store
-          URL — our team reviews every application.
+          URL. Our team reviews every application.
         </p>
       </div>
 
@@ -507,7 +507,7 @@ export default function BecomeASellerPage() {
               <p className="text-sm font-semibold text-foreground">
                 A few more details{" "}
                 <span className="font-normal text-muted-foreground">
-                  — optional, helps us onboard you faster
+                  (optional, helps us onboard you faster)
                 </span>
               </p>
               <div className="mt-3 grid gap-4 sm:grid-cols-2">
@@ -519,8 +519,8 @@ export default function BecomeASellerPage() {
                   >
                     <option value="">Select a range…</option>
                     <option value="Under $10k">Under $10k</option>
-                    <option value="$10k–$50k">$10k–$50k</option>
-                    <option value="$50k–$250k">$50k–$250k</option>
+                    <option value="$10k-$50k">$10k-$50k</option>
+                    <option value="$50k-$250k">$50k-$250k</option>
                     <option value="$250k+">$250k+</option>
                   </select>
                 </Field>
@@ -561,8 +561,8 @@ export default function BecomeASellerPage() {
             <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
               <h2 className="font-display text-lg font-bold">Your store URL</h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                This is where your branded storefront will live. We pre-filled it from your company name —
-                edit it if you like.
+                This is where your branded storefront will live. We pre-filled it from your company name,
+                so edit it if you like.
               </p>
               <div className="mt-4">
                 <Field
@@ -713,7 +713,7 @@ export default function BecomeASellerPage() {
                   >
                     Swaggeroo Seller Agreement
                   </button>
-                  , including the commission and pricing terms (0–15% or a per-product flat fee).
+                  , including the commission and pricing terms (0-15% or a per-product flat fee).
                 </span>
               </label>
               {termsError ? (

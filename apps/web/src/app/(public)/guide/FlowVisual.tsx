@@ -86,10 +86,9 @@ export function FlowVisual({ variant }: { variant: string }) {
 
   return (
     <div className="fv-card" aria-hidden>
-      <span className="fv-glow" />
       <div className="fv-hero">
         <span className="fv-hero-badge">
-          <Hero className="size-8" strokeWidth={1.9} />
+          <Hero className="size-10" strokeWidth={1.75} />
         </span>
       </div>
 

@@ -17,7 +17,7 @@ export default function FaqPage() {
       <PageHero
         eyebrow="FAQ"
         title="Questions, answered"
-        subtitle="Everything you need to know about minimums, pricing, claim pages, and shipping."
+        subtitle="Everything you need to know about ordering, pricing, proofs, shipping, and selling on Swaggeroo."
       />
 
       <Section>

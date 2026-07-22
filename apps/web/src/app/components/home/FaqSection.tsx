@@ -32,13 +32,13 @@ const DEFAULT_FAQS: FaqItem[] = [
     key: "q3",
     question: "What are your minimum order quantities?",
     answer:
-      "Retail orders of 5 units or fewer ship at our published price. For larger runs we build a custom Swag Pack quote (minimum 25 packs) and return pricing within 24–48 hours.",
+      "There's no hard minimum. Orders of 5 units or fewer check out and pay right away at our published volume price. Larger runs of 6+ go quote-first so we can proof your branding before anything prints, and Swag Packs built in Pack Studio start at 5 packs.",
   },
   {
     key: "q4",
     question: "How long does production and shipping take?",
     answer:
-      "Once your design is approved, most orders are produced and ready to ship within 2–3 weeks. Timelines vary by product mix, quantity, and destination—your account team confirms exact dates on every quote.",
+      "Small pay-now orders go into production as soon as you check out. For bulk orders the timeline starts once you approve your proof—most are produced and ready to ship within the lead time shown on each product. Timelines vary by product mix, quantity, and destination.",
   },
   {
     key: "q5",

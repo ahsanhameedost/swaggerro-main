@@ -7,7 +7,7 @@ import { VALUES, STATS } from "@/content/marketing";
 export const metadata: Metadata = {
   title: "About",
   description:
-    "Swaggeroo makes custom swag people actually want — designed, branded, and shipped without the chaos.",
+    "Swaggeroo makes custom swag people actually want: designed, branded, and shipped without the chaos.",
 };
 
 export default function AboutPage() {
@@ -16,7 +16,7 @@ export default function AboutPage() {
       <PageHero
         eyebrow="Our story"
         title="Swag, minus the chaos"
-        subtitle="We started Swaggeroo because ordering company swag felt like a part-time job — spreadsheets of sizes, mystery quotes, and boxes nobody wanted. So we rebuilt the whole thing."
+        subtitle="We started Swaggeroo because ordering company swag felt like a part-time job: spreadsheets of sizes, mystery quotes, and boxes nobody wanted. So we rebuilt the whole thing."
       />
 
       {/* Mission */}
@@ -35,7 +35,7 @@ export default function AboutPage() {
             error-prone parts are the parts we automate.
           </p>
           <p>
-            The result is swag that feels like a gift instead of a giveaway — and a process that
+            The result is swag that feels like a gift instead of a giveaway, and a process that
             takes minutes instead of weeks.
           </p>
         </div>

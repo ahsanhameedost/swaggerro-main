@@ -37,7 +37,11 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise
         msg = text;
       }
     }
-    throw new Error(Array.isArray(msg) ? msg.join(", ") : String(msg));
+    const error = new Error(Array.isArray(msg) ? msg.join(", ") : String(msg));
+    // Expose the HTTP status so callers can branch on it (e.g. treat a 401 from
+    // /auth/me as "not logged in" rather than a hard error worth retrying).
+    (error as Error & { status?: number }).status = res.status;
+    throw error;
   }
 
   if (!text) return {} as T;

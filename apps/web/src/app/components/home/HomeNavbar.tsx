@@ -58,6 +58,29 @@ export default function HomeNavbar() {
 
   const { data: user, isLoading } = useMe();
 
+  // The auth buttons used to wait for /auth/me before rendering, so on a slow
+  // network they popped in seconds late. Render them optimistically instead:
+  // guests (the common case) see them immediately, while a persisted hint keeps
+  // a returning signed-in user from flashing the buttons before their avatar loads.
+  const [wasAuthed, setWasAuthed] = React.useState(false);
+  React.useEffect(() => {
+    try {
+      setWasAuthed(window.localStorage.getItem("sg_authed") === "1");
+    } catch {
+      /* ignore */
+    }
+  }, []);
+  React.useEffect(() => {
+    if (user === undefined) return; // still loading — leave the hint untouched
+    try {
+      if (user) window.localStorage.setItem("sg_authed", "1");
+      else window.localStorage.removeItem("sg_authed");
+    } catch {
+      /* ignore */
+    }
+  }, [user]);
+  const showAuthButtons = !user && (!isLoading || !wasAuthed);
+
   // Catalog is small — fetch all for the predictive search dropdown.
   const { data: productData } = usePublicProducts({ page: 1, pageSize: 48 });
   const searchProducts: SearchProduct[] = React.useMemo(
@@ -210,7 +233,7 @@ export default function HomeNavbar() {
             <CartLink />
           </NavbarItem>
 
-          {isLoading ? null : user ? (
+          {user ? (
             <NavbarItem>
               <Dropdown placement="bottom-end">
                 <DropdownTrigger>
@@ -301,7 +324,7 @@ export default function HomeNavbar() {
                 </DropdownMenu>
               </Dropdown>
             </NavbarItem>
-          ) : (
+          ) : showAuthButtons ? (
             <>
               <NavbarItem>
                 <Link
@@ -320,7 +343,7 @@ export default function HomeNavbar() {
                 </Link>
               </NavbarItem>
             </>
-          )}
+          ) : null}
         </NavbarContent>
 
         <NavbarMenu className="bg-white">
@@ -386,7 +409,7 @@ export default function HomeNavbar() {
             </div>
 
             <div className="mt-6 grid gap-3">
-              {isLoading ? null : user ? (
+              {user ? (
                 <>
                   <div className="flex items-center gap-3 rounded-2xl bg-black/5 px-4 py-3">
                     <Avatar
@@ -434,7 +457,7 @@ export default function HomeNavbar() {
                     Log out
                   </Button>
                 </>
-              ) : (
+              ) : showAuthButtons ? (
                 <>
                   <Button
                     as={Link}
@@ -451,7 +474,7 @@ export default function HomeNavbar() {
                     <PrimaryButton href="/signup" className="h-12 w-full" text="Create account" />
                   </div>
                 </>
-              )}
+              ) : null}
             </div>
           </div>
         </NavbarMenu>

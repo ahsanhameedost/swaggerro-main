@@ -28,7 +28,7 @@ const IMAGE_SLIDES: ImageSlide[] = [
       </>
     ),
     subtitle:
-      "Drop your logo onto any product and get a photoreal proof in seconds — embroidery, print, or engrave, exactly as it'll ship.",
+      "Drop your logo onto any product and get a photoreal proof in seconds: embroidery, print, or engrave, exactly as it'll ship.",
     cta: { label: "Open Mockup Studio", href: "/mockup" },
     secondary: { label: "Browse products", href: "/shop" },
   },
@@ -41,7 +41,7 @@ const IMAGE_SLIDES: ImageSlide[] = [
       </>
     ),
     subtitle:
-      "Build a curated pack, watch volume pricing drop as you scale, and send one claim link — we handle sizes, proofs, and shipping.",
+      "Build a curated pack, watch volume pricing drop as you scale, and send one claim link. We handle sizes, proofs, and shipping.",
     cta: { label: "Build a pack", href: "/studio" },
     secondary: { label: "How it works", href: "/how-it-works" },
   },
@@ -80,14 +80,14 @@ export function HeroSlider() {
         <div className="mx-auto max-w-site px-6 pt-12 text-center sm:pt-16">
           {/* Branding tagline (#46) — placeholder wording pending client's exact copy. */}
           <span className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-1.5 text-sm font-semibold text-white backdrop-blur-sm">
-            <span className="text-primary">✦</span> Over 17 years of branded-swag expertise
+            <span className="text-primary">✦</span> Custom branded swag, done right
           </span>
           <h1 className="mx-auto max-w-4xl font-display text-[2.75rem] leading-[0.98] font-bold tracking-[-0.035em] text-balance text-white sm:text-6xl lg:text-7xl">
-            Swag your team will <span className="text-primary">actually wear</span>.
+            Swag your team will <span className="text-white">actually wear</span>.
           </h1>
           <p className="mx-auto mt-6 max-w-xl text-lg leading-relaxed text-pretty text-white/75">
-            Shop hundreds of products, drop in your logo, and order in bulk — volume pricing that
-            drops as you scale, with a free proof before anything prints.
+            Shop hundreds of products, drop in your logo, and order in bulk, with volume pricing
+            that drops as you scale and a free proof before anything prints.
           </p>
         </div>
 

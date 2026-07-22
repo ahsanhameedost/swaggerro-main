@@ -53,7 +53,7 @@ function QuickContactForm() {
       });
       addToast({
         title: "Message sent",
-        description: "Thanks for reaching out — we'll get back to you within one business day.",
+        description: "Thanks for reaching out. We'll get back to you within one business day.",
         color: "success",
       });
       reset({ contactName: "", companyName: "", email: "", phone: "", message: "" });
@@ -72,7 +72,7 @@ function QuickContactForm() {
     <div className="rounded-3xl border border-border bg-card p-6 shadow-sm sm:p-8">
       <h2 className="font-display text-xl font-bold text-foreground">Send us a message</h2>
       <p className="mt-1 text-sm text-muted-foreground">
-        We read every one — no bots, no ticket purgatory.
+        We read every one. No bots, no ticket purgatory.
       </p>
       <form className="mt-6 space-y-4" onSubmit={onSubmit}>
         <div className="grid gap-4 sm:grid-cols-2">
@@ -174,9 +174,9 @@ function ContactDetails() {
 
 // ── Detailed order-request form (kept, same backend) ─────────────────────────
 const artworkOptions = [
-  { key: "yes", label: "Yes — I have print-ready files" },
-  { key: "no", label: "No — I need design help" },
-  { key: "partial", label: "Partial — I have a logo but need layout" },
+  { key: "yes", label: "Yes, I have print-ready files" },
+  { key: "no", label: "No, I need design help" },
+  { key: "partial", label: "Partial: I have a logo but need layout" },
 ];
 
 const decorationOptions = [
@@ -527,7 +527,7 @@ export default function ContactPage() {
         <SectionHeading
           eyebrow="Bulk & custom"
           title="Order Request Form"
-          subtitle="Share your product details, quantities, artwork, and delivery needs — we'll come back with a tailored quote."
+          subtitle="Share your product details, quantities, artwork, and delivery needs, and we'll come back with a tailored quote."
         />
         <div className="mt-10 mx-auto max-w-4xl">
           <OrderRequestForm />

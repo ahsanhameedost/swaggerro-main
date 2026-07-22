@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, type CSSProperties, type MouseEvent } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { ArrowUpRight } from "lucide-react";
@@ -173,7 +174,7 @@ export function SiteFooter() {
           <div data-reveal className="max-w-xs">
             <Logo className="h-9" />
             <p className="mt-5 text-sm leading-relaxed text-white/60">
-              Custom swag your crew actually wants — designed, branded, and shipped
+              Custom swag your crew actually wants: designed, branded, and shipped
               anywhere from one delightfully simple platform.
             </p>
             <div className="mt-6 flex flex-wrap items-center gap-x-4 gap-y-2">
@@ -256,10 +257,21 @@ export function SiteFooter() {
           className="mt-6 flex flex-col-reverse items-center justify-between gap-4 text-sm text-white/50 sm:flex-row"
         >
           <p>© {new Date().getFullYear()} Swaggeroo · All rights reserved.</p>
-          <p className="flex items-center gap-2">
-            <span className="size-1.5 rounded-full bg-success" />
-            Carbon-aware shipping on every order
-          </p>
+          <a
+            href="https://9ostech.com/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="group inline-flex items-center gap-2.5 text-xs text-white/45 transition-colors hover:text-white/80"
+          >
+            <span>Designed &amp; Developed by</span>
+            <Image
+              src="/oak-street-technologies.png"
+              alt="Oak Street Technologies"
+              width={120}
+              height={28}
+              className="h-6 w-auto opacity-80 transition-opacity group-hover:opacity-100"
+            />
+          </a>
         </div>
       </div>
     </footer>

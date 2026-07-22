@@ -95,7 +95,7 @@ export function SellerEarningsVisual() {
       </div>
 
       <p className="mt-6 border-t border-border pt-3 text-center text-xs text-muted-foreground">
-        Same rule for one item or a thousand — your earnings scale with the order.
+        Same rule for one item or a thousand. Your earnings scale with the order.
       </p>
     </div>
   );

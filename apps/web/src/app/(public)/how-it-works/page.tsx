@@ -14,7 +14,7 @@ import PricingEstimatorSection from "@/app/components/home/PricingEstimatorSecti
 export const metadata: Metadata = {
   title: "How it works",
   description:
-    "Build a pack, brand it, and ship it anywhere — or send claim links and let recipients self-serve. Here's how Swaggeroo works end to end.",
+    "Build a pack, brand it, and ship it anywhere, or send claim links and let recipients self-serve. Here's how Swaggeroo works end to end.",
 };
 
 export default function HowItWorksPage() {
@@ -23,7 +23,7 @@ export default function HowItWorksPage() {
       <PageHero
         eyebrow="How it works"
         title="From idea to doorstep, the easy way"
-        subtitle="Three steps to get swag out the door — and a few superpowers that make the whole thing run itself."
+        subtitle="Three steps to get swag out the door, plus a few superpowers that make the whole thing run itself."
       >
         <Link
           href="/swag-pack"

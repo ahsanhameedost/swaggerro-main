@@ -88,7 +88,7 @@ export function CategoryShowcase({
               href={`/shop?category=${c.slug}`}
               onMouseEnter={() => setActive(ci)}
               onFocus={() => setActive(ci)}
-              aria-label={`${c.name} — ${c.count} products`}
+              aria-label={`${c.name}, ${c.count} products`}
               className={cn(
                 "relative overflow-hidden rounded-2xl bg-navy ring-1 transition-[flex-grow] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]",
                 isActive ? "ring-white/20" : "ring-white/10",

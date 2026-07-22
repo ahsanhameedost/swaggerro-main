@@ -10,7 +10,7 @@ type CtaLink = { label: string; href: string };
 const BENEFITS: { icon: LucideIcon; title: string; sub: string }[] = [
   { icon: BadgeCheck, title: "Free proofs", sub: "on every order" },
   { icon: TrendingDown, title: "Volume pricing", sub: "built right in" },
-  { icon: Gift, title: "Claim pages", sub: "no account needed" },
+  { icon: Gift, title: "Ship to many", sub: "one order, many addresses" },
   { icon: Globe, title: "Ships worldwide", sub: "wherever they are" },
 ];
 
@@ -104,7 +104,7 @@ export function CtaBand({
                 </Link>
               )
             ) : (
-              <span className="text-xs text-muted-foreground">No commitment — start free</span>
+              <span className="text-xs text-muted-foreground">No commitment, start free</span>
             )}
           </div>
         </div>

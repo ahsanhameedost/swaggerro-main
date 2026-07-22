@@ -50,7 +50,17 @@ export async function login(email: string, password: string) {
 }
 
 export async function me() {
-  return apiFetch<{ user: User | null }>("/auth/me", { method: "GET" });
+  try {
+    return await apiFetch<{ user: User | null }>("/auth/me", { method: "GET" });
+  } catch (err) {
+    // /auth/me is auth-guarded, so a logged-out visitor gets a 401. That's an
+    // expected state, not a failure — resolve as "no user" so the query settles
+    // instantly instead of erroring and retrying (which left the navbar's auth
+    // buttons blank for several seconds).
+    const status = (err as { status?: number })?.status;
+    if (status === 401 || status === 403) return { user: null };
+    throw err;
+  }
 }
 
 export async function verifyAccountSetup(token: string) {

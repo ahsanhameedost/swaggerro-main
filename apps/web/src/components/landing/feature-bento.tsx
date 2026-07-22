@@ -20,7 +20,7 @@ export function FeatureBento() {
     <Section>
       <SectionHeading
         eyebrow="The whole toolkit"
-        title="Everything a swag program needs — in one grid"
+        title="Everything a swag program needs, in one grid"
         subtitle="From the first free proof to worldwide delivery, these are the tools that turn a one-off order into something your team runs on."
       />
 
@@ -48,7 +48,7 @@ export function FeatureBento() {
               Your logo on everything they&apos;ll actually keep
             </h3>
             <p className="mt-3 max-w-md leading-relaxed text-white/80">
-              Drop your logo onto any product and get a photoreal proof in seconds — print, embroidery
+              Drop your logo onto any product and get a photoreal proof in seconds: print, embroidery
               or engrave, exactly as it&apos;ll ship.
             </p>
             <Link
@@ -112,7 +112,7 @@ export function FeatureBento() {
           </span>
           <div>
             <p className="font-display text-5xl font-bold tracking-tight text-white tabular-nums">120+</p>
-            <p className="mt-1 text-sm text-white/70">countries we ship to — wherever your crew is.</p>
+            <p className="mt-1 text-sm text-white/70">countries we ship to, wherever your crew is.</p>
           </div>
         </article>
 
@@ -136,7 +136,7 @@ export function FeatureBento() {
             </h3>
             <p className="mt-2 max-w-md leading-relaxed text-white/75">
               Skip the spreadsheet. Recipients open a link, pick their size, and enter their own
-              address — no account needed.
+              address. No account needed.
             </p>
           </div>
         </article>
@@ -161,7 +161,7 @@ export function FeatureBento() {
               Your own branded store
             </h3>
             <p className="mt-2 max-w-md leading-relaxed text-muted-foreground">
-              Spin up a company store in minutes — your logo, your colors, your catalog.
+              Spin up a company store in minutes. Your logo, your colors, your catalog.
             </p>
             <Link
               href="/how-it-works"

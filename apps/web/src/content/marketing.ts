@@ -26,7 +26,7 @@ export const HOW_IT_WORKS: Step[] = [
   {
     icon: Boxes,
     title: "Pick a Pack",
-    body: "Start in Pack Studio and choose products your crew will actually use — apparel, drinkware, tech and more.",
+    body: "Start in Pack Studio and pick products your crew will actually use: apparel, drinkware, tech and more.",
   },
   {
     icon: Sparkles,
@@ -49,7 +49,7 @@ export const SUPERPOWERS: Feature[] = [
   {
     icon: Store,
     title: "Branded Stores",
-    body: "Spin up an on-brand storefront for your company in minutes — your logo, your colors, your catalog.",
+    body: "Spin up an on-brand storefront for your company in minutes. Your logo, your colors, your catalog.",
   },
   {
     icon: CalendarClock,
@@ -130,7 +130,7 @@ export const VALUES: Feature[] = [
   {
     icon: Leaf,
     title: "Lighter on the planet",
-    body: "Eco options on every category and carbon-aware shipping by default — sustainability that isn't a checkbox.",
+    body: "Eco options on every category and carbon-aware shipping by default. Sustainability that isn't a checkbox.",
   },
   {
     icon: ShieldCheck,
@@ -142,34 +142,46 @@ export const VALUES: Feature[] = [
 export const FAQS: Faq[] = [
   {
     q: "Is there a minimum order?",
-    a: "Each product has its own minimum (often 25–50 units) so volume pricing actually works in your favor. The minimum is shown right on every product and enforced in Pack Studio.",
+    a: "No hard minimum. Order as few as you like. Orders of 5 units or fewer check out and pay right away at the current volume price, with no proof step. Larger runs of 6+ go through a quick quote so we can proof your branding first. Swag Packs built in Pack Studio start at 5 packs.",
+  },
+  {
+    q: "What's the difference between a small order and a bulk order?",
+    a: "Orders of 5 units or fewer are pay-now: you check out and we start producing straight away, so there's nothing to wait on. Orders of 6 or more are quote-first: you submit the project, we send a free design proof to approve, and payment unlocks once you've signed off.",
   },
   {
     q: "How does pricing work?",
-    a: "Pricing is volume-based: the more you order, the lower the per-unit cost. Pack Studio shows your live per-unit price and the next price break as you build, plus any one-time imprint setup fees.",
-  },
-  {
-    q: "What are claim pages?",
-    a: "Instead of collecting sizes and addresses yourself, you send one claim link. Each recipient opens it, picks their size, and enters their own shipping address — no account needed.",
-  },
-  {
-    q: "Do you ship internationally?",
-    a: "Yes. We ship to 120+ countries, and claim pages let recipients enter local addresses so international gifting just works.",
+    a: "Pricing is volume-based: the per-unit price drops as your quantity climbs, and you see your live price and the next price break as you build in Pack Studio or on any product page. Small orders pay on the spot; bulk orders get a quote you approve before paying securely by card.",
   },
   {
     q: "Can I see the product before it prints?",
-    a: "Always. We send a free digital proof of your logo on the product, and nothing goes to print until you approve it.",
+    a: "Always, on any bulk order. We send a free digital proof of your logo on the product, and nothing goes to production until you approve it. Need changes? Request a revision with your notes and we'll send an updated proof, and there's no limit on rounds.",
+  },
+  {
+    q: "Can I ship to lots of people or addresses?",
+    a: "Yes. Save people and places in your recipient address book, then ship the whole run to a single address or split it across many recipients, each with its own shipment and service level (standard or express).",
+  },
+  {
+    q: "Do you ship internationally?",
+    a: "Yes. We ship to 120+ countries, and each recipient can have their own local address, so international gifting just works.",
   },
   {
     q: "Can I store inventory and reorder later?",
-    a: "Yes. Warehouse your pack with us and ship from it on demand, or set up a branded store so your team can reorder in a few clicks.",
+    a: "Yes. Warehouse your stock with us (every receipt and shipment is tracked in an inventory ledger) and release it on demand. You can also open a branded store so your team reorders in a few clicks.",
   },
   {
-    q: "What imprint methods do you offer?",
-    a: "Screen print, embroidery, pad print, laser engraving, full-color print and deboss — availability depends on the product, and Pack Studio only shows the methods that work for what you've picked.",
+    q: "Can I sell on Swaggeroo or open my own store?",
+    a: "Yes. Apply to become a seller, and once you're approved you get your own branded storefront on Swaggeroo. We handle the catalog, printing and fulfillment; you curate products, add your logo, set your prices, and earn on every sale.",
+  },
+  {
+    q: "Do you have discount or promo codes?",
+    a: "Yes. Enter a coupon code at checkout to apply a percentage or fixed discount. Codes can be run by Swaggeroo across the platform or by an individual seller store.",
+  },
+  {
+    q: "How do I track my order?",
+    a: "Track any order with its order number and email, or tap the tracking link in our status emails. No account required.",
   },
   {
     q: "How long does an order take?",
-    a: "Most orders ship within the lead time shown on each product (typically 10–16 days after proof approval). Claim-page orders ship as recipients submit their details.",
+    a: "Small pay-now orders go into production as soon as you check out. For bulk orders the clock starts when you approve your proof, and most ship within the lead time shown on each product. Shipments to multiple recipients go out as each one is scheduled.",
   },
 ];

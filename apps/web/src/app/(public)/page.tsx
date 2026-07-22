@@ -70,7 +70,7 @@ export default async function Home() {
         <SectionHeading
           eyebrow="Frequently asked"
           title="Questions, answered"
-          subtitle="Minimums, pricing, claim pages, shipping — the short version. Still curious? A human is one click away."
+          subtitle="Minimums, pricing, claim pages, shipping: the short version. Still curious? A human is one click away."
         />
         <div className="mx-auto mt-12 max-w-3xl">
           <FaqAccordion items={FAQS.slice(0, 6)} />
@@ -83,7 +83,7 @@ export default async function Home() {
               <div>
                 <p className="font-semibold text-foreground">Still have questions?</p>
                 <p className="text-sm text-muted-foreground">
-                  Talk to a real human — we usually reply within a few hours.
+                  Talk to a real human. We usually reply within a few hours.
                 </p>
               </div>
             </div>
@@ -233,7 +233,7 @@ function PackStudioTeaser() {
             Pack Studio does the math so you don&apos;t
           </h2>
           <p className="mt-4 max-w-lg leading-relaxed text-muted-foreground">
-            Assemble a pack across four quick steps and watch the running total update live —
+            Assemble a pack across four quick steps and watch the running total update live:
             per-unit price, the next volume break, and setup fees, all in one place. Save your
             draft and pick up right where you left off.
           </p>
@@ -276,7 +276,7 @@ const STACK_CARDS: {
     icon: Gauge,
     eyebrow: "Live pricing",
     title: "Price it as you build",
-    body: "Pack Studio shows your per-unit price, the next volume break, and setup fees in real time — no quote emails, no surprises.",
+    body: "Pack Studio shows your per-unit price, the next volume break, and setup fees in real time. No quote emails, no surprises.",
     bg: "bg-gradient-to-br from-primary to-navy",
     tone: "dark",
   },
@@ -292,7 +292,7 @@ const STACK_CARDS: {
     icon: Store,
     eyebrow: "Branded Stores",
     title: "A storefront in your colors",
-    body: "Spin up an on-brand store for your team in minutes — your logo, your palette, your catalog, your domain.",
+    body: "Spin up an on-brand store for your team in minutes. Your logo, your palette, your catalog, your domain.",
     bg: "bg-navy",
     tone: "dark",
   },
@@ -300,7 +300,7 @@ const STACK_CARDS: {
     icon: CalendarClock,
     eyebrow: "Scheduled Gifting",
     title: "Set it and forget it",
-    body: "New-hire kits and milestone gifts go out on time, automatically — without you lifting a finger.",
+    body: "New-hire kits and milestone gifts go out on time, automatically, without you lifting a finger.",
     bg: "bg-brand-soft",
     tone: "light",
   },
@@ -313,7 +313,7 @@ function Superpowers() {
         <SectionHeading
           eyebrow="More than a shop"
           title="Built for swag programs, not just orders"
-          subtitle="Keep scrolling — here's what turns a one-off order into something your team relies on."
+          subtitle="Keep scrolling. Here's what turns a one-off order into something your team relies on."
         />
       </div>
       <div className="mx-auto max-w-site px-6">
