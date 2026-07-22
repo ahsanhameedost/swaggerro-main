@@ -56,18 +56,25 @@ export default function HomeNavbar() {
   const router = useRouter();
   const queryClient = useQueryClient();
 
-  const { data: user, isLoading } = useMe();
+  const { data: user } = useMe();
 
-  // The auth buttons used to wait for /auth/me before rendering, so on a slow
-  // network they popped in seconds late. Render them optimistically instead:
-  // guests (the common case) see them immediately, while a persisted hint keeps
-  // a returning signed-in user from flashing the buttons before their avatar loads.
-  const [wasAuthed, setWasAuthed] = React.useState(false);
+  // The auth slot can't be decided on the server: it depends on the cookie-based
+  // /auth/me call, which only runs on the client. So the SSR HTML (and the first
+  // client paint) has no user yet. If we defaulted that unknown state to the guest
+  // buttons, a returning signed-in user would see "Log in / Create account" flash
+  // on every refresh until /auth/me resolves.
+  //
+  // Tri-state hint fixes it: `null` = we don't know yet (SSR + first paint) →
+  // render a neutral placeholder, matching what the server sent (no hydration
+  // mismatch, no flash). After mount we read the persisted hint: `false` → guest,
+  // show buttons immediately; `true` → returning user, keep the placeholder until
+  // their avatar loads instead of flashing the buttons.
+  const [authHint, setAuthHint] = React.useState<boolean | null>(null);
   React.useEffect(() => {
     try {
-      setWasAuthed(window.localStorage.getItem("sg_authed") === "1");
+      setAuthHint(window.localStorage.getItem("sg_authed") === "1");
     } catch {
-      /* ignore */
+      setAuthHint(false);
     }
   }, []);
   React.useEffect(() => {
@@ -79,7 +86,12 @@ export default function HomeNavbar() {
       /* ignore */
     }
   }, [user]);
-  const showAuthButtons = !user && (!isLoading || !wasAuthed);
+  // Only show the guest buttons once we're sure the visitor is logged out.
+  // Everything else (unknown hint, or a returning user mid-load) shows the
+  // placeholder so the wrong state never paints. `isLoading` is intentionally
+  // unused here — a settled null user already flips authHint to false.
+  const showAuthButtons = !user && authHint === false;
+  const showAuthPlaceholder = !user && !showAuthButtons;
 
   // Catalog is small — fetch all for the predictive search dropdown.
   const { data: productData } = usePublicProducts({ page: 1, pageSize: 48 });
@@ -343,6 +355,10 @@ export default function HomeNavbar() {
                 </Link>
               </NavbarItem>
             </>
+          ) : showAuthPlaceholder ? (
+            <NavbarItem aria-hidden="true">
+              <div className="size-9 animate-pulse rounded-full bg-navy/10" />
+            </NavbarItem>
           ) : null}
         </NavbarContent>
 
@@ -474,6 +490,8 @@ export default function HomeNavbar() {
                     <PrimaryButton href="/signup" className="h-12 w-full" text="Create account" />
                   </div>
                 </>
+              ) : showAuthPlaceholder ? (
+                <div aria-hidden="true" className="h-12 w-full animate-pulse rounded-full bg-black/5" />
               ) : null}
             </div>
           </div>
