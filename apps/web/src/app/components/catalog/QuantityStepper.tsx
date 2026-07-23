@@ -102,8 +102,13 @@ export function QuantityStepper({
       return;
     }
 
-    setInputValue(String(nextValue));
-    setValidationMessage(getValidationMessage(nextValue));
+    // Snap the entered value into range on blur so a below-minimum (or above-max)
+    // quantity can't be left applied — typing 2 on a 6-minimum item lands on 6.
+    let clamped = Math.max(minValue, nextValue);
+    if (maxValue && maxValue > 0) clamped = Math.min(clamped, maxValue);
+    setInputValue(String(clamped));
+    setValidationMessage(null);
+    if (clamped !== value) onChange(clamped);
   };
 
   const canDecrement = !disabled && stepBaseValue > minValue;

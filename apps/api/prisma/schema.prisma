@@ -596,6 +596,7 @@ model CatalogOrder {
   items              CatalogOrderItem[]
   shipments          ShippingShipment[]
   inventoryLedgerEntries InventoryLedgerEntry[]
+  timelineEvents     CatalogOrderEvent[]
   createdAt          DateTime              @default(now())
   updatedAt          DateTime              @updatedAt
 
@@ -607,6 +608,31 @@ model CatalogOrder {
   @@index([status])
   @@index([paymentStatus])
   @@map("catalog_orders")
+}
+
+/// Coarse fulfillment stages surfaced on the customer tracking timeline.
+/// SUBMITTED isn't recorded as an event — it equals the order's createdAt.
+enum OrderTimelineStage {
+  SUBMITTED
+  IN_DESIGN
+  APPROVED
+  IN_PRODUCTION
+  SHIPPED
+}
+
+/// Append-only stamp of the first time an order reached a fulfillment stage, so
+/// tracking can show "when" for each step. One row per (order, stage) — kept
+/// idempotent via the unique constraint, so the earliest timestamp wins.
+model CatalogOrderEvent {
+  id        String             @id @default(cuid())
+  orderId   String
+  order     CatalogOrder       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  stage     OrderTimelineStage
+  createdAt DateTime           @default(now())
+
+  @@unique([orderId, stage])
+  @@index([orderId])
+  @@map("catalog_order_events")
 }
 
 model CatalogOrderItem {
@@ -852,6 +878,7 @@ model InventoryLedgerEntry {
 model Recipient {
   id                String             @id @default(cuid())
   userId            String
+  label             String?
   firstName         String
   lastName          String
   companyName       String?

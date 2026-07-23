@@ -41,13 +41,17 @@ export const trackOrderQuerySchema = z
     // authorizes tracking (the unguessable link is the secret), so no email is
     // needed. Otherwise fall back to order number + email.
     token: z.string().trim().min(1).optional(),
-    orderNumber: z
-      .string()
-      .trim()
-      .min(1)
-      .transform((value) => Number(value.replace(/^SW-?/i, "").replace(/\D/g, "")))
-      .pipe(z.number().int().positive())
-      .optional(),
+    // preprocess (not `.transform().pipe().optional()`): on this Zod version an
+    // optional pipe still parses `undefined` through its string input and fails
+    // with "expected string, received undefined" — which broke token-only
+    // (magic-link) tracking. preprocess maps a missing value to undefined first.
+    orderNumber: z.preprocess((value) => {
+      if (value === undefined || value === null || value === "") return undefined;
+      const digits = String(value)
+        .replace(/^SW-?/i, "")
+        .replace(/\D/g, "");
+      return digits ? Number(digits) : undefined;
+    }, z.number().int().positive().optional()),
     email: z.string().trim().email().optional()
   })
   .refine((q) => !!q.token || (q.orderNumber != null && !!q.email), {

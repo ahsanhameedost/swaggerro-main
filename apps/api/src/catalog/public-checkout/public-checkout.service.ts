@@ -12,6 +12,7 @@ import { env } from "../../env";
 import { NotificationsService } from "../../notifications/notifications.service";
 import { NotificationEventsService } from "../../notifications/notification-events.service";
 import { CouponsService } from "../../coupons/coupons.service";
+import { recordOrderTimeline } from "../orders/order-timeline";
 import { renderOrderSummaryHtml } from "../../email/email-layout";
 import type {
   ConfirmPublicCheckoutInput,
@@ -201,6 +202,10 @@ export class PublicCheckoutService {
         }
       });
     });
+
+    // Pay-now orders skip design and land straight on Approved — stamp it so the
+    // tracking timeline shows a real time for the stage.
+    await recordOrderTimeline(this.prisma.catalogOrderEvent, order.id, order.status, order.productionStage);
 
     if (env.PAYMENTS_TEST_MODE) {
       return {

@@ -37,10 +37,14 @@ export function MockupBuilder({
   const [colorId, setColorId] = useState<string | null>(colorGroup?.options[0]?.id ?? null);
   const [sizeId, setSizeId] = useState<string | null>(sizeGroup?.options[0]?.id ?? null);
   const [methodKey, setMethodKey] = useState<string>(imprintMethods[0]?.key ?? "");
-  // Honor the quantity carried over from the product page; only fall back to a
-  // default when the studio is opened directly. No MOQ is enforced.
+  // The logo mockup/preview flow only applies to orders of 6+ units — the B2C
+  // gate sends 1–5 units straight to direct checkout instead. So the quantity
+  // here must never drop below that floor, otherwise a customer could preview a
+  // logo and then check out with 1–2 units (bypassing the minimum).
+  const MIN_QTY = Math.max(product.minQty || 1, 6);
+  // Honor the quantity carried over from the product page, clamped to the floor.
   const [qty, setQty] = useState<number>(
-    initialQty && initialQty > 0 ? initialQty : product.minQty || 25
+    Math.max(MIN_QTY, initialQty && initialQty > 0 ? initialQty : product.minQty || 25)
   );
 
   const [logo, setLogo] = useState<{ src: string; file: File } | null>(null);
@@ -162,8 +166,13 @@ export function MockupBuilder({
       addToast({ title: "Pick a variant", color: "warning" });
       return;
     }
-    if (qty < 1) {
-      addToast({ title: "Enter a quantity", color: "warning" });
+    if (qty < MIN_QTY) {
+      addToast({
+        title: `Minimum ${MIN_QTY} units`,
+        description: `Logo orders start at ${MIN_QTY} units. For fewer, buy directly from the product page.`,
+        color: "warning"
+      });
+      setQty(MIN_QTY);
       return;
     }
     setSubmitting(true);
@@ -197,7 +206,9 @@ export function MockupBuilder({
         basePrice: activeBasePrice,
         compareAtPrice: product.compareAtPrice ?? null,
         stock: matchedVariant?.stock ?? product.baseStock ?? 0,
-        minQty: 1,
+        // Carry the logo-order floor into the cart so the cart's quantity stepper
+        // can't be dropped below it either (this was `1`, letting the cart go to 1–2).
+        minQty: MIN_QTY,
         currency: product.currency,
         pricingOptions: activePricing,
         quantity: qty,
@@ -327,10 +338,27 @@ export function MockupBuilder({
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Quantity</p>
             <div className="mt-2 flex items-center gap-2">
-              <button type="button" onClick={() => setQty((q) => Math.max(1, q - 1))} className="flex size-9 items-center justify-center rounded-lg border border-border">−</button>
-              <input type="number" value={qty} onChange={(e) => setQty(Math.max(1, Number(e.target.value) || 1))} className="h-9 w-20 rounded-lg border border-input bg-background text-center text-sm outline-none focus-visible:border-ring" />
+              <button
+                type="button"
+                onClick={() => setQty((q) => Math.max(MIN_QTY, q - 1))}
+                disabled={qty <= MIN_QTY}
+                className="flex size-9 items-center justify-center rounded-lg border border-border disabled:opacity-40"
+              >
+                −
+              </button>
+              <input
+                type="number"
+                min={MIN_QTY}
+                value={qty}
+                onChange={(e) => setQty(Number(e.target.value) || 0)}
+                onBlur={() => setQty((q) => (q < MIN_QTY ? MIN_QTY : q))}
+                className="h-9 w-20 rounded-lg border border-input bg-background text-center text-sm outline-none focus-visible:border-ring"
+              />
               <button type="button" onClick={() => setQty((q) => q + 1)} className="flex size-9 items-center justify-center rounded-lg border border-border">+</button>
             </div>
+            <p className="mt-1.5 text-xs text-muted-foreground">
+              Minimum {MIN_QTY} units for logo orders.
+            </p>
           </div>
 
           {/* price + actions */}
@@ -339,7 +367,7 @@ export function MockupBuilder({
               <span className="text-sm text-muted-foreground">{formatMoney(perUnitAllIn, product.currency)}/ea all-in</span>
               <span className="font-display text-2xl font-bold tabular-nums">{formatMoney(total, product.currency)}</span>
             </div>
-            <button type="button" onClick={handleAddToCart} disabled={submitting || qty < 1}
+            <button type="button" onClick={handleAddToCart} disabled={submitting || qty < MIN_QTY}
               className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl py-3 font-semibold text-white disabled:opacity-50"
               style={{ backgroundImage: "var(--primary-gradient)" }}>
               {submitting ? <Loader2 className="size-4 animate-spin" /> : null} Add to cart

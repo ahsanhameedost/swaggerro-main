@@ -79,6 +79,10 @@ export default function HomeNavbar() {
   }, []);
   React.useEffect(() => {
     if (user === undefined) return; // still loading — leave the hint untouched
+    // Keep the hint in sync with the *resolved* auth state. Without this, logging
+    // out (user -> null) left the hint stuck at `true`, so the header kept showing
+    // the placeholder instead of flipping to Log in / Create account.
+    setAuthHint(Boolean(user));
     try {
       if (user) window.localStorage.setItem("sg_authed", "1");
       else window.localStorage.removeItem("sg_authed");
@@ -146,6 +150,7 @@ export default function HomeNavbar() {
     // immediately so the UI updates without a page refresh. `invalidate` alone
     // kept rendering the previously cached user until the refetch resolved.
     queryClient.setQueryData(["me"], null);
+    setAuthHint(false); // flip the header to Log in / Create account right away
     router.push("/");
     router.refresh();
   };

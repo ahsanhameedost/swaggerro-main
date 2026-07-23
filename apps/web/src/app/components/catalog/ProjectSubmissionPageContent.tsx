@@ -24,6 +24,19 @@ import { PageBanner } from "@/components/marketing/page-banner";
 const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"] as const;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+// Earliest date a customer may request delivery for: past dates and the next 5
+// days are off-limits, so production has lead time to proof and produce. First
+// selectable day is 6 days out.
+const MIN_LEAD_DAYS = 6;
+
+/** Local-timezone YYYY-MM-DD (toISOString is UTC and can shift a day). */
+function toDateInputValue(date: Date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
 function buildFullName(firstName?: string | null, lastName?: string | null) {
   return [firstName, lastName].filter(Boolean).join(" ").trim();
 }
@@ -85,6 +98,18 @@ export function ProjectSubmissionPageContent() {
   const [companyName, setCompanyName] = useState("");
   const [phone, setPhone] = useState("");
   const [neededByDate, setNeededByDate] = useState("");
+  // Computed on the client only (server/client clocks & timezones differ, which
+  // would trip a hydration mismatch on the `min` attribute).
+  const [minNeededByDate, setMinNeededByDate] = useState("");
+  useEffect(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    d.setDate(d.getDate() + MIN_LEAD_DAYS);
+    setMinNeededByDate(toDateInputValue(d));
+  }, []);
+  const neededByDateInvalid = Boolean(
+    neededByDate && minNeededByDate && neededByDate < minNeededByDate
+  );
   const [notes, setNotes] = useState("");
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [logoKey, setLogoKey] = useState<string | null>(null);
@@ -230,6 +255,17 @@ export function ProjectSubmissionPageContent() {
       addToast({
         title: "Missing contact details",
         description: "Please provide your name and a valid email.",
+        color: "warning"
+      });
+      return;
+    }
+
+    // The date is optional, but if given it must be at least the lead time out
+    // (guards against a manually-typed value the native picker's min wouldn't).
+    if (neededByDateInvalid) {
+      addToast({
+        title: "Choose a later date",
+        description: `Please pick a delivery date at least ${MIN_LEAD_DAYS} days from today.`,
         color: "warning"
       });
       return;
@@ -414,6 +450,14 @@ export function ProjectSubmissionPageContent() {
                   type="date"
                   value={neededByDate}
                   onValueChange={setNeededByDate}
+                  min={minNeededByDate || undefined}
+                  isInvalid={neededByDateInvalid}
+                  description="We need a few days to proof and produce your order, so the earliest date is 6 days out."
+                  errorMessage={
+                    neededByDateInvalid
+                      ? "Please pick a date at least 6 days from today."
+                      : undefined
+                  }
                 />
 
                 <Textarea

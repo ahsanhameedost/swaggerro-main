@@ -38,6 +38,7 @@ import { PrismaService } from "../../prisma/prisma.service";
 import { StorageService } from "../../storage/storage.service";
 import { NotificationsService } from "../../notifications/notifications.service";
 import { buildOrderIdentifierWhere } from "./order-identifier";
+import { recordOrderTimeline } from "./order-timeline";
 import { NotificationEventsService } from "../../notifications/notification-events.service";
 import { CouponsService } from "../../coupons/coupons.service";
 import { CatalogSharedService } from "../common/catalog-shared.service";
@@ -433,6 +434,14 @@ export class CatalogOrdersService extends CatalogSharedService {
       });
     });
 
+    // Stamp the fulfillment stage this status change lands the order on.
+    await recordOrderTimeline(
+      this.prisma.catalogOrderEvent,
+      order.id,
+      order.status,
+      order.productionStage
+    );
+
     // Let the customer know when their order status changes.
     if (order.userId && input.status !== existing.status) {
       const orderLabel = `SW-${String(order.orderNumber).padStart(3, "0")}`;
@@ -476,6 +485,13 @@ export class CatalogOrdersService extends CatalogSharedService {
       data: { productionStage: input.productionStage },
       include: this.orderInclude
     });
+
+    await recordOrderTimeline(
+      this.prisma.catalogOrderEvent,
+      updated.id,
+      updated.status,
+      updated.productionStage
+    );
 
     const STAGE_LABELS: Record<string, string> = {
       NOT_STARTED: "Not started",
@@ -797,12 +813,12 @@ export class CatalogOrdersService extends CatalogSharedService {
         });
       }
 
+      const nextStatus = order.status === "PENDING_REVIEW" ? "IN_REVIEW" : order.status;
       await tx.catalogOrder.update({
         where: { id: order.id },
-        data: {
-          status: order.status === "PENDING_REVIEW" ? "IN_REVIEW" : order.status
-        }
+        data: { status: nextStatus }
       });
+      await recordOrderTimeline(tx.catalogOrderEvent, order.id, nextStatus, order.productionStage);
     });
 
     // Fan out design-progress events to the customer.
@@ -889,6 +905,7 @@ export class CatalogOrdersService extends CatalogSharedService {
           status: "IN_REVIEW"
         }
       });
+      await recordOrderTimeline(tx.catalogOrderEvent, order.id, "IN_REVIEW", order.productionStage);
     });
 
     // Notify the assigned designer (or all admins if unassigned) — in-app + email.
@@ -976,15 +993,10 @@ export class CatalogOrdersService extends CatalogSharedService {
     const updated = await this.findAccessibleOrderOrThrow(order.id, authUser);
     const allItemsReady = updated.items.every((entry) => entry.designPhase === "READY_TO_ORDER");
 
-    if (allItemsReady) {
-      await this.prisma.catalogOrder.update({
-        where: { id: updated.id },
-        data: {
-          status: "APPROVED",
-          productionStage: "READY_FOR_PRODUCTION"
-        }
-      });
-    }
+    // NOTE: the customer approving their designs no longer auto-approves the
+    // order. Bulk orders stay in review until a super admin reviews them and
+    // sets the status (APPROVED → in production) themselves. The admins are
+    // notified below that the order is now waiting on their approval.
 
     const orderLabel = `SW-${String(order.orderNumber).padStart(3, "0")}`;
     const stageLabel = input.stage === "MOCKUP" ? "mockup" : "final design";
@@ -1041,9 +1053,9 @@ export class CatalogOrdersService extends CatalogSharedService {
     }
     if (allItemsReady) {
       await this.events.dispatchToAdmins({
-        type: "order.ready_to_produce",
-        title: "Order ready to produce",
-        body: `All designs on order ${orderLabel} are approved.`,
+        type: "order.awaiting_approval",
+        title: "Order awaiting approval",
+        body: `All designs on order ${orderLabel} are approved by the customer — review and approve the order to move it into production.`,
         link: `/dashboard/orders/${order.id}`,
         email: false
       });

@@ -7,6 +7,7 @@ import { randomUUID } from "crypto";
 import { slugify } from "../common/utils/slug";
 import { hasPermission } from "../common/utils/permissions";
 import { buildOrderIdentifierWhere } from "../catalog/orders/order-identifier";
+import { recordOrderTimeline } from "../catalog/orders/order-timeline";
 import type {
   CreateShipmentPaymentDto,
   CreateShippingProfileDto,
@@ -1012,6 +1013,8 @@ export class ShippingService {
         where: { id: shipment.orderId },
         data: { productionStage: "SHIPPED" }
       });
+      // Stamp the Shipped stage on the customer tracking timeline.
+      await recordOrderTimeline(this.prisma.catalogOrderEvent, shipment.orderId, null, "SHIPPED");
     }
 
     return this.serializeShipment(shipment);

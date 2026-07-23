@@ -382,21 +382,73 @@ Swaggeroo Team`,
     this.logger.log(`sendCatalogOrderAdminEmail success ${mailInfoSummary(info)}`);
   }
 
-  async sendCatalogOrderUserAckEmail(to: string, name: string, orderId?: string) {
+  async sendCatalogOrderUserAckEmail(payload: {
+    to: string;
+    name: string;
+    orderId?: string;
+    orderNumber?: number;
+    type?: "BULK" | "SWAG_PACK" | "COMBINED";
+    items?: { productName: string; variantName?: string | null; quantity: number }[];
+  }) {
+    const { to, name, orderId, orderNumber, type, items = [] } = payload;
+
     // A per-order "magic link" — opens tracking pre-loaded, no order number or
     // email to type. Falls back to the bare tracking page if we have no id.
     const trackUrl = orderId
       ? `${webBaseUrl()}/track?token=${encodeURIComponent(orderId)}`
       : `${webBaseUrl()}/track`;
+    const orderLabel = orderNumber != null ? `SW-${String(orderNumber).padStart(3, "0")}` : null;
+    const typeLabel =
+      type === "SWAG_PACK" ? "Swag Pack" : type === "COMBINED" ? "Combined" : "Bulk";
+
+    // Order reference line: "SW-077 · Bulk order".
+    const detailHtml = orderLabel
+      ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 16px;background-color:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;">
+           <tr>
+             <td style="padding:12px 16px;font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;font-weight:700;">Order number</td>
+             <td align="right" style="padding:12px 16px;font-family:Arial,Helvetica,sans-serif;font-size:16px;color:#0f172a;font-weight:800;">${escapeHtml(orderLabel)}<span style="font-size:11px;font-weight:600;color:#2196ff;"> · ${escapeHtml(typeLabel)}</span></td>
+           </tr>
+         </table>`
+      : "";
+
+    // Items table — product + quantity only (no prices: bulk orders are quoted
+    // after we proof your designs, so the final total isn't set yet).
+    const itemRows = items
+      .map(
+        (item) => `
+          <tr>
+            <td style="padding:11px 16px;border-top:1px solid #e8ecf3;font-family:Arial,Helvetica,sans-serif;font-size:13.5px;color:#0f172a;font-weight:600;">${escapeHtml(item.productName)}${item.variantName ? `<div style="font-size:12px;color:#64748b;font-weight:400;margin-top:2px;">${escapeHtml(item.variantName)}</div>` : ""}</td>
+            <td align="right" style="padding:11px 16px;border-top:1px solid #e8ecf3;font-family:Arial,Helvetica,sans-serif;font-size:13.5px;color:#334155;font-weight:700;white-space:nowrap;">&times; ${item.quantity}</td>
+          </tr>`
+      )
+      .join("");
+    const itemsHtml = items.length
+      ? `<p style="margin:0 0 10px;font-family:Arial,Helvetica,sans-serif;font-size:12px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#64748b;">Your items</p>
+         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 18px;background-color:#f8fafc;border:1px solid #e2e8f0;border-radius:14px;">
+           <tr>
+             <th align="left" style="padding:10px 16px;font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;font-weight:700;">Product</th>
+             <th align="right" style="padding:10px 16px;font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;font-weight:700;">Qty</th>
+           </tr>
+           ${itemRows}
+         </table>`
+      : "";
+
+    // Plain-text mirror.
+    const textItems = items.length
+      ? `\nItems:\n${items.map((i) => `  - ${i.productName}${i.variantName ? ` (${i.variantName})` : ""} x ${i.quantity}`).join("\n")}\n`
+      : "";
+
     const info = await this.transporter.sendMail({
       from: env.EMAIL_FROM,
       to,
-      subject: "We received your Swaggeroo order request",
+      subject: orderLabel
+        ? `We received your order request · ${orderLabel}`
+        : "We received your Swaggeroo order request",
       text: `Hi ${name},
 
-Thanks for submitting your Swaggeroo order request.
-
-Our team received it successfully and will review your project details shortly.
+Thanks for submitting your Swaggeroo order request${orderLabel ? ` (${orderLabel})` : ""}.
+${textItems}
+Our team will review your project and get back to you within 24–48 hours with mockups and a quote to approve.
 
 Track your order any time: ${trackUrl}
 
@@ -406,8 +458,10 @@ Swaggeroo Team`,
         heading: "We received your order request",
         bodyHtml: `
           <p style="margin:0 0 14px;">Hi ${escapeHtml(name)},</p>
-          <p style="margin:0 0 14px;">Thanks for submitting your Swaggeroo order. We've received it successfully.</p>
-          <p style="margin:0 0 14px;">Our team is reviewing your project details and will start on your designs shortly. You can follow its progress any time — just tap the button below.</p>
+          <p style="margin:0 0 16px;">Thanks for submitting your Swaggeroo order — we've received it successfully.</p>
+          ${detailHtml}
+          ${itemsHtml}
+          <p style="margin:0 0 14px;">Our team will review your project and get back to you <strong>within 24–48 hours</strong> with mockups and a quote to approve. Nothing goes to production until you sign off, and you can follow every step below.</p>
           <p style="margin:22px 0 0;font-weight:600;color:#0f172a;">The Swaggeroo Team</p>
         `,
         cta: { label: "Track your order", url: trackUrl },

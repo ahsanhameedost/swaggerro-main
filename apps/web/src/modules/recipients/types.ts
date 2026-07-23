@@ -1,6 +1,7 @@
 export type Recipient = {
   id: string;
   userId: string;
+  label?: string | null;
   firstName: string;
   lastName: string;
   companyName?: string | null;

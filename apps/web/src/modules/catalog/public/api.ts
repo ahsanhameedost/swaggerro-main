@@ -82,6 +82,9 @@ export type PublicOrderTracking = {
   type: "BULK" | "SWAG_PACK" | "COMBINED";
   projectName: string | null;
   createdAt: string;
+  // Per-stage timestamps aligned to the fulfillment tracker (Submitted, In
+  // design, Approved, In production, Shipped). null = not reached / not recorded.
+  stageTimestamps: (string | null)[];
   items: { productName: string; designPhase: string; quantity: number }[];
   shipments: {
     status: string;

@@ -10,6 +10,7 @@ import { PrismaService } from "../../prisma/prisma.service";
 import { StorageService } from "../../storage/storage.service";
 import { NotificationsService } from "../../notifications/notifications.service";
 import { CatalogSharedService } from "../common/catalog-shared.service";
+import { TIMELINE_STAGES } from "../orders/order-timeline";
 
 type ResolvedCheckoutItem = {
   itemType: "BULK" | "SWAG_PACK" | "PACKAGING";
@@ -46,6 +47,7 @@ export class CatalogPublicService extends CatalogSharedService {
       include: {
         project: { select: { name: true, swagPackName: true } },
         items: { select: { productName: true, designPhase: true, quantity: true }, orderBy: { createdAt: "asc" } },
+        timelineEvents: { select: { stage: true, createdAt: true } },
         shipments: {
           select: {
             status: true,
@@ -66,6 +68,15 @@ export class CatalogPublicService extends CatalogSharedService {
       throw new NotFoundException("No order found for that order number and email.");
     }
 
+    // Per-stage timestamps for the tracking timeline, aligned to TIMELINE_STAGES.
+    // Index 0 (Submitted) is always the order's createdAt; later stages come from
+    // recorded events, or null if the order hasn't reached them (or predates
+    // event tracking).
+    const eventAt = new Map(order.timelineEvents.map((e) => [e.stage, e.createdAt] as const));
+    const stageTimestamps = TIMELINE_STAGES.map((stage, index) =>
+      index === 0 ? order.createdAt : (eventAt.get(stage) ?? null)
+    );
+
     return {
       orderNumber: order.orderNumber,
       status: order.status,
@@ -74,6 +85,7 @@ export class CatalogPublicService extends CatalogSharedService {
       type: order.type,
       projectName: order.project?.swagPackName ?? order.project?.name ?? null,
       createdAt: order.createdAt,
+      stageTimestamps,
       items: order.items.map((item) => ({
         productName: item.productName,
         designPhase: item.designPhase,
@@ -457,7 +469,18 @@ export class CatalogPublicService extends CatalogSharedService {
           )
         }))
       });
-      await this.emailService.sendCatalogOrderUserAckEmail(order.email, order.name, order.id);
+      await this.emailService.sendCatalogOrderUserAckEmail({
+        to: order.email,
+        name: order.name,
+        orderId: order.id,
+        orderNumber: order.orderNumber,
+        type: order.type,
+        items: order.items.map((item) => ({
+          productName: item.productName,
+          variantName: item.variantName ?? null,
+          quantity: item.quantity
+        }))
+      });
     } catch {}
 
     // In-app notifications: alert every super admin, and the customer if they

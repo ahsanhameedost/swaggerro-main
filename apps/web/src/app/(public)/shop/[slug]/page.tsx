@@ -225,7 +225,10 @@ export default function ProductDetailPage() {
       basePrice: activeBasePrice,
       compareAtPrice: product.compareAtPrice ?? null,
       stock: activeStock,
-      minQty: activeMinQty,
+      // A gated bulk (6+) order must keep its floor once in the cart, otherwise
+      // the cart's quantity stepper could be dropped back to 1–2. Direct-buy
+      // (1–5) orders keep the no-minimum floor.
+      minQty: gateEnabled && !directBuyMode ? PREVIEW_LOGO_GATE_THRESHOLD + 1 : activeMinQty,
       currency: product.currency,
       pricingOptions: activePricing,
       quantity,

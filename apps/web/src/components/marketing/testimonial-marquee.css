@@ -1,25 +1,39 @@
-@keyframes tm-scroll {
-  from {
-    transform: translateX(0);
-  }
-  to {
-    /* four identical sets; -25% == exactly one set → lands on the seam */
-    transform: translateX(-25%);
-  }
+/*
+ * The scrolling is driven by a requestAnimationFrame loop in the component (see
+ * TestimonialCarousel), not a CSS animation. That's deliberate: CSS
+ * `animation-play-state` flips between running/paused instantly, which felt like
+ * a hard jerk on hover. The JS loop eases the speed toward 0 on hover and back
+ * up on leave, so it glides to a stop and glides back to full speed.
+ */
+.tm-marquee {
+  /* Edge fade via cheap gradient overlays (not mask-image, which re-rasterized
+     the moving track every frame). Band colour = section bg-muted/40 over white. */
+  --tm-edge: color-mix(in srgb, var(--muted) 40%, #fff);
 }
 
-.tm-marquee {
-  -webkit-mask-image: linear-gradient(to right, transparent, #000 5%, #000 95%, transparent);
-  mask-image: linear-gradient(to right, transparent, #000 5%, #000 95%, transparent);
+.tm-marquee::before,
+.tm-marquee::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 1;
+  width: 4rem;
+  pointer-events: none;
+}
+
+.tm-marquee::before {
+  left: 0;
+  background: linear-gradient(to right, var(--tm-edge), transparent);
+}
+
+.tm-marquee::after {
+  right: 0;
+  background: linear-gradient(to left, var(--tm-edge), transparent);
 }
 
 .tm-track {
-  animation: tm-scroll var(--tm-duration, 60s) linear infinite;
+  /* Keep the track on its own GPU layer so the per-frame transform never repaints. */
   will-change: transform;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .tm-track {
-    animation: none;
-  }
+  backface-visibility: hidden;
 }

@@ -52,6 +52,7 @@ export class RecipientsService {
       return tx.recipient.create({
         data: {
           userId: ownerId,
+          label: this.toNullableString(input.label),
           firstName: input.firstName.trim(),
           lastName: input.lastName.trim(),
           companyName: this.toNullableString(input.companyName),
@@ -87,6 +88,7 @@ export class RecipientsService {
       return tx.recipient.update({
         where: { id: existing.id },
         data: {
+          ...(input.label !== undefined ? { label: this.toNullableString(input.label) } : {}),
           ...(input.firstName !== undefined ? { firstName: input.firstName.trim() } : {}),
           ...(input.lastName !== undefined ? { lastName: input.lastName.trim() } : {}),
           ...(input.companyName !== undefined ? { companyName: this.toNullableString(input.companyName) } : {}),
@@ -158,6 +160,7 @@ export class RecipientsService {
   private serializeRecipient(recipient: {
     id: string;
     userId: string;
+    label: string | null;
     firstName: string;
     lastName: string;
     companyName: string | null;
@@ -178,6 +181,7 @@ export class RecipientsService {
     return {
       id: recipient.id,
       userId: recipient.userId,
+      label: recipient.label,
       firstName: recipient.firstName,
       lastName: recipient.lastName,
       companyName: recipient.companyName,

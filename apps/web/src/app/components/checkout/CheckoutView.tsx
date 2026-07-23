@@ -204,11 +204,18 @@ export function CheckoutView(props: CheckoutViewProps) {
   const createRecipient = useCreateRecipient();
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
   const [saveAddress, setSaveAddress] = useState(false);
+  const [addressLabel, setAddressLabel] = useState("");
   const autoApplied = useRef(false);
+
+  // Once the customer edits a field that was filled from the address book, this
+  // is no longer "that saved address" — drop the highlighted selection so the
+  // saved-address card stops showing as active (they can re-pick it to reapply).
+  const clearSavedSelection = () => setSelectedAddressId((id) => (id ? null : id));
 
   // Fill the shipping form from a saved address.
   const applyRecipient = (r: Recipient) => {
     setSelectedAddressId(r.id);
+    setAddressLabel(r.label ?? "");
     setName([r.firstName, r.lastName].filter(Boolean).join(" ").trim());
     setCompany(r.companyName ?? "");
     if (r.phone) setPhone(r.phone);
@@ -250,6 +257,7 @@ export function CheckoutView(props: CheckoutViewProps) {
     );
     createRecipient.mutate(
       {
+        label: addressLabel.trim() || null,
         firstName,
         lastName,
         companyName: company.trim() || null,
@@ -473,7 +481,7 @@ export function CheckoutView(props: CheckoutViewProps) {
                   <div className="grid gap-4 sm:grid-cols-2">
                     <label className="block">
                       <span className={labelClass}>Full name</span>
-                      <input className={inputClass} value={name} onChange={(e) => setName(e.target.value)} placeholder="Jordan Lee" />
+                      <input className={inputClass} value={name} onChange={(e) => { setName(e.target.value); clearSavedSelection(); }} placeholder="Jordan Lee" />
                     </label>
                     <label className="block">
                       <span className={labelClass}>
@@ -485,13 +493,13 @@ export function CheckoutView(props: CheckoutViewProps) {
                       <span className={labelClass}>
                         Phone <span className="text-danger">*</span>
                       </span>
-                      <input className={inputClass} value={phone} onChange={(e) => setPhone(e.target.value)} />
+                      <input className={inputClass} value={phone} onChange={(e) => { setPhone(e.target.value); clearSavedSelection(); }} />
                     </label>
                     <label className="block">
                       <span className={labelClass}>
                         Company <span className="font-normal text-muted-foreground">(optional)</span>
                       </span>
-                      <input className={inputClass} value={company} onChange={(e) => setCompany(e.target.value)} placeholder="Acme Co" />
+                      <input className={inputClass} value={company} onChange={(e) => { setCompany(e.target.value); clearSavedSelection(); }} placeholder="Acme Co" />
                     </label>
                   </div>
                 </SectionCard>
@@ -520,6 +528,11 @@ export function CheckoutView(props: CheckoutViewProps) {
                               )}
                             >
                               <span className="flex items-center gap-2 font-medium">
+                                {r.label ? (
+                                  <span className="inline-flex shrink-0 items-center rounded-full bg-navy/5 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-foreground/70">
+                                    {r.label}
+                                  </span>
+                                ) : null}
                                 <span className="truncate">
                                   {[r.firstName, r.lastName].filter(Boolean).join(" ")}
                                 </span>
@@ -549,36 +562,36 @@ export function CheckoutView(props: CheckoutViewProps) {
                       <span className={labelClass}>
                         Street address <span className="text-danger">*</span>
                       </span>
-                      <input className={inputClass} value={street} onChange={(e) => setStreet(e.target.value)} placeholder="123 Main St" />
+                      <input className={inputClass} value={street} onChange={(e) => { setStreet(e.target.value); clearSavedSelection(); }} placeholder="123 Main St" />
                     </label>
                     <label className="block">
                       <span className={labelClass}>
                         Apt, suite, etc. <span className="font-normal text-muted-foreground">(optional)</span>
                       </span>
-                      <input className={inputClass} value={apt} onChange={(e) => setApt(e.target.value)} />
+                      <input className={inputClass} value={apt} onChange={(e) => { setApt(e.target.value); clearSavedSelection(); }} />
                     </label>
                     <div className="grid gap-4 sm:grid-cols-2">
                       <label className="block">
                         <span className={labelClass}>
                           City <span className="text-danger">*</span>
                         </span>
-                        <input className={inputClass} value={city} onChange={(e) => setCity(e.target.value)} />
+                        <input className={inputClass} value={city} onChange={(e) => { setCity(e.target.value); clearSavedSelection(); }} />
                       </label>
                       <label className="block">
                         <span className={labelClass}>
                           State / region <span className="text-danger">*</span>
                         </span>
-                        <input className={inputClass} value={region} onChange={(e) => setRegion(e.target.value)} />
+                        <input className={inputClass} value={region} onChange={(e) => { setRegion(e.target.value); clearSavedSelection(); }} />
                       </label>
                       <label className="block">
                         <span className={labelClass}>Postal code</span>
-                        <input className={inputClass} value={postal} onChange={(e) => setPostal(e.target.value)} />
+                        <input className={inputClass} value={postal} onChange={(e) => { setPostal(e.target.value); clearSavedSelection(); }} />
                       </label>
                       <label className="block">
                         <span className={labelClass}>
                           Country <span className="text-danger">*</span>
                         </span>
-                        <input className={inputClass} value={country} onChange={(e) => setCountry(e.target.value)} />
+                        <input className={inputClass} value={country} onChange={(e) => { setCountry(e.target.value); clearSavedSelection(); }} />
                       </label>
                     </div>
                     <label className="block">
@@ -593,15 +606,44 @@ export function CheckoutView(props: CheckoutViewProps) {
                       />
                     </label>
                     {authed ? (
-                      <label className="flex cursor-pointer items-center gap-2.5 text-sm text-foreground">
-                        <input
-                          type="checkbox"
-                          checked={saveAddress}
-                          onChange={(e) => setSaveAddress(e.target.checked)}
-                          className="size-4 rounded border-input accent-[var(--primary)]"
-                        />
-                        Save this address to my account for next time
-                      </label>
+                      <div className="space-y-2.5">
+                        <label className="flex cursor-pointer items-center gap-2.5 text-sm text-foreground">
+                          <input
+                            type="checkbox"
+                            checked={saveAddress}
+                            onChange={(e) => setSaveAddress(e.target.checked)}
+                            className="size-4 rounded border-input accent-[var(--primary)]"
+                          />
+                          Save this address to my account for next time
+                        </label>
+                        {saveAddress ? (
+                          <div className="flex flex-wrap items-center gap-2 pl-6">
+                            <span className="text-xs text-muted-foreground">Label this address</span>
+                            {["Home", "Office", "Other"].map((opt) => (
+                              <button
+                                type="button"
+                                key={opt}
+                                onClick={() => setAddressLabel(opt)}
+                                className={cn(
+                                  "rounded-full border px-3 py-1 text-xs font-medium transition",
+                                  addressLabel === opt
+                                    ? "border-primary bg-brand-soft/50 text-primary"
+                                    : "border-border text-foreground/70 hover:bg-muted/40"
+                                )}
+                              >
+                                {opt}
+                              </button>
+                            ))}
+                            <input
+                              className="h-8 w-32 rounded-full border border-input bg-background px-3 text-xs outline-none transition focus-visible:border-ring"
+                              value={addressLabel}
+                              onChange={(e) => setAddressLabel(e.target.value)}
+                              placeholder="Custom…"
+                              maxLength={40}
+                            />
+                          </div>
+                        ) : null}
+                      </div>
                     ) : null}
                   </div>
                 </SectionCard>

@@ -44,7 +44,14 @@ function LoginContent() {
 
     try {
       const result = await login(values.email.trim(), values.password);
-      await queryClient.invalidateQueries({ queryKey: ["me"] });
+      // Prime the ["me"] cache with the signed-in user BEFORE navigating. Without
+      // this, `invalidateQueries` alone left the cache holding the stale
+      // logged-out value (null); on the dashboard `useMe` returned null with
+      // isLoading=false (cached data exists), so the auth guard bounced straight
+      // back to /login before the refetch could resolve. A non-awaited invalidate
+      // then refreshes full role/permissions in the background.
+      queryClient.setQueryData(["me"], result.user);
+      queryClient.invalidateQueries({ queryKey: ["me"] });
       addToast({
         title: "Welcome back",
         description: "Logged in successfully",
