@@ -8,12 +8,16 @@ export const verifyAccountSetupSchema = z.object({
 
 export const completeAccountSetupSchema = z.object({
   token: z.string().trim().min(10, "Invalid setup link"),
+  // Optional: sellers pick a username; customers claiming a guest account don't
+  // need one (they sign in with their email). Empty string is treated as none.
   username: z
     .string()
     .trim()
     .min(3, "Username must be at least 3 characters")
     .max(40)
-    .regex(/^[a-zA-Z0-9_.-]+$/, "Use letters, numbers, dot, dash or underscore"),
+    .regex(/^[a-zA-Z0-9_.-]+$/, "Use letters, numbers, dot, dash or underscore")
+    .optional()
+    .or(z.literal("")),
   password: z.string().min(8, "Password must be at least 8 characters").max(200)
 });
 

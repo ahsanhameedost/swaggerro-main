@@ -20,7 +20,11 @@ function AccountSetupContent() {
 
   const [verifying, setVerifying] = useState(true);
   const [email, setEmail] = useState<string | null>(null);
+  const [role, setRole] = useState<string | null>(null);
   const [verifyError, setVerifyError] = useState<string | null>(null);
+  // Sellers pick a username and land on /seller; customers claiming a guest
+  // account skip the username and land on /dashboard.
+  const isSeller = role === "Seller";
 
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -40,7 +44,10 @@ function AccountSetupContent() {
     (async () => {
       try {
         const res = await verifyAccountSetup(token);
-        if (!cancelled) setEmail(res.email);
+        if (!cancelled) {
+          setEmail(res.email);
+          setRole(res.role);
+        }
       } catch (error: any) {
         if (!cancelled) setVerifyError(error?.message ?? "This setup link is invalid or has expired.");
       } finally {
@@ -54,9 +61,12 @@ function AccountSetupContent() {
 
   const validate = () => {
     const next: typeof errors = {};
-    if (username.trim().length < 3) next.username = "Username must be at least 3 characters";
-    else if (!/^[a-zA-Z0-9_.-]+$/.test(username.trim()))
-      next.username = "Use letters, numbers, dot, dash or underscore";
+    // Username is only required for sellers. Customers claim without one.
+    if (isSeller) {
+      if (username.trim().length < 3) next.username = "Username must be at least 3 characters";
+      else if (!/^[a-zA-Z0-9_.-]+$/.test(username.trim()))
+        next.username = "Use letters, numbers, dot, dash or underscore";
+    }
     if (password.length < 8) next.password = "Password must be at least 8 characters";
     if (confirm !== password) next.confirm = "Passwords do not match";
     setErrors(next);
@@ -68,10 +78,22 @@ function AccountSetupContent() {
     if (!validate()) return;
     setSubmitting(true);
     try {
-      await completeAccountSetup({ token, username: username.trim(), password });
-      await queryClient.invalidateQueries({ queryKey: ["me"] });
-      addToast({ title: "Account ready", description: "Welcome to your seller dashboard.", color: "success" });
-      router.push("/seller");
+      const result = await completeAccountSetup({
+        token,
+        username: username.trim() || undefined,
+        password
+      });
+      // Prime the cache so the dashboard/seller guard doesn't bounce before the
+      // refetch (completeAccountSetup already set the auth cookie server-side).
+      queryClient.setQueryData(["me"], result.user);
+      queryClient.invalidateQueries({ queryKey: ["me"] });
+      const seller = (result.user?.role ?? role) === "Seller";
+      addToast({
+        title: "Account ready",
+        description: seller ? "Welcome to your seller dashboard." : "Welcome! Your account is ready.",
+        color: "success"
+      });
+      router.push(seller ? "/seller" : "/dashboard");
     } catch (error: any) {
       addToast({ title: "Setup failed", description: error?.message ?? "Please try again.", color: "danger" });
       setSubmitting(false);
@@ -113,11 +135,15 @@ function AccountSetupContent() {
     <div className="swag-redesign mx-auto max-w-md px-6 py-14">
       <div className="mb-8 text-center">
         <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-soft px-3 py-1 text-xs font-semibold text-primary">
-          <Store className="size-3.5" /> Seller account setup
+          <Store className="size-3.5" /> {isSeller ? "Seller account setup" : "Account setup"}
         </span>
-        <h1 className="mt-3 font-display text-3xl font-bold tracking-tight">Set up your account</h1>
+        <h1 className="mt-3 font-display text-3xl font-bold tracking-tight">
+          {isSeller ? "Set up your account" : "Set your password"}
+        </h1>
         <p className="mt-2 text-muted-foreground">
-          Your application was approved. Verify your email and choose a username and password.
+          {isSeller
+            ? "Your application was approved. Verify your email and choose a username and password."
+            : "Set a password to activate your account — your order details are already saved."}
         </p>
       </div>
 
@@ -127,21 +153,23 @@ function AccountSetupContent() {
           <span className="truncate">Email verified: <span className="font-medium">{email}</span></span>
         </div>
 
-        <label className="block">
-          <span className="text-sm font-medium text-foreground">Username</span>
-          <div className="relative mt-1.5">
-            <User2 className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <input
-              className={cn(inputClass, "pl-9", errors.username && "border-destructive")}
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              placeholder="acme-team"
-              autoCapitalize="none"
-              spellCheck={false}
-            />
-          </div>
-          {errors.username ? <p className="mt-1 text-xs font-medium text-destructive">{errors.username}</p> : null}
-        </label>
+        {isSeller ? (
+          <label className="block">
+            <span className="text-sm font-medium text-foreground">Username</span>
+            <div className="relative mt-1.5">
+              <User2 className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+              <input
+                className={cn(inputClass, "pl-9", errors.username && "border-destructive")}
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="acme-team"
+                autoCapitalize="none"
+                spellCheck={false}
+              />
+            </div>
+            {errors.username ? <p className="mt-1 text-xs font-medium text-destructive">{errors.username}</p> : null}
+          </label>
+        ) : null}
 
         <label className="block">
           <span className="text-sm font-medium text-foreground">Password</span>

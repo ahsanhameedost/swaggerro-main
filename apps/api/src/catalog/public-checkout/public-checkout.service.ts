@@ -6,18 +6,30 @@ import {
 } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
 import Stripe from "stripe";
-import { randomUUID } from "crypto";
+import * as bcrypt from "bcryptjs";
+import { randomBytes, randomUUID } from "crypto";
 import { PrismaService } from "../../prisma/prisma.service";
 import { env } from "../../env";
 import { NotificationsService } from "../../notifications/notifications.service";
 import { NotificationEventsService } from "../../notifications/notification-events.service";
 import { CouponsService } from "../../coupons/coupons.service";
+import { EmailService } from "../../email/email.service";
 import { recordOrderTimeline } from "../orders/order-timeline";
 import { renderOrderSummaryHtml } from "../../email/email-layout";
 import type {
   ConfirmPublicCheckoutInput,
   CreatePublicCheckoutInput
 } from "./public-checkout.dto";
+
+// The Customer role name (mirrors users.service). Guest checkout attaches the
+// order to a Customer-role account.
+const CUSTOMER_ROLE_NAME = "Customer";
+
+/** Random throwaway password for an unclaimed account — replaced when the
+ *  customer sets their own via the account-setup link. */
+function randomPassword() {
+  return randomBytes(24).toString("base64url");
+}
 
 @Injectable()
 export class PublicCheckoutService {
@@ -27,8 +39,78 @@ export class PublicCheckoutService {
     private readonly prisma: PrismaService,
     private readonly notifications: NotificationsService,
     private readonly events: NotificationEventsService,
-    private readonly coupons: CouponsService
+    private readonly coupons: CouponsService,
+    private readonly email: EmailService
   ) {}
+
+  // Attach a paid guest order to a customer account, creating a passwordless
+  // ("unclaimed") account if the email is new, and — when the account is
+  // unclaimed — email a one-time "set your password" link so they can claim it.
+  // Claimed accounts (already have a password) are silently linked, no email.
+  private async attachCustomerAndInvite(order: {
+    id: string;
+    userId: string | null;
+    email: string;
+    name: string | null;
+    phone: string | null;
+  }) {
+    const email = order.email.trim().toLowerCase();
+    let user = order.userId
+      ? await this.prisma.user.findUnique({ where: { id: order.userId } })
+      : await this.prisma.user.findUnique({ where: { email } });
+
+    if (!user) {
+      const role = await this.prisma.role.findUnique({ where: { name: CUSTOMER_ROLE_NAME } });
+      if (!role) throw new ServiceUnavailableException("Customer role is not configured.");
+      const [firstName, ...rest] = (order.name ?? "").trim().split(/\s+/).filter(Boolean);
+      user = await this.prisma.user.create({
+        data: {
+          email,
+          passwordHash: bcrypt.hashSync(randomPassword(), 12),
+          firstName: firstName || null,
+          lastName: rest.join(" ") || null,
+          phone: order.phone || null,
+          roleId: role.id,
+          mustSetPassword: true
+        }
+      });
+    }
+
+    if (order.userId !== user.id) {
+      await this.prisma.catalogOrder.update({
+        where: { id: order.id },
+        data: { userId: user.id }
+      });
+    }
+
+    // Unclaimed account (new guest, or a prior guest who never set a password) →
+    // send a fresh set-password link. A claimed account is left as-is.
+    if (user.mustSetPassword) {
+      await this.sendAccountSetupInvite(user.id, user.email, user.firstName);
+    }
+
+    return user;
+  }
+
+  private async sendAccountSetupInvite(userId: string, email: string, firstName: string | null) {
+    try {
+      const token = randomBytes(32).toString("hex");
+      await this.prisma.accountSetupToken.create({
+        data: {
+          userId,
+          email,
+          token,
+          // Generous window — a customer may claim their account days later.
+          expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30)
+        }
+      });
+      const webBase = (env.CORS_ORIGIN || "http://localhost:3000").split(",")[0].trim().replace(/\/$/, "");
+      const setupUrl = `${webBase}/account-setup?token=${token}`;
+      await this.email.sendCustomerAccountSetupEmail(email, firstName || "there", setupUrl);
+    } catch {
+      // Best effort — a failed invite never blocks the paid order.
+    }
+  }
 
   private getStripeClient() {
     const secret = env.STRIPE_SECRET_KEY?.trim();
@@ -56,7 +138,16 @@ export class PublicCheckoutService {
   // Step 1: validate the cart against the live catalog, create a PENDING order
   // (no store, items READY_TO_ORDER so they skip the design flow), then create a
   // Stripe PaymentIntent for the buyer to confirm.
-  async createCheckout(buyerUserId: string, input: CreatePublicCheckoutInput) {
+  async createCheckout(input: CreatePublicCheckoutInput) {
+    // Link to an existing account if this email already has one (guest or not);
+    // otherwise the order starts user-less and a customer account is created on
+    // payment (see confirmCheckout → attachCustomerAndInvite).
+    const existingUser = await this.prisma.user.findUnique({
+      where: { email: input.email.trim().toLowerCase() },
+      select: { id: true }
+    });
+    const buyerUserId: string | null = existingUser?.id ?? null;
+
     const productIds = Array.from(new Set(input.items.map((i) => i.productId)));
     const products = await this.prisma.catalogProduct.findMany({
       where: { id: { in: productIds }, status: "ACTIVE" },
@@ -240,9 +331,11 @@ export class PublicCheckoutService {
 
   // Step 2: verify the confirmed PaymentIntent and mark the order PAID. No store,
   // so there is no seller earning/payout snapshot.
-  async confirmCheckout(buyerUserId: string, input: ConfirmPublicCheckoutInput) {
+  async confirmCheckout(input: ConfirmPublicCheckoutInput) {
+    // Guest-safe lookup: identified by the (unguessable) order id, not a user —
+    // the real gate is the verified PaymentIntent below.
     const order = await this.prisma.catalogOrder.findFirst({
-      where: { id: input.orderId, userId: buyerUserId, storeId: null }
+      where: { id: input.orderId, storeId: null }
     });
     if (!order) throw new NotFoundException("Order not found");
     if (order.paymentStatus === "PAID") {
@@ -279,6 +372,17 @@ export class PublicCheckoutService {
 
     // Count the coupon redemption now that the payment landed (best-effort).
     if (order.couponId) await this.coupons.redeem(order.couponId);
+
+    // Now that payment succeeded, attach the order to a customer account
+    // (creating a passwordless one for a brand-new guest email) and email an
+    // account-setup link if it's unclaimed.
+    const buyer = await this.attachCustomerAndInvite({
+      id: order.id,
+      userId: order.userId,
+      email: order.email,
+      name: order.name,
+      phone: order.phone
+    });
 
     const amountLabel = `$${(totalCents / 100).toFixed(2)}`;
     const orderLabel = `SW-${String(order.orderNumber).padStart(3, "0")}`;
@@ -332,7 +436,7 @@ export class PublicCheckoutService {
     // Customer order-confirmation: thumbnails, full breakdown, and both a
     // Track-order and a Go-to-dashboard button (the buyer has an account).
     await this.events.dispatchToUser({
-      userId: buyerUserId,
+      userId: buyer.id,
       type: "catalog.order.confirmed",
       title: "Order confirmed",
       body: `Your order ${orderLabel} (${amountLabel}) is confirmed.`,

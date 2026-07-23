@@ -200,20 +200,29 @@ export class AuthService {
 
   async verifyAccountSetup(dto: VerifyAccountSetupDto) {
     const setup = await this.getValidSetupToken(dto.token);
-    return { ok: true, email: setup.email };
+    // Surface the role so the setup page can tailor itself (sellers pick a
+    // username and land on /seller; customers skip it and land on /dashboard).
+    const user = await this.prisma.user.findUnique({
+      where: { id: setup.userId },
+      select: { role: { select: { name: true } } }
+    });
+    return { ok: true, email: setup.email, role: user?.role?.name ?? null };
   }
 
   async completeAccountSetup(dto: CompleteAccountSetupDto) {
     const setup = await this.getValidSetupToken(dto.token);
-    const username = dto.username.trim();
+    const username = dto.username?.trim() || null;
 
-    // Username must be unique (excluding the same user, in case they retry).
-    const usernameOwner = await this.prisma.user.findUnique({
-      where: { username },
-      select: { id: true }
-    });
-    if (usernameOwner && usernameOwner.id !== setup.userId) {
-      throw new ConflictException("That username is taken");
+    // Username is optional (customers). If given, it must be unique (excluding
+    // the same user, in case they retry).
+    if (username) {
+      const usernameOwner = await this.prisma.user.findUnique({
+        where: { username },
+        select: { id: true }
+      });
+      if (usernameOwner && usernameOwner.id !== setup.userId) {
+        throw new ConflictException("That username is taken");
+      }
     }
 
     const passwordHash = bcrypt.hashSync(dto.password, 12);
@@ -222,7 +231,7 @@ export class AuthService {
       this.prisma.user.update({
         where: { id: setup.userId },
         data: {
-          username,
+          ...(username ? { username } : {}),
           passwordHash,
           mustSetPassword: false,
           emailVerifiedAt: new Date()

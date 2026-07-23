@@ -472,6 +472,39 @@ Swaggeroo Team`,
     this.logger.log(`sendCatalogOrderUserAckEmail success ${mailInfoSummary(info)}`);
   }
 
+  // Guest checkout: after a signed-out shopper pays, we create a passwordless
+  // account on their email and send this so they can set a password and manage /
+  // track / reorder — no sign-up form at checkout.
+  async sendCustomerAccountSetupEmail(to: string, name: string, setupUrl: string) {
+    const info = await this.transporter.sendMail({
+      from: env.EMAIL_FROM,
+      to,
+      subject: "Set your password to manage your Swaggeroo orders",
+      text: `Hi ${name},
+
+Thanks for your order! We set up an account for you on this email so you can track your orders, reorder in a click, and manage everything in one place.
+
+Set your password to finish activating it: ${setupUrl}
+
+This link expires in 30 days. If you didn't place an order, you can safely ignore this email.
+
+Swaggeroo Team`,
+      html: renderEmailShell({
+        eyebrow: "Set your password",
+        heading: "Finish setting up your account",
+        bodyHtml: `
+          <p style="margin:0 0 14px;">Hi ${escapeHtml(name)},</p>
+          <p style="margin:0 0 14px;">Thanks for your order! We set up an account for you on this email so you can track your orders, reorder in a click, and manage everything in one place.</p>
+          <p style="margin:0 0 14px;">Set a password to finish activating it — it only takes a moment. Your order details are already saved and waiting for you.</p>
+          <p style="margin:22px 0 0;font-weight:600;color:#0f172a;">The Swaggeroo Team</p>
+        `,
+        cta: { label: "Set your password", url: setupUrl }
+      })
+    });
+
+    this.logger.log(`sendCustomerAccountSetupEmail success ${mailInfoSummary(info)}`);
+  }
+
   async sendPasswordResetCodeEmail(to: string, firstName?: string | null, code?: string) {
     const name = firstName?.trim() || "there";
     const safeCode = (code ?? "").trim();

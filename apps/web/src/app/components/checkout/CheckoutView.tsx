@@ -394,6 +394,13 @@ export function CheckoutView(props: CheckoutViewProps) {
                 We&apos;ll get started right away and email you as your order moves along.
               </p>
 
+              {!authed ? (
+                <div className="mx-auto mt-5 max-w-sm rounded-2xl border border-primary/15 bg-brand-soft/40 px-4 py-3 text-sm text-foreground">
+                  We&apos;ve emailed you a link to <strong>set a password</strong> — activate your
+                  account to track this order and reorder faster next time.
+                </div>
+              ) : null}
+
               <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
                 {completed ? (
                   <Link
@@ -418,35 +425,9 @@ export function CheckoutView(props: CheckoutViewProps) {
     );
   }
 
-  if (!authed) {
-    return (
-      <div className="bg-muted/20">
-        <div className="mx-auto max-w-md px-6 py-16">
-          <div className="rounded-2xl border border-border bg-card p-8 text-center shadow-sm">
-            <Lock className="mx-auto size-9 text-muted-foreground" />
-            <h1 className="mt-4 font-display text-xl font-bold">Sign in to check out</h1>
-            <p className="mt-2 text-sm text-muted-foreground">Please sign in to complete your purchase.</p>
-            <Link
-              href={signInHref}
-              className="mt-5 inline-block rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground"
-              style={primaryStyle}
-            >
-              Sign in
-            </Link>
-            <p className="mt-4 text-sm text-muted-foreground">
-              New here?{" "}
-              <Link
-                href={signInHref.replace("/login", "/signup")}
-                className="font-semibold text-primary hover:underline"
-              >
-                Create an account
-              </Link>
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // Guest checkout: no sign-in wall. Signed-out shoppers can complete a B2C
+  // pay-now order directly; on payment we create a passwordless account on their
+  // email and send a "set your password" link (see the public-checkout service).
 
   if (!items.length) {
     return (
@@ -477,6 +458,14 @@ export function CheckoutView(props: CheckoutViewProps) {
           <div className="space-y-6">
             {!session ? (
               <form id="checkout-details" onSubmit={startCheckout} className="space-y-6">
+                {!authed ? (
+                  <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-border bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
+                    <span>Checking out as a guest — no account needed.</span>
+                    <Link href={signInHref} className="font-semibold text-primary hover:underline">
+                      Have an account? Log in
+                    </Link>
+                  </div>
+                ) : null}
                 <SectionCard step={1} title="Contact">
                   <div className="grid gap-4 sm:grid-cols-2">
                     <label className="block">

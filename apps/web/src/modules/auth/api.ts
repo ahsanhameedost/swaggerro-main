@@ -64,7 +64,7 @@ export async function me() {
 }
 
 export async function verifyAccountSetup(token: string) {
-  return apiFetch<{ ok: true; email: string }>("/auth/account-setup/verify", {
+  return apiFetch<{ ok: true; email: string; role: string | null }>("/auth/account-setup/verify", {
     method: "POST",
     body: JSON.stringify({ token })
   });
@@ -72,7 +72,7 @@ export async function verifyAccountSetup(token: string) {
 
 export async function completeAccountSetup(input: {
   token: string;
-  username: string;
+  username?: string;
   password: string;
 }) {
   return apiFetch<{ user: User }>("/auth/account-setup/complete", {
