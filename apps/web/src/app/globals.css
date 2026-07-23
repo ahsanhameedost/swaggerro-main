@@ -48,6 +48,18 @@ body {
     -moz-osx-font-smoothing: grayscale;
   }
 
+  /* Force native date/time pickers to a light theme (they otherwise render
+     black when the OS/browser is in dark mode) and show a pointer cursor so
+     the field and calendar days read as clickable. */
+  input[type="date"],
+  input[type="datetime-local"],
+  input[type="time"],
+  input[type="month"],
+  input[type="week"] {
+    color-scheme: light;
+    cursor: pointer;
+  }
+
   /* Tailwind v4 dropped the default `cursor: pointer` on buttons, so clickable
      controls showed the plain arrow instead of the hand. Restore the hand for
      all interactive elements (buttons, links, role=button, selects, summary,

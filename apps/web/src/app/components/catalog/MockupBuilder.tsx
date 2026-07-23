@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { addToast } from "@heroui/toast";
-import { Loader2, Maximize2, Move, RotateCw, Upload } from "lucide-react";
+import { Loader2, Maximize2, Move, RotateCw, Trash2, Type, Upload } from "lucide-react";
 import { useCatalogCartStore } from "@/lib/cart-store";
 import { resolveUnitPrice } from "@/lib/catalog-pricing";
 import { formatMoney } from "@/lib/money";
@@ -18,6 +18,19 @@ type LogoType = (typeof LOGO_TYPES)[number];
 type Placement = { x: number; y: number; size: number; rotation: number; opacity: number };
 const DEFAULT_PLACEMENT: Placement = { x: 50, y: 45, size: 28, rotation: 0, opacity: 100 };
 const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
+
+// Text-branding option (for shoppers with no logo, e.g. a keychain brand name).
+const TEXT_MAX = 24;
+const DEFAULT_TEXT_PLACEMENT: Placement = { x: 50, y: 60, size: 10, rotation: 0, opacity: 100 };
+// Generic families so the canvas export renders reliably (no web-font loading).
+const TEXT_FONTS = [
+  { key: "modern", label: "Modern", css: "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" },
+  { key: "classic", label: "Classic", css: "Georgia, 'Times New Roman', serif" },
+  { key: "script", label: "Script", css: "'Segoe Script', 'Brush Script MT', cursive" },
+  { key: "mono", label: "Mono", css: "ui-monospace, 'Courier New', monospace" }
+] as const;
+
+type DragTarget = "logo" | "text";
 
 export function MockupBuilder({
   product,
@@ -51,9 +64,29 @@ export function MockupBuilder({
   const [placement, setPlacement] = useState<Placement>(DEFAULT_PLACEMENT);
   const [submitting, setSubmitting] = useState(false);
 
+  // Text branding (independent overlay — usable with or instead of a logo).
+  const [text, setText] = useState("");
+  const [textColor, setTextColor] = useState("#111827");
+  const [textFontKey, setTextFontKey] = useState<(typeof TEXT_FONTS)[number]["key"]>("modern");
+  const [textPlacement, setTextPlacement] = useState<Placement>(DEFAULT_TEXT_PLACEMENT);
+  const textFont = TEXT_FONTS.find((f) => f.key === textFontKey) ?? TEXT_FONTS[0];
+  const hasText = text.trim().length > 0;
+
   const stageRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
-  const drag = useRef<{ mode: "move" | "resize" | "rotate"; sx: number; sy: number; start: Placement; cx: number; cy: number; dist0: number; ang0: number } | null>(null);
+  const drag = useRef<{ target: DragTarget; mode: "move" | "resize" | "rotate"; sx: number; sy: number; start: Placement; cx: number; cy: number; dist0: number; ang0: number } | null>(null);
+
+  // Live stage width so the on-screen text size (px) matches the canvas export,
+  // which uses the same "% of width" scale.
+  const [stageW, setStageW] = useState(0);
+  useEffect(() => {
+    const el = stageRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => setStageW(el.clientWidth));
+    ro.observe(el);
+    setStageW(el.clientWidth);
+    return () => ro.disconnect();
+  }, []);
 
   // matched concrete catalog variant for the current color+size
   const matchedVariant = useMemo(() => {
@@ -85,18 +118,20 @@ export function MockupBuilder({
     const stage = stageRef.current;
     if (!d || !stage) return;
     const rect = stage.getBoundingClientRect();
+    const setP = d.target === "text" ? setTextPlacement : setPlacement;
     if (d.mode === "move") {
       const dx = ((e.clientX - d.sx) / rect.width) * 100;
       const dy = ((e.clientY - d.sy) / rect.height) * 100;
-      setPlacement((p) => ({ ...p, x: clamp(d.start.x + dx, 0, 100), y: clamp(d.start.y + dy, 0, 100) }));
+      setP((p) => ({ ...p, x: clamp(d.start.x + dx, 0, 100), y: clamp(d.start.y + dy, 0, 100) }));
     } else if (d.mode === "resize") {
       const dist = Math.hypot(e.clientX - d.cx, e.clientY - d.cy);
-      setPlacement((p) => ({ ...p, size: clamp(Math.round(d.start.size * (dist / (d.dist0 || 1))), 6, 90) }));
+      const [lo, hi] = d.target === "text" ? [4, 40] : [6, 90];
+      setP((p) => ({ ...p, size: clamp(Math.round(d.start.size * (dist / (d.dist0 || 1))), lo, hi) }));
     } else if (d.mode === "rotate") {
       const ang = (Math.atan2(e.clientY - d.cy, e.clientX - d.cx) * 180) / Math.PI;
       let rot = d.start.rotation + (ang - d.ang0);
       rot = ((rot + 180) % 360 + 360) % 360 - 180;
-      setPlacement((p) => ({ ...p, rotation: Math.round(rot) }));
+      setP((p) => ({ ...p, rotation: Math.round(rot) }));
     }
   };
   const onPointerUp = () => {
@@ -104,16 +139,17 @@ export function MockupBuilder({
     window.removeEventListener("pointermove", onPointerMove);
     window.removeEventListener("pointerup", onPointerUp);
   };
-  const startDrag = (mode: "move" | "resize" | "rotate") => (e: React.PointerEvent) => {
+  const startDrag = (mode: "move" | "resize" | "rotate", target: DragTarget = "logo") => (e: React.PointerEvent) => {
     e.preventDefault();
     e.stopPropagation();
     const stage = stageRef.current;
     if (!stage) return;
     const rect = stage.getBoundingClientRect();
-    const cx = rect.left + (placement.x / 100) * rect.width;
-    const cy = rect.top + (placement.y / 100) * rect.height;
+    const src = target === "text" ? textPlacement : placement;
+    const cx = rect.left + (src.x / 100) * rect.width;
+    const cy = rect.top + (src.y / 100) * rect.height;
     drag.current = {
-      mode, sx: e.clientX, sy: e.clientY, start: { ...placement }, cx, cy,
+      target, mode, sx: e.clientX, sy: e.clientY, start: { ...src }, cx, cy,
       dist0: Math.hypot(e.clientX - cx, e.clientY - cy),
       ang0: (Math.atan2(e.clientY - cy, e.clientX - cx) * 180) / Math.PI,
     };
@@ -131,9 +167,19 @@ export function MockupBuilder({
     setPlacement(DEFAULT_PLACEMENT);
   };
 
-  // composite product + placed logo to a PNG data url (same-origin images → no taint)
+  // Drop the logo (e.g. to switch to text-only branding). Frees the object URL
+  // and clears the file input so re-picking the same file still fires onChange.
+  const removeLogo = () => {
+    if (logo) URL.revokeObjectURL(logo.src);
+    setLogo(null);
+    setPlacement(DEFAULT_PLACEMENT);
+    if (fileRef.current) fileRef.current.value = "";
+  };
+
+  // composite product + placed logo and/or text to a PNG data url (same-origin
+  // images → no taint). Renders whichever branding is present.
   async function exportMockup(): Promise<Blob | null> {
-    if (!image || !logo) return null;
+    if (!image || (!logo && !hasText)) return null;
     const S = 1000;
     const canvas = document.createElement("canvas");
     canvas.width = S; canvas.height = S;
@@ -146,15 +192,29 @@ export function MockupBuilder({
       const r = Math.min(S / prod.width, S / prod.height);
       const w = prod.width * r, h = prod.height * r;
       ctx.drawImage(prod, (S - w) / 2, (S - h) / 2, w, h);
-      const lg = await load(logo.src);
-      const lw = (placement.size / 100) * S;
-      const lh = lw * (lg.height / lg.width);
-      ctx.save();
-      ctx.globalAlpha = placement.opacity / 100;
-      ctx.translate((placement.x / 100) * S, (placement.y / 100) * S);
-      ctx.rotate((placement.rotation * Math.PI) / 180);
-      ctx.drawImage(lg, -lw / 2, -lh / 2, lw, lh);
-      ctx.restore();
+      if (logo) {
+        const lg = await load(logo.src);
+        const lw = (placement.size / 100) * S;
+        const lh = lw * (lg.height / lg.width);
+        ctx.save();
+        ctx.globalAlpha = placement.opacity / 100;
+        ctx.translate((placement.x / 100) * S, (placement.y / 100) * S);
+        ctx.rotate((placement.rotation * Math.PI) / 180);
+        ctx.drawImage(lg, -lw / 2, -lh / 2, lw, lh);
+        ctx.restore();
+      }
+      if (hasText) {
+        ctx.save();
+        ctx.globalAlpha = textPlacement.opacity / 100;
+        ctx.translate((textPlacement.x / 100) * S, (textPlacement.y / 100) * S);
+        ctx.rotate((textPlacement.rotation * Math.PI) / 180);
+        ctx.fillStyle = textColor;
+        ctx.font = `bold ${(textPlacement.size / 100) * S}px ${textFont.css}`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(text.trim(), 0, 0);
+        ctx.restore();
+      }
       return await new Promise((res) => canvas.toBlob((b) => res(b), "image/png"));
     } catch {
       return null;
@@ -177,11 +237,16 @@ export function MockupBuilder({
     }
     setSubmitting(true);
     try {
+      const hasBranding = !!logo || hasText;
       let logoUrl: string | null = null, logoKey: string | null = null, mockupUrl: string | null = null;
-      if (logo) {
-        const up = await createCatalogImageUpload("projects", { filename: logo.file.name, contentType: logo.file.type as LogoType });
-        await uploadFileToPresignedUrl(up.uploadUrl, logo.file);
-        logoUrl = up.publicUrl; logoKey = up.key;
+      if (hasBranding) {
+        if (logo) {
+          const up = await createCatalogImageUpload("projects", { filename: logo.file.name, contentType: logo.file.type as LogoType });
+          await uploadFileToPresignedUrl(up.uploadUrl, logo.file);
+          logoUrl = up.publicUrl; logoKey = up.key;
+        }
+        // Proof is composited for text-only orders too, so the design team sees
+        // exactly where the text sits.
         const blob = await exportMockup();
         if (blob) {
           const mfile = new File([blob], `${product.slug}-mockup.png`, { type: "image/png" });
@@ -191,8 +256,19 @@ export function MockupBuilder({
         }
       }
       const variantLabel = [colorName, sizeName].filter(Boolean).join(" / ") || null;
-      const note = logo
-        ? `Logo placement — ${product.name}${variantLabel ? ` (${variantLabel})` : ""}: horizontal ${Math.round(placement.x)}%, vertical ${Math.round(placement.y)}%, size ${placement.size}% of width, rotation ${placement.rotation}°, opacity ${placement.opacity}%. Imprint: ${method?.name ?? "—"}.${mockupUrl ? ` Mockup preview: ${mockupUrl}` : ""}`
+      const brandingParts: string[] = [];
+      if (logo) {
+        brandingParts.push(
+          `Logo: horizontal ${Math.round(placement.x)}%, vertical ${Math.round(placement.y)}%, size ${placement.size}% of width, rotation ${placement.rotation}°, opacity ${placement.opacity}%`
+        );
+      }
+      if (hasText) {
+        brandingParts.push(
+          `Text "${text.trim()}" (${textFont.label} font, ${textColor}): horizontal ${Math.round(textPlacement.x)}%, vertical ${Math.round(textPlacement.y)}%, size ${textPlacement.size}% of width, rotation ${textPlacement.rotation}°, opacity ${textPlacement.opacity}%`
+        );
+      }
+      const note = hasBranding
+        ? `Branding — ${product.name}${variantLabel ? ` (${variantLabel})` : ""}: ${brandingParts.join("; ")}. Imprint: ${method?.name ?? "—"}.${mockupUrl ? ` Mockup preview: ${mockupUrl}` : ""}`
         : null;
       addBulkItem({
         productId: product.id,
@@ -221,10 +297,10 @@ export function MockupBuilder({
         mockupUrl,
         designNote: note,
       });
-      if (logo) {
+      if (hasBranding) {
         setBranding({ logoUrl, logoKey, mockupUrl, note });
       }
-      addToast({ title: "Added to cart", description: logo ? "Logo & placement saved for the design team." : undefined, color: "success" });
+      addToast({ title: "Added to cart", description: hasBranding ? "Branding & placement saved for the design team." : undefined, color: "success" });
       router.push("/cart");
     } catch (e) {
       addToast({ title: "Could not add to cart", description: e instanceof Error ? e.message : "Try again.", color: "danger" });
@@ -239,7 +315,8 @@ export function MockupBuilder({
         <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-soft px-3 py-1 text-xs font-semibold text-primary">Proof preview</span>
         <h1 className="mt-3 font-display text-3xl font-bold tracking-tight sm:text-4xl">Mockup Studio</h1>
         <p className="mt-2 max-w-2xl text-muted-foreground">
-          Drop your logo onto the product, position it, and add it to cart. We send a production-ready proof before anything prints.
+          Drop your logo — or add text if you don&apos;t have one — onto the product, position it, and
+          add it to cart. We send a production-ready proof before anything prints.
         </p>
       </div>
 
@@ -256,21 +333,41 @@ export function MockupBuilder({
               <div
                 className="absolute cursor-move"
                 style={{ left: `${placement.x}%`, top: `${placement.y}%`, width: `${placement.size}%`, transform: `translate(-50%,-50%) rotate(${placement.rotation}deg)`, opacity: placement.opacity / 100 }}
-                onPointerDown={startDrag("move")}
+                onPointerDown={startDrag("move", "logo")}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={logo.src} alt="Your logo" className="pointer-events-none w-full select-none" draggable={false} />
                 <span className="absolute inset-0 rounded border border-dashed border-primary/70" />
-                <button type="button" onPointerDown={startDrag("rotate")} className="absolute -top-9 left-1/2 flex size-7 -translate-x-1/2 cursor-grab items-center justify-center rounded-full border border-primary bg-card text-primary shadow"><RotateCw className="size-3.5" /></button>
-                <button type="button" onPointerDown={startDrag("resize")} className="absolute -right-3 -bottom-3 flex size-7 cursor-nwse-resize items-center justify-center rounded-full border border-primary bg-card text-primary shadow"><Maximize2 className="size-3.5" /></button>
+                <button type="button" onPointerDown={startDrag("rotate", "logo")} className="absolute -top-9 left-1/2 flex size-7 -translate-x-1/2 cursor-grab items-center justify-center rounded-full border border-primary bg-card text-primary shadow"><RotateCw className="size-3.5" /></button>
+                <button type="button" onPointerDown={startDrag("resize", "logo")} className="absolute -right-3 -bottom-3 flex size-7 cursor-nwse-resize items-center justify-center rounded-full border border-primary bg-card text-primary shadow"><Maximize2 className="size-3.5" /></button>
               </div>
-            ) : (
+            ) : null}
+
+            {hasText ? (
+              <div
+                className="absolute cursor-move select-none"
+                style={{ left: `${textPlacement.x}%`, top: `${textPlacement.y}%`, transform: `translate(-50%,-50%) rotate(${textPlacement.rotation}deg)`, opacity: textPlacement.opacity / 100 }}
+                onPointerDown={startDrag("move", "text")}
+              >
+                <span
+                  className="block whitespace-nowrap font-bold leading-none"
+                  style={{ fontFamily: textFont.css, color: textColor, fontSize: `${(textPlacement.size / 100) * stageW}px` }}
+                >
+                  {text.trim()}
+                </span>
+                <span className="pointer-events-none absolute -inset-1.5 rounded border border-dashed border-primary/70" />
+                <button type="button" onPointerDown={startDrag("rotate", "text")} className="absolute -top-9 left-1/2 flex size-7 -translate-x-1/2 cursor-grab items-center justify-center rounded-full border border-primary bg-card text-primary shadow"><RotateCw className="size-3.5" /></button>
+                <button type="button" onPointerDown={startDrag("resize", "text")} className="absolute -right-4 -bottom-4 flex size-7 cursor-nwse-resize items-center justify-center rounded-full border border-primary bg-card text-primary shadow"><Maximize2 className="size-3.5" /></button>
+              </div>
+            ) : null}
+
+            {!logo && !hasText ? (
               <button type="button" onClick={() => fileRef.current?.click()} className="absolute top-1/2 left-1/2 flex w-[60%] -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-1.5 rounded-2xl border border-dashed border-primary/40 bg-card/80 px-4 py-8 text-center backdrop-blur transition-colors hover:border-primary">
                 <Upload className="size-6 text-primary" />
                 <span className="text-sm font-semibold text-foreground">Upload your logo</span>
-                <span className="text-xs text-muted-foreground">Then drag it onto the product</span>
+                <span className="text-xs text-muted-foreground">or add text below — then drag it onto the product</span>
               </button>
-            )}
+            ) : null}
           </div>
           <p className="mt-3 flex items-center justify-center gap-1.5 text-center text-xs text-muted-foreground">
             <Move className="size-3.5" /> Drag to move · handles to resize / rotate · sliders to fine-tune. Free proof before printing.
@@ -280,15 +377,81 @@ export function MockupBuilder({
 
         {/* Controls */}
         <div className="space-y-5">
-          <button type="button" onClick={() => fileRef.current?.click()} className="flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-card py-2.5 text-sm font-medium hover:border-primary/40">
-            <Upload className="size-4" /> {logo ? "Replace logo" : "Upload logo"}
-          </button>
+          {logo ? (
+            <div className="flex gap-2">
+              <button type="button" onClick={() => fileRef.current?.click()} className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-border bg-card py-2.5 text-sm font-medium hover:border-primary/40">
+                <Upload className="size-4" /> Replace logo
+              </button>
+              <button type="button" onClick={removeLogo} className="flex items-center justify-center gap-1.5 rounded-xl border border-border bg-card px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:border-danger/40 hover:text-danger">
+                <Trash2 className="size-4" /> Remove
+              </button>
+            </div>
+          ) : (
+            <button type="button" onClick={() => fileRef.current?.click()} className="flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-card py-2.5 text-sm font-medium hover:border-primary/40">
+              <Upload className="size-4" /> Upload logo
+            </button>
+          )}
 
           {/* sliders */}
           <div className={cn("space-y-3 rounded-2xl border border-border bg-card p-4", !logo && "opacity-50")}>
             <Slider label="Size" value={placement.size} min={6} max={90} suffix="%" disabled={!logo} onChange={(v) => setPlacement((p) => ({ ...p, size: v }))} />
             <Slider label="Rotation" value={placement.rotation} min={-180} max={180} suffix="°" disabled={!logo} onChange={(v) => setPlacement((p) => ({ ...p, rotation: v }))} />
             <Slider label="Opacity" value={placement.opacity} min={20} max={100} suffix="%" disabled={!logo} onChange={(v) => setPlacement((p) => ({ ...p, opacity: v }))} />
+          </div>
+
+          {/* text branding */}
+          <div className="space-y-3 rounded-2xl border border-border bg-card p-4">
+            <div className="flex items-center justify-between">
+              <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                <Type className="size-3.5" /> Add text {logo ? "" : "(no logo needed)"}
+              </p>
+              {hasText ? (
+                <button type="button" onClick={() => setText("")} className="text-xs font-medium text-muted-foreground hover:text-foreground">
+                  Clear
+                </button>
+              ) : null}
+            </div>
+            <input
+              value={text}
+              maxLength={TEXT_MAX}
+              onChange={(e) => setText(e.target.value.slice(0, TEXT_MAX))}
+              placeholder="e.g. your brand name"
+              className="h-9 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:border-ring"
+            />
+            <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+              <span>Great if you don&apos;t have a logo</span>
+              <span className="tabular-nums">{text.length}/{TEXT_MAX}</span>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              {TEXT_FONTS.map((f) => (
+                <button
+                  key={f.key}
+                  type="button"
+                  onClick={() => setTextFontKey(f.key)}
+                  style={{ fontFamily: f.css }}
+                  className={cn(
+                    "rounded-lg border px-3 py-1.5 text-sm transition",
+                    textFontKey === f.key ? "border-primary bg-brand-soft text-primary" : "border-border hover:border-foreground/30"
+                  )}
+                >
+                  {f.label}
+                </button>
+              ))}
+              <label className="ml-auto flex items-center gap-1.5 text-xs text-muted-foreground">
+                Color
+                <input
+                  type="color"
+                  value={textColor}
+                  onChange={(e) => setTextColor(e.target.value)}
+                  className="h-7 w-9 cursor-pointer rounded border border-border bg-transparent p-0.5"
+                />
+              </label>
+            </div>
+            <div className={cn("space-y-3", !hasText && "opacity-50")}>
+              <Slider label="Size" value={textPlacement.size} min={4} max={40} suffix="%" disabled={!hasText} onChange={(v) => setTextPlacement((p) => ({ ...p, size: v }))} />
+              <Slider label="Rotation" value={textPlacement.rotation} min={-180} max={180} suffix="°" disabled={!hasText} onChange={(v) => setTextPlacement((p) => ({ ...p, rotation: v }))} />
+              <Slider label="Opacity" value={textPlacement.opacity} min={20} max={100} suffix="%" disabled={!hasText} onChange={(v) => setTextPlacement((p) => ({ ...p, opacity: v }))} />
+            </div>
           </div>
 
           {/* color */}
