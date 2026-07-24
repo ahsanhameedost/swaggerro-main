@@ -213,6 +213,40 @@ export type RevenueReportParams = {
   to?: string;
 };
 
+// Revenue-by-channel report.
+export type ChannelKey = "B2C" | "B2B" | "SELLER";
+
+export type ChannelReportParams = {
+  from?: string;
+  to?: string;
+  channel?: ChannelKey;
+  search?: string;
+};
+
+export type ChannelSummary = {
+  channel: ChannelKey;
+  revenue: number;
+  orders: number;
+  buyers: number;
+};
+
+export type ChannelReportRow = {
+  key: string;
+  name: string;
+  email: string | null;
+  company: string | null;
+  orders: number;
+  revenue: number;
+  lastOrderAt: string;
+};
+
+export type ChannelReport = {
+  from: string | null;
+  to: string | null;
+  channels: ChannelSummary[];
+  rows: ChannelReportRow[];
+};
+
 export type ListCatalogOrdersParams = {
   search?: string;
   status?: CatalogOrderStatus | "";

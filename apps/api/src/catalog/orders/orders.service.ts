@@ -23,6 +23,7 @@ import type { AuthUser } from "../../common/guards/auth.guard";
 import type {
   ApproveOrderItemDto,
   AssignOrderEmployeeDto,
+  ChannelReportQuery,
   CreateOrderDesignUploadDto,
   CreateOrderPaymentDto,
   ListOrdersQuery,
@@ -33,6 +34,7 @@ import type {
   RequestOrderAddOnsDto,
   ResolveOrderAddOnDto
 } from "../dto/order.dto";
+import { toCsv } from "../common/csv";
 import { EmailService } from "../../email/email.service";
 import { PrismaService } from "../../prisma/prisma.service";
 import { StorageService } from "../../storage/storage.service";
@@ -407,6 +409,156 @@ export class CatalogOrdersService extends CatalogSharedService {
         margin: totals.revenue ? ((totals.revenue - totals.cost) / totals.revenue) * 100 : 0
       }
     };
+  }
+
+  // ── Revenue by channel (B2C / B2B / Seller) ───────────────────────────────
+  // Channel is derived per order: a store order is SELLER; otherwise a
+  // project-linked order is B2B (quote-first); otherwise it's B2C pay-now.
+  private channelOf(o: { storeId: string | null; projectId: string | null }): "B2C" | "B2B" | "SELLER" {
+    if (o.storeId) return "SELLER";
+    if (o.projectId) return "B2B";
+    return "B2C";
+  }
+
+  private resolveChannelRange(query: { from?: string; to?: string }) {
+    const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    const endOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
+    return {
+      from: query.from ? startOfDay(new Date(query.from)) : null,
+      to: query.to ? endOfDay(new Date(query.to)) : null
+    };
+  }
+
+  private async loadChannelOrders(authUser: AuthUser, from: Date | null, to: Date | null) {
+    const where = await this.buildAccessibleOrderWhere({} as ListOrdersQuery, authUser);
+    const orders = await this.prisma.catalogOrder.findMany({
+      where: { ...where, paymentStatus: "PAID" },
+      select: {
+        id: true,
+        orderNumber: true,
+        totalPrice: true,
+        paidAt: true,
+        createdAt: true,
+        storeId: true,
+        projectId: true,
+        userId: true,
+        name: true,
+        email: true,
+        companyName: true,
+        store: { select: { name: true } }
+      },
+      orderBy: { paidAt: "desc" }
+    });
+    return orders
+      .map((o) => ({
+        id: o.id,
+        orderNumber: o.orderNumber,
+        revenue: Number(o.totalPrice),
+        at: new Date(o.paidAt ?? o.createdAt),
+        storeId: o.storeId,
+        userId: o.userId,
+        name: o.name,
+        email: o.email,
+        companyName: o.companyName,
+        storeName: o.store?.name ?? null,
+        channel: this.channelOf(o)
+      }))
+      .filter((o) => (from ? o.at >= from : true) && (to ? o.at <= to : true));
+  }
+
+  private channelMatchesSearch(
+    o: { name: string; email: string | null; companyName: string | null; storeName: string | null; orderNumber: number },
+    search: string
+  ) {
+    const hay = [o.name, o.email, o.companyName, o.storeName, `sw-${String(o.orderNumber).padStart(3, "0")}`, String(o.orderNumber)]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+    return hay.includes(search);
+  }
+
+  async getChannelReport(query: ChannelReportQuery, authUser: AuthUser) {
+    const { from, to } = this.resolveChannelRange(query);
+    const orders = await this.loadChannelOrders(authUser, from, to);
+
+    const CHANNELS = ["B2C", "B2B", "SELLER"] as const;
+    const channels = CHANNELS.map((ch) => {
+      const list = orders.filter((o) => o.channel === ch);
+      const buyers = new Set(list.map((o) => (ch === "SELLER" ? o.storeName ?? o.id : o.userId ?? o.email ?? o.id)));
+      return {
+        channel: ch,
+        revenue: list.reduce((s, o) => s + o.revenue, 0),
+        orders: list.length,
+        buyers: buyers.size
+      };
+    });
+
+    // Drill-down: per-customer (B2C/B2B) or per-store (SELLER) rows.
+    let rows: {
+      key: string;
+      name: string;
+      email: string | null;
+      company: string | null;
+      orders: number;
+      revenue: number;
+      lastOrderAt: string;
+    }[] = [];
+    if (query.channel) {
+      const search = query.search?.trim().toLowerCase();
+      const filtered = orders
+        .filter((o) => o.channel === query.channel)
+        .filter((o) => !search || this.channelMatchesSearch(o, search));
+      const isSeller = query.channel === "SELLER";
+      const grouped = new Map<string, { key: string; name: string; email: string | null; company: string | null; orders: number; revenue: number; lastOrderAt: Date }>();
+      for (const o of filtered) {
+        const key = isSeller ? o.storeName ?? o.id : o.userId ?? o.email ?? o.id;
+        const g =
+          grouped.get(key) ??
+          {
+            key,
+            name: isSeller ? o.storeName ?? "Store" : o.name || o.email || "Guest",
+            email: isSeller ? null : o.email,
+            company: o.companyName,
+            orders: 0,
+            revenue: 0,
+            lastOrderAt: o.at
+          };
+        g.orders += 1;
+        g.revenue += o.revenue;
+        if (o.at > g.lastOrderAt) g.lastOrderAt = o.at;
+        grouped.set(key, g);
+      }
+      rows = [...grouped.values()]
+        .sort((a, b) => b.revenue - a.revenue)
+        .map((r) => ({ ...r, lastOrderAt: r.lastOrderAt.toISOString() }));
+    }
+
+    return {
+      from: from?.toISOString() ?? null,
+      to: to?.toISOString() ?? null,
+      channels,
+      rows
+    };
+  }
+
+  async exportChannelOrders(query: ChannelReportQuery, authUser: AuthUser): Promise<string> {
+    const { from, to } = this.resolveChannelRange(query);
+    const orders = await this.loadChannelOrders(authUser, from, to);
+    const search = query.search?.trim().toLowerCase();
+    const rows = orders
+      .filter((o) => (query.channel ? o.channel === query.channel : true))
+      .filter((o) => !search || this.channelMatchesSearch(o, search))
+      .sort((a, b) => (a.at < b.at ? 1 : -1))
+      .map((o) => ({
+        Order: `SW-${String(o.orderNumber).padStart(3, "0")}`,
+        "Paid date": o.at.toISOString().slice(0, 10),
+        Channel: o.channel,
+        Customer: o.channel === "SELLER" ? o.storeName ?? "" : o.name ?? "",
+        Email: o.email ?? "",
+        Company: o.companyName ?? "",
+        Amount: o.revenue.toFixed(2)
+      }));
+    return toCsv(["Order", "Paid date", "Channel", "Customer", "Email", "Company", "Amount"], rows);
   }
 
   async getOrderById(id: string, authUser: AuthUser) {

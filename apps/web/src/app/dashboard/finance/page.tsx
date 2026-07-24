@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Button,
   Card,
@@ -28,15 +28,25 @@ import {
   Building2,
   CircleDollarSign,
   Coins,
+  Download,
   Landmark,
   PiggyBank,
   Receipt,
+  Search,
+  ShoppingBag,
+  Store,
   TrendingUp
 } from "lucide-react";
 import { useMe } from "@/queries/auth";
 import { useCatalogOrderStats } from "@/lib/queries.catalog";
-import { getRevenueReport } from "@/modules/catalog/orders/api";
-import type { RevenueReportGranularity } from "@/modules/catalog/orders/types";
+import {
+  channelReportExportPath,
+  getChannelReport,
+  getRevenueReport
+} from "@/modules/catalog/orders/api";
+import type { ChannelKey, RevenueReportGranularity } from "@/modules/catalog/orders/types";
+import { downloadApiFile } from "@/lib/download";
+import { cn } from "@/lib/utils";
 import { formatMoney } from "@/lib/money";
 import {
   adminListPayoutStores,
@@ -60,6 +70,19 @@ const ACCENT: Record<Accent, string> = {
   rose: "bg-gradient-to-br from-rose-400 to-rose-600",
   slate: "bg-gradient-to-br from-slate-400 to-slate-600"
 };
+
+const CHANNEL_META: {
+  key: ChannelKey;
+  label: string;
+  sub: string;
+  accent: Accent;
+  who: string;
+  icon: React.ReactNode;
+}[] = [
+  { key: "B2C", label: "B2C — Direct shop", sub: "Pay-now storefront", accent: "sky", who: "customers", icon: <ShoppingBag className="h-5 w-5" /> },
+  { key: "B2B", label: "B2B — Bulk & quotes", sub: "Project submissions", accent: "violet", who: "customers", icon: <Building2 className="h-5 w-5" /> },
+  { key: "SELLER", label: "Seller — Marketplace", sub: "White-label stores", accent: "emerald", who: "stores", icon: <Store className="h-5 w-5" /> }
+];
 
 function StatCard({
   label,
@@ -140,6 +163,33 @@ export default function FinancePage() {
   });
   const reportBuckets = report?.buckets ?? [];
   const maxReportRevenue = Math.max(1, ...reportBuckets.map((b) => b.revenue));
+
+  // ── Revenue by channel (B2C / B2B / Seller) ─────────────────────────────
+  const [selectedChannel, setSelectedChannel] = useState<ChannelKey | null>(null);
+  const [channelSearch, setChannelSearch] = useState("");
+  const { data: channelReport, isFetching: channelLoading } = useQuery({
+    queryKey: ["channel-report", from, to, selectedChannel, channelSearch],
+    queryFn: () =>
+      getChannelReport({
+        from: from || undefined,
+        to: to || undefined,
+        channel: selectedChannel ?? undefined,
+        search: channelSearch || undefined
+      }),
+    enabled: canReadRevenue,
+    placeholderData: keepPreviousData
+  });
+  const channelRows = channelReport?.rows ?? [];
+  const handleChannelExport = () =>
+    void downloadApiFile(
+      channelReportExportPath({
+        from: from || undefined,
+        to: to || undefined,
+        channel: selectedChannel ?? undefined,
+        search: channelSearch || undefined
+      }),
+      `revenue-${(selectedChannel ?? "all").toLowerCase()}-${new Date().toISOString().slice(0, 10)}.csv`
+    );
 
   // ── Management: commission + payouts ────────────────────────────────────
   const [commissionEdits, setCommissionEdits] = useState<Record<string, string>>({});
@@ -273,6 +323,121 @@ export default function FinancePage() {
               hint={`${formatMoney(totals.paid)} already paid`}
             />
           </div>
+
+          {/* Revenue by channel */}
+          <Card className="border border-divider shadow-sm">
+            <CardHeader className="flex flex-col items-start gap-1 p-6 pb-2">
+              <div className="text-lg font-semibold">Revenue by channel</div>
+              <div className="text-sm text-foreground/60">
+                Paid revenue split across B2C, B2B and Seller flows
+                {from || to ? " for the selected range" : " (all time)"}. Click a channel to
+                drill into customers.
+              </div>
+            </CardHeader>
+            <CardBody className="space-y-5 p-6 pt-3">
+              <div className="grid gap-4 sm:grid-cols-3">
+                {CHANNEL_META.map((meta) => {
+                  const c = channelReport?.channels.find((x) => x.channel === meta.key);
+                  const active = selectedChannel === meta.key;
+                  return (
+                    <button
+                      key={meta.key}
+                      type="button"
+                      onClick={() => setSelectedChannel(active ? null : meta.key)}
+                      className={cn(
+                        "rounded-2xl border p-4 text-left transition",
+                        active
+                          ? "border-primary bg-brand-soft/40 ring-1 ring-primary/25"
+                          : "border-divider hover:border-primary/40"
+                      )}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className={`flex h-10 w-10 items-center justify-center rounded-xl text-white shadow-sm ${ACCENT[meta.accent]}`}>
+                          {meta.icon}
+                        </div>
+                        <span className="text-right text-[11px] leading-tight text-foreground/50">
+                          {c?.orders ?? 0} orders
+                          <br />
+                          {c?.buyers ?? 0} {meta.who}
+                        </span>
+                      </div>
+                      <div className="mt-3 text-sm text-foreground/60">{meta.label}</div>
+                      <div className="text-2xl font-bold tabular-nums">{formatMoney(c?.revenue ?? 0)}</div>
+                      <div className="mt-1 text-xs font-medium text-primary">
+                        {active ? "Hide details" : "View details →"}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {selectedChannel ? (
+                <div className="space-y-3 rounded-2xl border border-divider p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="text-sm font-semibold">
+                      {CHANNEL_META.find((m) => m.key === selectedChannel)?.label} —{" "}
+                      {selectedChannel === "SELLER" ? "stores" : "customers"}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        size="sm"
+                        placeholder="Search name, email, order #"
+                        value={channelSearch}
+                        onValueChange={setChannelSearch}
+                        startContent={<Search className="size-4 text-foreground/40" />}
+                        className="w-64"
+                      />
+                      <Button
+                        size="sm"
+                        variant="bordered"
+                        startContent={<Download className="size-4" />}
+                        onPress={handleChannelExport}
+                      >
+                        Export CSV
+                      </Button>
+                    </div>
+                  </div>
+
+                  {channelLoading && !channelRows.length ? (
+                    <div className="flex justify-center py-8">
+                      <Spinner size="sm" label="Loading…" />
+                    </div>
+                  ) : channelRows.length ? (
+                    <Table removeWrapper aria-label="Channel customer breakdown">
+                      <TableHeader>
+                        <TableColumn>{selectedChannel === "SELLER" ? "Store" : "Customer"}</TableColumn>
+                        <TableColumn>Email / Company</TableColumn>
+                        <TableColumn className="text-right">Orders</TableColumn>
+                        <TableColumn className="text-right">Revenue</TableColumn>
+                        <TableColumn className="text-right">Last order</TableColumn>
+                      </TableHeader>
+                      <TableBody>
+                        {channelRows.map((r) => (
+                          <TableRow key={r.key}>
+                            <TableCell className="font-medium">{r.name}</TableCell>
+                            <TableCell className="text-foreground/60">
+                              {r.email || r.company || "—"}
+                            </TableCell>
+                            <TableCell className="text-right tabular-nums">{r.orders}</TableCell>
+                            <TableCell className="text-right font-semibold tabular-nums">
+                              {formatMoney(r.revenue)}
+                            </TableCell>
+                            <TableCell className="text-right text-foreground/60">
+                              {new Date(r.lastOrderAt).toLocaleDateString()}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  ) : (
+                    <div className="py-8 text-center text-sm text-foreground/50">
+                      No paid orders in this channel for the selected filters.
+                    </div>
+                  )}
+                </div>
+              ) : null}
+            </CardBody>
+          </Card>
 
           {/* Period-wise report */}
           <Card className="border border-divider shadow-sm">

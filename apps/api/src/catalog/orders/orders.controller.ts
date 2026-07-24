@@ -18,6 +18,7 @@ import { parseOrThrow } from "../common/parse-or-throw";
 import {
   approveOrderItemSchema,
   assignOrderEmployeeSchema,
+  channelReportQuerySchema,
   createOrderDesignUploadSchema,
   createOrderPaymentSchema,
   listOrdersQuerySchema,
@@ -66,6 +67,40 @@ export class CatalogOrdersController {
       parseOrThrow(revenueReportQuerySchema.safeParse(query), "Invalid report query"),
       req.user!
     );
+  }
+
+  @UseGuards(AuthGuard, PermissionsGuard)
+  @Get("orders/channel-report")
+  @RequirePermissions("catalog.orders.read")
+  async getChannelReport(
+    @Query() query: unknown,
+    @Req() req: FastifyRequest & { user?: AuthUser }
+  ) {
+    return await this.ordersService.getChannelReport(
+      parseOrThrow(channelReportQuerySchema.safeParse(query), "Invalid channel report query"),
+      req.user!
+    );
+  }
+
+  @UseGuards(AuthGuard, PermissionsGuard)
+  @Get("orders/channel-report/export")
+  @RequirePermissions("catalog.orders.read")
+  async exportChannelReport(
+    @Query() query: unknown,
+    @Req() req: FastifyRequest & { user?: AuthUser },
+    @Res({ passthrough: true }) reply: FastifyReply
+  ) {
+    const parsed = parseOrThrow(
+      channelReportQuerySchema.safeParse(query),
+      "Invalid channel report query"
+    );
+    const csv = await this.ordersService.exportChannelOrders(parsed, req.user!);
+    reply.header("content-type", "text/csv; charset=utf-8");
+    reply.header(
+      "content-disposition",
+      `attachment; filename="revenue-${(parsed.channel ?? "all").toLowerCase()}-${new Date().toISOString().slice(0, 10)}.csv"`
+    );
+    return csv;
   }
 
   @UseGuards(AuthGuard, PermissionsGuard)

@@ -10,6 +10,8 @@ import type {
   CreateOrderDesignUploadInput,
   ListCatalogOrdersParams,
   ListCatalogOrdersResponse,
+  ChannelReport,
+  ChannelReportParams,
   RequestOrderItemRevisionInput,
   RevenueReport,
   RevenueReportParams,
@@ -31,6 +33,17 @@ export async function getRevenueReport(params: RevenueReportParams = {}) {
   return apiFetch<RevenueReport>(`/catalog/orders/report${buildQuery(params as any)}`, {
     method: "GET"
   });
+}
+
+export async function getChannelReport(params: ChannelReportParams = {}) {
+  return apiFetch<ChannelReport>(`/catalog/orders/channel-report${buildQuery(params as any)}`, {
+    method: "GET"
+  });
+}
+
+/** Path (with query) for the channel CSV export — pass to downloadApiFile. */
+export function channelReportExportPath(params: ChannelReportParams = {}) {
+  return `/catalog/orders/channel-report/export${buildQuery(params as any)}`;
 }
 
 export async function getCatalogOrder(id: string) {

@@ -33,6 +33,17 @@ export const revenueReportQuerySchema = z.object({
 });
 export type RevenueReportQuery = z.infer<typeof revenueReportQuerySchema>;
 
+// Revenue-by-channel report: split paid revenue across B2C / B2B / Seller. When
+// `channel` is set, the response also drills into per-customer/seller rows,
+// filtered by `search`. `from`/`to` bound the paid window (default all-time).
+export const channelReportQuerySchema = z.object({
+  from: z.string().trim().min(1).optional(),
+  to: z.string().trim().min(1).optional(),
+  channel: z.enum(["B2C", "B2B", "SELLER"]).optional(),
+  search: z.string().trim().max(120).optional()
+});
+export type ChannelReportQuery = z.infer<typeof channelReportQuerySchema>;
+
 export const updateOrderStatusSchema = z.object({
   status: catalogOrderStatusSchema
 });

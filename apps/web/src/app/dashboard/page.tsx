@@ -601,38 +601,36 @@ export default function DashboardPage() {
         {showSales ? (
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <StatCard
-              color="emerald"
-              label="Paid revenue"
-              value={formatMoney(stats?.paidRevenue ?? 0)}
-              icon={<CircleDollarSign className="h-5 w-5" />}
-              trend={stats?.revenueTrend ?? null}
-              hint="From orders marked paid"
-              href="/dashboard/orders"
-            />
-            <StatCard
-              color="blue"
-              label="Total orders"
-              value={String(stats?.totalOrders ?? 0)}
-              icon={<ShoppingCart className="h-5 w-5" />}
-              trend={stats?.ordersTrend ?? null}
-              hint="All time"
-              href="/dashboard/orders"
-            />
-            <StatCard
               color="amber"
-              label="Outstanding"
-              value={formatMoney(stats?.outstanding ?? 0)}
-              icon={<Wallet className="h-5 w-5" />}
-              hint="Approved/awaiting payment"
-              href="/dashboard/orders?status=APPROVED"
+              icon={<Clock className="h-5 w-5" />}
+              label="Pending review"
+              value={String(attention?.pendingReview ?? 0)}
+              hint="Awaiting your review"
+              href="/dashboard/orders?status=PENDING_REVIEW"
             />
             <StatCard
               color="violet"
-              label="Avg order value"
-              value={formatMoney(stats?.avgOrderValue ?? 0)}
-              icon={<ClipboardList className="h-5 w-5" />}
-              hint="Across paid orders"
+              icon={<Palette className="h-5 w-5" />}
+              label="In design"
+              value={String(attention?.inDesign ?? 0)}
+              hint="Designs in progress"
+              href="/dashboard/designs"
+            />
+            <StatCard
+              color="emerald"
+              icon={<PackageCheck className="h-5 w-5" />}
+              label="Ready to order"
+              value={String(attention?.readyToOrder ?? 0)}
+              hint="Approved & ready"
               href="/dashboard/orders"
+            />
+            <StatCard
+              color="sky"
+              icon={<Wallet className="h-5 w-5" />}
+              label="Awaiting payment"
+              value={String(attention?.unpaid ?? 0)}
+              hint="Approved/awaiting payment"
+              href="/dashboard/orders?status=APPROVED"
             />
           </div>
         ) : isAssignedTeamView ? (
@@ -780,32 +778,38 @@ export default function DashboardPage() {
         {showSales && (
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <StatCard
-              color="amber"
-              icon={<Clock className="h-5 w-5" />}
-              label="Pending review"
-              value={String(attention?.pendingReview ?? 0)}
-              href="/dashboard/orders?status=PENDING_REVIEW"
-            />
-            <StatCard
-              color="violet"
-              icon={<Palette className="h-5 w-5" />}
-              label="In design"
-              value={String(attention?.inDesign ?? 0)}
-              href="/dashboard/designs"
-            />
-            <StatCard
               color="emerald"
-              icon={<PackageCheck className="h-5 w-5" />}
-              label="Ready to order"
-              value={String(attention?.readyToOrder ?? 0)}
+              label="Paid revenue"
+              value={formatMoney(stats?.paidRevenue ?? 0)}
+              icon={<CircleDollarSign className="h-5 w-5" />}
+              trend={stats?.revenueTrend ?? null}
+              hint="From orders marked paid"
               href="/dashboard/orders"
             />
             <StatCard
-              color="sky"
+              color="blue"
+              label="Total orders"
+              value={String(stats?.totalOrders ?? 0)}
+              icon={<ShoppingCart className="h-5 w-5" />}
+              trend={stats?.ordersTrend ?? null}
+              hint="All time"
+              href="/dashboard/orders"
+            />
+            <StatCard
+              color="amber"
+              label="Outstanding"
+              value={formatMoney(stats?.outstanding ?? 0)}
               icon={<Wallet className="h-5 w-5" />}
-              label="Awaiting payment"
-              value={String(attention?.unpaid ?? 0)}
+              hint="Approved/awaiting payment"
               href="/dashboard/orders?status=APPROVED"
+            />
+            <StatCard
+              color="violet"
+              label="Avg order value"
+              value={formatMoney(stats?.avgOrderValue ?? 0)}
+              icon={<ClipboardList className="h-5 w-5" />}
+              hint="Across paid orders"
+              href="/dashboard/orders"
             />
           </div>
         )}
