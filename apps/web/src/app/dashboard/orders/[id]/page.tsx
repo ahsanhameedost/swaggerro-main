@@ -882,7 +882,7 @@ export default function OrderDetailsPage() {
           )}
         </div>
 
-        <Card className="border border-divider shadow-sm">
+        <Card className="border border-divider shadow-sm xl:sticky xl:top-6 xl:self-start">
           <CardBody className="space-y-5 p-6">
             <div className="space-y-1">
               <div className="text-sm font-semibold uppercase tracking-wide text-foreground/50">

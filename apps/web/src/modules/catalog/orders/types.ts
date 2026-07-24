@@ -67,6 +67,9 @@ export type CatalogOrder = {
   status: CatalogOrderStatus;
   paymentStatus: CatalogPaymentStatus;
   productionStage?: ProductionStage;
+  // Per-stage tracking timestamps aligned to the fulfillment tracker
+  // (Submitted, In design, Approved, In production, Shipped). null = not reached.
+  stageTimestamps?: (string | null)[];
   estimatedDeliveryDate?: string | null;
   email: string;
   name: string;

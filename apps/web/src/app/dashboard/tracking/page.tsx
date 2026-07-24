@@ -83,7 +83,12 @@ export default function OrderTrackingPage() {
                 </div>
 
                 <div className="rounded-2xl border border-divider bg-content1 p-4">
-                  <OrderProgress status={order.status} productionStage={order.productionStage} />
+                  <OrderProgress
+                    status={order.status}
+                    productionStage={order.productionStage}
+                    timestamps={order.stageTimestamps}
+                    orientation="horizontal"
+                  />
                 </div>
 
                 {order.shipments?.length ? (

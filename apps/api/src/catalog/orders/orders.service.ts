@@ -38,7 +38,7 @@ import { PrismaService } from "../../prisma/prisma.service";
 import { StorageService } from "../../storage/storage.service";
 import { NotificationsService } from "../../notifications/notifications.service";
 import { buildOrderIdentifierWhere } from "./order-identifier";
-import { recordOrderTimeline } from "./order-timeline";
+import { recordOrderTimeline, TIMELINE_STAGES } from "./order-timeline";
 import { NotificationEventsService } from "../../notifications/notification-events.service";
 import { CouponsService } from "../../coupons/coupons.service";
 import { CatalogSharedService } from "../common/catalog-shared.service";
@@ -73,6 +73,7 @@ type OrderWithRelations = Prisma.CatalogOrderGetPayload<{
       };
       orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }];
     };
+    timelineEvents: { select: { stage: true; createdAt: true } };
   };
 }>;
 
@@ -155,6 +156,9 @@ export class CatalogOrdersService extends CatalogSharedService {
         }
       },
       orderBy: [{ sortOrder: "asc" as const }, { createdAt: "asc" as const }]
+    },
+    timelineEvents: {
+      select: { stage: true, createdAt: true }
     }
   } satisfies Prisma.CatalogOrderInclude;
 
@@ -1997,6 +2001,17 @@ private async createStripePayment(
   serializeOrderDetail(order: OrderWithRelations) {
     const totals = this.calculateOrderTotals(order);
 
+    // Per-stage tracking timestamps, aligned to TIMELINE_STAGES. Index 0
+    // (Submitted) is always the order's createdAt; later stages come from
+    // recorded events, or null if not reached.
+    const eventAt = new Map<string, Date>(
+      (order.timelineEvents ?? []).map((e) => [e.stage, e.createdAt] as const)
+    );
+    const stageTimestamps = TIMELINE_STAGES.map((stage, index) => {
+      const at = index === 0 ? order.createdAt : eventAt.get(stage);
+      return at ? new Date(at).toISOString() : null;
+    });
+
     // Estimated delivery = order date + the longest product lead time on the
     // order. Powers the customer ETA and the ahead/late tracker messaging (#28).
     const maxLeadDays = Math.max(
@@ -2060,6 +2075,7 @@ private async createStripePayment(
       status: order.status,
       paymentStatus: order.paymentStatus,
       productionStage: order.productionStage,
+      stageTimestamps,
       estimatedDeliveryDate,
       email: order.email,
       name: order.name,
