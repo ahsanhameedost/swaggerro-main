@@ -95,7 +95,23 @@ export function StripeCardPaymentForm(props: StripeCardPaymentFormProps) {
   }
 
   return (
-    <Elements stripe={stripePromise} options={{ clientSecret, appearance: { theme: "stripe" } }}>
+    <Elements
+      stripe={stripePromise}
+      options={{
+        clientSecret,
+        // Match the app: rounded corners, brand accent, inherited font — so the
+        // Stripe element blends in instead of adding a mismatched extra box.
+        appearance: {
+          theme: "stripe",
+          variables: {
+            colorPrimary: "#005CFE",
+            borderRadius: "12px",
+            fontFamily: "inherit",
+            fontSizeBase: "14px"
+          }
+        }
+      }}
+    >
       <StripeInner {...props} />
     </Elements>
   );
@@ -159,14 +175,14 @@ function StripeInner({ orderId, amount, currency, isDisabled, onSuccess }: Strip
 
   return (
     <div className="space-y-4">
-      <div className="rounded-3xl border border-divider bg-content1 p-4">
+      {/* No extra bordered wrappers here — the parent card already frames this,
+          and Stripe's element has its own border. Nesting them looked cluttered. */}
+      <div>
         <div className="mb-3 flex items-center gap-2 text-sm font-medium text-foreground/70">
           <CreditCard className="size-4" />
           Pay securely with Stripe
         </div>
-        <div className="rounded-2xl border border-divider bg-background px-4 py-3">
-          <PaymentElement onReady={() => setReady(true)} />
-        </div>
+        <PaymentElement onReady={() => setReady(true)} />
         <div className="mt-3 text-xs text-foreground/55">
           Test mode — use card 4242 4242 4242 4242, any future date, any CVC.
         </div>

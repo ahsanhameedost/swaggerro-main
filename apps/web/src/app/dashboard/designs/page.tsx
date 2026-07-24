@@ -35,25 +35,41 @@ import { uploadFileToPresignedUrl } from "@/modules/catalog/public/api";
 import { downloadApiFile } from "@/lib/download";
 import { formatMoney } from "@/lib/money";
 import {
-  DESIGN_PHASES,
   formatDesignPhaseLabel,
   formatItemTypeLabel,
   formatOrderDisplayName,
   formatOrderNumber,
-  getPhaseStepIndex,
   getPreferredDesignImage
 } from "@/lib/order-flow";
 import type { CatalogOrder, CatalogOrderItem } from "@/modules/catalog/orders/types";
 import { hasAnyPermission, hasPermission } from "@/lib/permissions";
 
+// Mockup-only flow: the separate proof steps were removed — approving the
+// mockup goes straight to Ready To Order. So the tracker shows just these three.
+const MOCKUP_FLOW_PHASES: CatalogOrderItem["designPhase"][] = [
+  "MOCKUP_IN_PROGRESS",
+  "REVIEW_MOCKUP_DESIGN",
+  "READY_TO_ORDER"
+];
+
+function mockupFlowStep(phase: CatalogOrderItem["designPhase"]): number {
+  if (phase === "READY_TO_ORDER") return 2;
+  if (phase === "MOCKUP_IN_PROGRESS") return 0;
+  // Review-mockup, revision-requested (and any legacy proof phases) all sit at
+  // "reviewing the mockup".
+  return 1;
+}
+
 function PhaseStepper({ phase }: { phase: CatalogOrderItem["designPhase"] }) {
-  const currentStep = getPhaseStepIndex(phase);
+  const currentStep = mockupFlowStep(phase);
 
   return (
-    <div className="grid gap-3 md:grid-cols-5">
-      {DESIGN_PHASES.map((step, index) => {
+    <div className="grid gap-3 md:grid-cols-3">
+      {MOCKUP_FLOW_PHASES.map((step, index) => {
         const active = currentStep === index;
-        const done = currentStep > index || phase === "READY_TO_ORDER" && index === DESIGN_PHASES.length - 1;
+        const done =
+          currentStep > index ||
+          (phase === "READY_TO_ORDER" && index === MOCKUP_FLOW_PHASES.length - 1);
 
         return (
           <div key={step} className="flex items-center gap-2">

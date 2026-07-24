@@ -385,23 +385,23 @@ export default function OrderCheckoutPage() {
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.45fr)_420px]">
         <div className="space-y-6">
           <Card className="border border-divider shadow-sm">
-            <CardBody className="space-y-6 p-6">
+            <CardBody className="space-y-5 p-5">
               <div>
-                <div className="text-3xl font-semibold tracking-tight">
+                <div className="text-xl font-semibold tracking-tight">
                   Review your order
                 </div>
-                <div className="mt-2 text-sm text-foreground/60">
+                <div className="mt-1 text-sm text-foreground/60">
                   Confirm your items and submit payment to place the order.
                 </div>
               </div>
 
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {order.items.map((item) => (
                   <div
                     key={item.id}
-                    className="grid gap-4 rounded-3xl border border-divider p-5 md:grid-cols-[140px_minmax(0,1fr)_auto]"
+                    className="grid gap-4 rounded-2xl border border-divider p-4 md:grid-cols-[88px_minmax(0,1fr)_auto]"
                   >
-                    <div className="flex h-[140px] w-[140px] items-center justify-center overflow-hidden rounded-3xl bg-default-100">
+                    <div className="flex size-[88px] items-center justify-center overflow-hidden rounded-xl bg-default-100">
                       {item.imageUrl ? (
                         <Image
                           removeWrapper
@@ -416,9 +416,9 @@ export default function OrderCheckoutPage() {
                       )}
                     </div>
 
-                    <div className="space-y-2">
+                    <div className="space-y-1.5">
                       <div className="flex flex-wrap items-center gap-2">
-                        <div className="text-2xl font-semibold">
+                        <div className="text-base font-semibold">
                           {item.productName}
                         </div>
                         <Chip size="sm" variant="flat">
@@ -429,25 +429,23 @@ export default function OrderCheckoutPage() {
                         </Chip>
                       </div>
 
-                      <div className="text-base text-foreground/70">
+                      <div className="text-sm text-foreground/70">
                         {item.variantName || "Standard"}
                       </div>
-                      <div className="text-sm text-foreground/60">
+                      <div className="text-xs text-foreground/55">
                         {item.itemType === "BULK"
                           ? `Item Count: ${item.quantity}`
                           : `${item.quantityPerPack ?? 1} / pack · ${item.quantity} total`}
-                      </div>
-                      <div className="text-sm text-foreground/60">
-                        Cost: {formatMoney(item.unitPrice, order.currency)} per
-                        unit
+                        {" · "}
+                        {formatMoney(item.unitPrice, order.currency)} per unit
                       </div>
                     </div>
 
-                    <div className="space-y-2 text-right">
-                      <div className="text-sm text-foreground/60">
+                    <div className="space-y-0.5 text-right">
+                      <div className="text-xs text-foreground/55">
                         {formatOrderTypeLabel(order.type)}
                       </div>
-                      <div className="text-3xl font-semibold">
+                      <div className="text-lg font-semibold">
                         {formatMoney(item.totalPrice, order.currency)}
                       </div>
                     </div>
@@ -455,13 +453,13 @@ export default function OrderCheckoutPage() {
                 ))}
               </div>
 
-              <div className="flex items-center justify-between rounded-3xl border border-divider bg-content1 px-5 py-4">
-                <div className="text-sm text-foreground/60">
+              <div className="flex items-center justify-between gap-4 rounded-2xl border border-divider bg-content1 px-4 py-3">
+                <div className="text-xs text-foreground/55">
                   Shipping is added from saved shipment plans and any
                   unallocated quantity stays in warehouse storage at $1 per
                   unit, then appears in Inventory after payment.
                 </div>
-                <div className="text-2xl font-semibold">
+                <div className="whitespace-nowrap text-base font-semibold">
                   Subtotal: {formatMoney(order.totalPrice, order.currency)}
                 </div>
               </div>
@@ -469,16 +467,18 @@ export default function OrderCheckoutPage() {
           </Card>
 
           <Card className="border border-divider shadow-sm">
-            <CardBody className="space-y-5 p-6">
+            <CardBody className="space-y-4 p-5">
               <div>
-                <div className="text-3xl font-semibold">Order Summary</div>
-                <div className="mt-2 text-sm text-foreground/60">
+                <div className="text-lg font-semibold">Order Summary</div>
+                <div className="mt-0.5 text-sm text-foreground/60">
                   Order {formatOrderNumber(order.orderNumber)}
                 </div>
               </div>
 
-              <div className="space-y-3">
-                <div className="text-xl font-semibold">Products</div>
+              <div className="space-y-2.5">
+                <div className="text-xs font-semibold uppercase tracking-wide text-foreground/50">
+                  Products
+                </div>
                 {order.items.map((item) => (
                   <div
                     key={item.id}
@@ -593,12 +593,12 @@ export default function OrderCheckoutPage() {
                 </div>
               )}
 
-              <div className="flex items-center justify-between text-3xl font-semibold">
+              <div className="flex items-center justify-between border-t border-divider pt-3 text-xl font-bold">
                 <span>Total</span>
                 <span>{formatMoney(payTotal, order.currency)}</span>
               </div>
 
-              <div className="rounded-3xl border border-divider bg-content1 px-4 py-3 text-xs text-foreground/55">
+              <div className="rounded-2xl border border-divider bg-content1 px-4 py-3 text-xs text-foreground/55">
                 Orders are charged with Stripe — your card is confirmed securely
                 in the browser, then verified server-side before the order is
                 marked paid.
@@ -609,10 +609,10 @@ export default function OrderCheckoutPage() {
 
         <div className="xl:sticky xl:top-6 xl:self-start">
           <Card className="border border-divider shadow-sm">
-            <CardBody className="space-y-5 p-6">
+            <CardBody className="space-y-4 p-5">
               <div>
-                <div className="text-2xl font-semibold">Payment method</div>
-                <div className="mt-2 text-sm text-foreground/60">
+                <div className="text-lg font-semibold">Payment method</div>
+                <div className="mt-0.5 text-sm text-foreground/60">
                   Enter your card details below to complete your order.
                 </div>
               </div>
