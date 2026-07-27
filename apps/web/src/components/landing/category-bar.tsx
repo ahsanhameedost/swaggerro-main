@@ -18,6 +18,7 @@ import { Section, SectionHeading } from "@/components/marketing/section";
 import { cn } from "@/lib/utils";
 
 type Category = { id: string; name: string; slug: string; description: string | null };
+type Product = { slug: string; imageUrl: string | null; categorySlug: string | null };
 
 /** Icon per category slug; unknown slugs fall back to a neutral mark. */
 const ICONS: Record<string, LucideIcon> = {
@@ -32,14 +33,41 @@ const ICONS: Record<string, LucideIcon> = {
 /** Hero photo per category slug for the feature banners. */
 const BANNER_IMAGES: Record<string, string> = {
   apparel: "/banner/category-apparel.webp",
-  drinkware: "/banner/category-drinkware.webp",
+  drinkware: "/banner/category-drinkware.webp", // cups / mug shot — belongs to Drinkware
   bags: "/banner/category-bags.webp",
   tech: "/banner/category-tech.webp",
+  // Speaker shot reused for Accessories (a gadget/extra). The cups shot stays on
+  // Drinkware — never on Corporate.
+  accessories: "/banner/category-tech.webp",
   notebooks: "/products/hardcover-notebook.webp",
   drinkbottles: "/products/stainless-water-bottle.webp",
 };
 
-export function CategoryBar({ categories }: { categories: Category[] }) {
+// The four categories featured as big banners: pick the ones with a fitting
+// curated photo (Accessories, Apparel, Bags, Drinkware) so the image always
+// matches the category, then top up from the rest if any are missing.
+const FEATURED_BANNER_SLUGS = ["accessories", "apparel", "bags", "drinkware"];
+
+export function CategoryBar({
+  categories,
+  products = []
+}: {
+  categories: Category[];
+  products?: Product[];
+}) {
+  // A real product photo from the category, used when there's no curated banner
+  // image (so e.g. Accessories / Corporate don't fall back to a generic tote).
+  const productImageOf = (slug: string) =>
+    products.find((p) => p.categorySlug === slug && p.imageUrl)?.imageUrl ?? null;
+
+  // Featured banners: curated (image-matched) categories first, then fill to 4.
+  const featured = [
+    ...FEATURED_BANNER_SLUGS.map((slug) => categories.find((c) => c.slug === slug)).filter(
+      (c): c is Category => Boolean(c)
+    ),
+    ...categories.filter((c) => !FEATURED_BANNER_SLUGS.includes(c.slug))
+  ].slice(0, 4);
+
   return (
     <Section>
       <SectionHeading
@@ -96,13 +124,13 @@ export function CategoryBar({ categories }: { categories: Category[] }) {
 
       {/* feature banners — text left, product photo bleeding in from the right */}
       <div className="mt-6 grid gap-4 sm:grid-cols-2">
-        {categories.slice(0, 4).map((c) => (
+        {featured.map((c) => (
           <Banner
             key={c.id}
             href={`/shop?category=${c.slug}`}
             title={c.name}
             description={c.description}
-            image={BANNER_IMAGES[c.slug] ?? "/products/canvas-tote.webp"}
+            image={BANNER_IMAGES[c.slug] ?? productImageOf(c.slug) ?? "/products/canvas-tote.webp"}
           />
         ))}
       </div>

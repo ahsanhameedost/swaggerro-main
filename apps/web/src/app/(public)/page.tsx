@@ -58,13 +58,13 @@ export default async function Home() {
       <AmbientBackdrop />
       <Hero />
       <LogoWall />
-      <CategoryBar categories={categories} />
-      <CategoryShowcase categories={categories} products={showcaseProducts} />
+      <CategoryBar categories={categories} products={showcaseProducts} />
       <FeaturedProducts featured={featured} />
       <OccasionCollections collections={OCCASIONS} />
       <FeatureBento />
       <PackStudioTeaser />
       <Superpowers />
+      <CategoryShowcase categories={categories} products={showcaseProducts} />
       <Testimonials />
       <Section id="faq">
         <SectionHeading

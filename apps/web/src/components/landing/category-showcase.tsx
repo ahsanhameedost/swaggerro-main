@@ -28,6 +28,9 @@ const BANNER_IMAGES: Record<string, string> = {
   drinkware: "/banner/category-drinkware.webp",
   bags: "/banner/category-bags.webp",
   tech: "/banner/category-tech.webp",
+  // Speaker shot for Accessories. Corporate has no dedicated photo, so it falls
+  // back to one of its own product images (not the cups shot).
+  accessories: "/banner/category-tech.webp",
 };
 
 export function CategoryShowcase({
