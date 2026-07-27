@@ -18,7 +18,6 @@ import { Section, SectionHeading } from "@/components/marketing/section";
 import { cn } from "@/lib/utils";
 
 type Category = { id: string; name: string; slug: string; description: string | null };
-type Product = { slug: string; imageUrl: string | null; categorySlug: string | null };
 
 /** Icon per category slug; unknown slugs fall back to a neutral mark. */
 const ICONS: Record<string, LucideIcon> = {
@@ -30,44 +29,36 @@ const ICONS: Record<string, LucideIcon> = {
   drinkbottles: GlassWater,
 };
 
-/** Hero photo per category slug for the feature banners. */
-const BANNER_IMAGES: Record<string, string> = {
-  apparel: "/banner/category-apparel.webp",
-  drinkware: "/banner/category-drinkware.webp", // cups / mug shot — belongs to Drinkware
-  bags: "/banner/category-bags.webp",
-  tech: "/banner/category-tech.webp",
-  // Speaker shot reused for Accessories (a gadget/extra). The cups shot stays on
-  // Drinkware — never on Corporate.
-  accessories: "/banner/category-tech.webp",
-  notebooks: "/products/hardcover-notebook.webp",
-  drinkbottles: "/products/stainless-water-bottle.webp",
-};
+// The four "Shop the catalog" feature banners — a fixed set with curated photos
+// and copy (matches the approved design). Each links to its category.
+const FEATURED_BANNERS: { slug: string; title: string; description: string; image: string }[] = [
+  {
+    slug: "apparel",
+    title: "Apparel",
+    description: "Tees, hoodies & layers your crew will actually wear.",
+    image: "/banner/category-apparel.webp"
+  },
+  {
+    slug: "drinkware",
+    title: "Drinkware",
+    description: "Tumblers, mugs & bottles for the daily grind.",
+    image: "/banner/category-drinkware.webp"
+  },
+  {
+    slug: "bags",
+    title: "Bags",
+    description: "Totes, packs & carryalls for work and play.",
+    image: "/banner/category-bags.webp"
+  },
+  {
+    slug: "tech",
+    title: "Tech",
+    description: "Gadgets and desk gear that earn their keep.",
+    image: "/banner/category-tech.webp"
+  }
+];
 
-// The four categories featured as big banners: pick the ones with a fitting
-// curated photo (Accessories, Apparel, Bags, Drinkware) so the image always
-// matches the category, then top up from the rest if any are missing.
-const FEATURED_BANNER_SLUGS = ["accessories", "apparel", "bags", "drinkware"];
-
-export function CategoryBar({
-  categories,
-  products = []
-}: {
-  categories: Category[];
-  products?: Product[];
-}) {
-  // A real product photo from the category, used when there's no curated banner
-  // image (so e.g. Accessories / Corporate don't fall back to a generic tote).
-  const productImageOf = (slug: string) =>
-    products.find((p) => p.categorySlug === slug && p.imageUrl)?.imageUrl ?? null;
-
-  // Featured banners: curated (image-matched) categories first, then fill to 4.
-  const featured = [
-    ...FEATURED_BANNER_SLUGS.map((slug) => categories.find((c) => c.slug === slug)).filter(
-      (c): c is Category => Boolean(c)
-    ),
-    ...categories.filter((c) => !FEATURED_BANNER_SLUGS.includes(c.slug))
-  ].slice(0, 4);
-
+export function CategoryBar({ categories }: { categories: Category[] }) {
   return (
     <Section>
       <SectionHeading
@@ -124,13 +115,13 @@ export function CategoryBar({
 
       {/* feature banners — text left, product photo bleeding in from the right */}
       <div className="mt-6 grid gap-4 sm:grid-cols-2">
-        {featured.map((c) => (
+        {FEATURED_BANNERS.map((b) => (
           <Banner
-            key={c.id}
-            href={`/shop?category=${c.slug}`}
-            title={c.name}
-            description={c.description}
-            image={BANNER_IMAGES[c.slug] ?? productImageOf(c.slug) ?? "/products/canvas-tote.webp"}
+            key={b.slug}
+            href={`/shop?category=${b.slug}`}
+            title={b.title}
+            description={b.description}
+            image={b.image}
           />
         ))}
       </div>
