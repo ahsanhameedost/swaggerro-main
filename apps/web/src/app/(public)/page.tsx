@@ -27,14 +27,14 @@ import { PackPreview } from "@/components/landing/pack-preview";
 import { HeroSlider } from "@/components/landing/hero-slider";
 import { AmbientBackdrop } from "@/components/landing/ambient-backdrop";
 import { CategoryBar } from "@/components/landing/category-bar";
-import { CategoryShowcase } from "@/components/landing/category-showcase";
+import { KitShowcase } from "@/components/landing/kit-showcase";
 import { FeatureBento } from "@/components/landing/feature-bento";
 import { OccasionCollections } from "@/components/landing/occasion-collections";
 import CurvedLoop from "@/components/reactbits/CurvedLoop";
 import DarkVeil from "@/components/reactbits/DarkVeil";
 import { ProductCard } from "@/components/shop/product-card";
 import ScrollStack, { ScrollStackItem } from "@/components/reactbits/ScrollStack";
-import { getHomeProducts, getHomeCategories, toShowcaseProducts } from "@/lib/home/data";
+import { getHomeProducts, getHomeCategories } from "@/lib/home/data";
 import type { CatalogProductListItem } from "@/modules/catalog/products/types";
 import { TESTIMONIALS, FAQS } from "@/content/marketing";
 import { cn } from "@/lib/utils";
@@ -51,7 +51,6 @@ const OCCASIONS = [
 export default async function Home() {
   const [products, categories] = await Promise.all([getHomeProducts(), getHomeCategories()]);
   const featured = products.slice(0, 4);
-  const showcaseProducts = toShowcaseProducts(products);
 
   return (
     <>
@@ -64,7 +63,7 @@ export default async function Home() {
       <FeatureBento />
       <PackStudioTeaser />
       <Superpowers />
-      <CategoryShowcase categories={categories} products={showcaseProducts} />
+      <KitShowcase />
       <Testimonials />
       <Section id="faq">
         <SectionHeading

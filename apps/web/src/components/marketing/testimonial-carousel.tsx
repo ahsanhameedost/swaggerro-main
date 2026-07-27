@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import type { CSSProperties } from "react";
 import { Star, StarHalf } from "lucide-react";
 import "./testimonial-marquee.css";
 
@@ -35,80 +35,22 @@ function initials(name: string): string {
     .toUpperCase();
 }
 
-const COPIES = 4;
-
-/** Continuous, auto-looping wall of testimonials — several visible at a time. */
+/** Continuous, auto-looping wall of testimonials — several visible at a time.
+ *  Driven by a compositor-thread CSS animation (see testimonial-marquee.css) so
+ *  it stays smooth regardless of what else the page's main thread is doing. */
 export function TestimonialCarousel({ items }: { items: Testimonial[] }) {
-  // Four copies keep the row full-width and gap-free even on ultra-wide /
-  // zoomed-out viewports (we shift by exactly one copy → seamless loop).
-  const loop = [...items, ...items, ...items, ...items];
-  const trackRef = useRef<HTMLDivElement>(null);
-
-  // Drive the scroll ourselves so hover pause/resume EASES in and out instead of
-  // hard-stopping. `speed` glides toward its target (0 on hover, full otherwise)
-  // with a time-constant so it decelerates and accelerates smoothly.
-  useEffect(() => {
-    const track = trackRef.current;
-    if (!track) return;
-    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
-
-    const marquee = track.parentElement;
-    const durationSec = Math.max(40, items.length * 5); // one full copy scroll
-    const TAU = 260; // ms — smoothing; higher = longer, gentler ramp
-
-    let raf = 0;
-    let last = 0;
-    let x = 0;
-    let speed = 0;
-    let copyWidth = 0;
-    let hovering = false;
-
-    const onEnter = () => {
-      hovering = true;
-    };
-    const onLeave = () => {
-      hovering = false;
-    };
-    const onResize = () => {
-      copyWidth = track.scrollWidth / COPIES;
-    };
-    onResize();
-
-    marquee?.addEventListener("pointerenter", onEnter);
-    marquee?.addEventListener("pointerleave", onLeave);
-    marquee?.addEventListener("focusin", onEnter);
-    marquee?.addEventListener("focusout", onLeave);
-    window.addEventListener("resize", onResize);
-
-    const tick = (t: number) => {
-      if (!last) last = t;
-      const dt = Math.min(64, t - last); // clamp tab-switch gaps
-      last = t;
-      if (!copyWidth) copyWidth = track.scrollWidth / COPIES;
-
-      const target = hovering || !copyWidth ? 0 : copyWidth / durationSec; // px/s
-      // Frame-rate-independent exponential ease toward the target speed.
-      speed = target + (speed - target) * Math.exp(-dt / TAU);
-      x -= (speed * dt) / 1000;
-      if (copyWidth > 0) while (-x >= copyWidth) x += copyWidth;
-      track.style.transform = `translate3d(${x}px, 0, 0)`;
-      raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
-
-    return () => {
-      cancelAnimationFrame(raf);
-      window.removeEventListener("resize", onResize);
-      marquee?.removeEventListener("pointerenter", onEnter);
-      marquee?.removeEventListener("pointerleave", onLeave);
-      marquee?.removeEventListener("focusin", onEnter);
-      marquee?.removeEventListener("focusout", onLeave);
-    };
-  }, [items.length]);
+  // Two copies are enough for a seamless loop; the CSS moves the track by one
+  // full copy width, which avoids the visible reset from a larger repeated set.
+  const loop = [...items, ...items];
+  // Seconds for one copy to scroll past; grows with the list so speed stays even.
+  const duration = Math.max(32, items.length * 5);
 
   return (
     <div className="tm-marquee relative w-full overflow-hidden py-2">
-      <div ref={trackRef} className="tm-track flex w-max">
+      <div
+        className="tm-track flex w-max items-stretch"
+        style={{ "--tm-duration": `${duration}s` } as CSSProperties}
+      >
         {loop.map((q, i) => (
           <figure
             key={`${q.name}-${i}`}

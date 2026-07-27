@@ -57,16 +57,19 @@ const ScrollStack = ({
   const stackCompletedRef = useRef(false);
   const animationFrameRef = useRef<number | null>(null);
   const lenisRef = useRef<Lenis | null>(null);
-  const onScrollRef = useRef<(() => void) | null>(null);
   const cardsRef = useRef<HTMLElement[]>([]);
   const lastTransformsRef = useRef(new Map<number, Transform>());
   const isUpdatingRef = useRef(false);
-  // Eased scroll position used ONLY to drive the card transforms in window mode.
-  // The real page scroll stays native (untouched) — we just interpolate the
-  // value we feed into the stacking math so the cards glide (Lenis-like feel)
-  // instead of snapping with each discrete wheel step. Nothing outside this
-  // component is affected, so no other section can break.
+  // The scroll position that drives the card transforms in window mode. It's the
+  // real window.scrollY (read each scroll frame) — the page scroll stays native
+  // and untouched, so no other section can break.
   const smoothScrollRef = useRef<number | null>(null);
+  // Cached layout offsets (transform-independent). Reading offsetTop for every
+  // card on every frame forced a synchronous reflow each frame, which stuttered
+  // the whole page (this stack AND the testimonials marquee). Offsets only change
+  // on resize, so we measure once and reuse.
+  const cardOffsetsRef = useRef<number[]>([]);
+  const endOffsetRef = useRef(0);
 
   const calculateProgress = useCallback((scrollTop: number, start: number, end: number) => {
     if (scrollTop < start) return 0;
@@ -117,6 +120,16 @@ const ScrollStack = ({
     [useWindowScroll],
   );
 
+  // Measure (and cache) the transform-independent layout offsets. Cheap to call
+  // on setup + resize; keeps the per-frame update() free of forced reflows.
+  const measure = useCallback(() => {
+    cardOffsetsRef.current = cardsRef.current.map((card) => getElementOffset(card));
+    const endEl = useWindowScroll
+      ? document.querySelector<HTMLElement>(".scroll-stack-end")
+      : scrollerRef.current?.querySelector<HTMLElement>(".scroll-stack-end");
+    endOffsetRef.current = endEl ? getElementOffset(endEl) : 0;
+  }, [getElementOffset, useWindowScroll]);
+
   const updateCardTransforms = useCallback(() => {
     if (!cardsRef.current.length || isUpdatingRef.current) return;
     isUpdatingRef.current = true;
@@ -125,16 +138,13 @@ const ScrollStack = ({
     const stackPositionPx = parsePercentage(stackPosition, containerHeight);
     const scaleEndPositionPx = parsePercentage(scaleEndPosition, containerHeight);
 
-    const endElement = useWindowScroll
-      ? document.querySelector<HTMLElement>(".scroll-stack-end")
-      : scrollerRef.current?.querySelector<HTMLElement>(".scroll-stack-end");
-
-    const endElementTop = endElement ? getElementOffset(endElement) : 0;
+    // Cached offsets — no per-frame offsetTop reads (that caused the jank).
+    const endElementTop = endOffsetRef.current;
 
     cardsRef.current.forEach((card, i) => {
       if (!card) return;
 
-      const cardTop = getElementOffset(card);
+      const cardTop = cardOffsetsRef.current[i] ?? getElementOffset(card);
       const triggerStart = cardTop - stackPositionPx - itemStackDistance * i;
       const triggerEnd = cardTop - scaleEndPositionPx;
       const pinStart = cardTop - stackPositionPx - itemStackDistance * i;
@@ -149,7 +159,7 @@ const ScrollStack = ({
       if (blurAmount) {
         let topCardIndex = 0;
         for (let j = 0; j < cardsRef.current.length; j++) {
-          const jCardTop = getElementOffset(cardsRef.current[j]);
+          const jCardTop = cardOffsetsRef.current[j] ?? getElementOffset(cardsRef.current[j]);
           const jTriggerStart = jCardTop - stackPositionPx - itemStackDistance * j;
           if (scrollTop >= jTriggerStart) topCardIndex = j;
         }
@@ -238,30 +248,22 @@ const ScrollStack = ({
     if (useWindowScroll) {
       // Native window scroll — NO Lenis on the window (a window-level Lenis
       // hijacked page scrolling and froze it after the pinned section, and a
-      // site-wide Lenis would affect every other page/section). Instead we run a
-      // continuous rAF loop that eases an internal scroll value toward the real
-      // scrollY and drives the card transforms from that eased value. Result:
-      // the stack glides smoothly (Lenis-like) while the page itself keeps its
-      // native scroll — so nothing else on the site can be affected.
-      const EASE = 0.14; // higher = snappier, lower = floatier
+      // site-wide Lenis would affect every other page/section).
+      //
+      // Drive the card transforms from the REAL scroll position on EVERY frame
+      // via a continuous rAF loop (not just on scroll events, which the browser
+      // coalesces/throttles — that made the stack lurch between updates). Easing
+      // the value was worse: it lagged window.scrollY, so the pinned cards
+      // drifted then snapped. Reading the true scrollY each paint keeps the pin
+      // rock-solid and the stacking perfectly in sync with the browser's own
+      // (smooth) scroll — smooth, no drift, no jumps. The page keeps its native
+      // scroll, so nothing else on the site is affected.
       const loop = () => {
-        const target = window.scrollY;
-        const current = smoothScrollRef.current ?? target;
-        const diff = target - current;
-        // Snap when close enough so idle frames settle exactly on the target
-        // (prevents endless sub-pixel churn and keeps the pin rock-solid).
-        smoothScrollRef.current = Math.abs(diff) < 0.4 ? target : current + diff * EASE;
+        smoothScrollRef.current = window.scrollY;
         updateCardTransforms();
         animationFrameRef.current = requestAnimationFrame(loop);
       };
       animationFrameRef.current = requestAnimationFrame(loop);
-      const onResize = () => {
-        // Re-sync instantly on resize so layout jumps don't animate.
-        smoothScrollRef.current = window.scrollY;
-        updateCardTransforms();
-      };
-      window.addEventListener("resize", onResize);
-      onScrollRef.current = onResize;
       return;
     }
 
@@ -304,17 +306,22 @@ const ScrollStack = ({
       card.style.perspective = "1000px";
     });
 
+    measure();
     setupLenis();
     updateCardTransforms();
+
+    // Re-measure cached offsets when layout can change; the per-frame loop itself
+    // never reads layout, so scrolling stays reflow-free (and smooth).
+    const handleResize = () => {
+      measure();
+      updateCardTransforms();
+    };
+    window.addEventListener("resize", handleResize, { passive: true });
 
     return () => {
       if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
       if (lenisRef.current) lenisRef.current.destroy();
-      if (onScrollRef.current) {
-        window.removeEventListener("scroll", onScrollRef.current);
-        window.removeEventListener("resize", onScrollRef.current);
-        onScrollRef.current = null;
-      }
+      window.removeEventListener("resize", handleResize);
       stackCompletedRef.current = false;
       cardsRef.current = [];
       transformsCache.clear();
@@ -332,6 +339,7 @@ const ScrollStack = ({
     blurAmount,
     useWindowScroll,
     onStackComplete,
+    measure,
     setupLenis,
     updateCardTransforms,
   ]);
