@@ -1,5 +1,6 @@
 
 import {
+  BadRequestException,
   Injectable,
   NotFoundException
 } from "@nestjs/common";
@@ -25,19 +26,27 @@ export class CatalogCategoriesService extends CatalogSharedService {
   }
 
   async listCategories(query: ListCategoriesQuery) {
-    const where = query.search
-      ? {
-          name: {
-            contains: query.search,
-            mode: "insensitive" as const
+    const where: Prisma.CatalogCategoryWhereInput = {
+      ...(query.search
+        ? {
+            name: {
+              contains: query.search,
+              mode: "insensitive" as const
+            }
           }
-        }
-      : undefined;
+        : {}),
+      ...(query.parentId === "none"
+        ? { parentId: null }
+        : query.parentId
+          ? { parentId: query.parentId }
+          : {})
+    };
 
     const [total, categories] = await this.prisma.$transaction([
       this.prisma.catalogCategory.count({ where }),
       this.prisma.catalogCategory.findMany({
         where,
+        include: { parent: true },
         orderBy: [{ name: "asc" }],
         skip: (query.page - 1) * query.pageSize,
         take: query.pageSize
@@ -45,18 +54,27 @@ export class CatalogCategoriesService extends CatalogSharedService {
     ]);
 
     return {
-      items: categories.map((item) => this.serializeSimpleEntity(item)),
+      items: categories.map((item) => this.serializeCategory(item)),
       pagination: this.makePagination(query.page, query.pageSize, total)
     };
   }
 
 
   async getCategoryById(id: string) {
-    const category = await this.prisma.catalogCategory.findUnique({ where: { id } });
+    const category = await this.prisma.catalogCategory.findUnique({
+      where: { id },
+      include: { parent: true }
+    });
     if (!category) throw new NotFoundException("Category not found");
-    return this.serializeSimpleEntity(category);
+    return this.serializeCategory(category);
   }
 
+  private serializeCategory(item: Prisma.CatalogCategoryGetPayload<{ include: { parent: true } }>) {
+    return {
+      ...this.serializeSimpleEntity(item),
+      parent: item.parent ? this.serializeSimpleEntity(item.parent) : null
+    };
+  }
 
   async createCategory(input: CreateCategoryDto) {
     const slug = await this.ensureUniqueSlug("catalogCategory", input.name);
@@ -67,11 +85,13 @@ export class CatalogCategoriesService extends CatalogSharedService {
         slug,
         description: this.toNullableString(input.description),
         imageUrl: this.toNullableString(input.imageUrl),
-        imageKey: this.toNullableString(input.imageKey)
-      }
+        imageKey: this.toNullableString(input.imageKey),
+        parentId: input.parentId || null
+      },
+      include: { parent: true }
     });
 
-    return this.serializeSimpleEntity(category);
+    return this.serializeCategory(category);
   }
 
 
@@ -85,6 +105,12 @@ export class CatalogCategoriesService extends CatalogSharedService {
       data.slug = await this.ensureUniqueSlug("catalogCategory", input.name, id);
     }
     if (input.description !== undefined) data.description = this.toNullableString(input.description);
+    if (input.parentId !== undefined) {
+      if (input.parentId === id) {
+        throw new BadRequestException("A category cannot be its own parent");
+      }
+      data.parent = input.parentId ? { connect: { id: input.parentId } } : { disconnect: true };
+    }
     if (input.removeImage) {
       data.imageUrl = null;
       data.imageKey = null;
@@ -95,14 +121,15 @@ export class CatalogCategoriesService extends CatalogSharedService {
 
     const updated = await this.prisma.catalogCategory.update({
       where: { id },
-      data
+      data,
+      include: { parent: true }
     });
 
     if (existing.imageKey && input.removeImage) {
       await this.storage.deleteObjectQuietly(existing.imageKey);
     }
 
-    return this.serializeSimpleEntity(updated);
+    return this.serializeCategory(updated);
   }
 
 

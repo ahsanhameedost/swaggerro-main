@@ -51,11 +51,25 @@ const CurvedLoop = ({
     }
   }, [spacing]);
 
+  const jacketRef = useRef(null);
+
   useEffect(() => {
     if (!spacing || !ready) return;
     let frame = 0;
+    // Moving a textPath's startOffset forces the browser to re-lay-out the
+    // glyphs along the curve — unlike a CSS transform this is main-thread,
+    // layout work, done every frame, forever. Left running off-screen it
+    // competes with every other animation on the page (e.g. the testimonials
+    // marquee much further down) for the same main thread. Only step while
+    // this strip is actually visible.
+    let visible = true;
+    const visibilityObserver = new IntersectionObserver(([entry]) => {
+      visible = entry.isIntersecting;
+    });
+    if (jacketRef.current) visibilityObserver.observe(jacketRef.current);
+
     const step = () => {
-      if (!dragRef.current && textPathRef.current) {
+      if (visible && !dragRef.current && textPathRef.current) {
         const delta = dirRef.current === 'right' ? speed : -speed;
         const currentOffset = parseFloat(textPathRef.current.getAttribute('startOffset') || '0');
         let newOffset = currentOffset + delta;
@@ -69,7 +83,10 @@ const CurvedLoop = ({
       frame = requestAnimationFrame(step);
     };
     frame = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(frame);
+    return () => {
+      cancelAnimationFrame(frame);
+      visibilityObserver.disconnect();
+    };
   }, [spacing, speed, ready]);
 
   const onPointerDown = e => {
@@ -106,6 +123,7 @@ const CurvedLoop = ({
 
   return (
     <div
+      ref={jacketRef}
       className="curved-loop-jacket"
       style={{ visibility: ready ? 'visible' : 'hidden', cursor: cursorStyle }}
       onPointerDown={onPointerDown}

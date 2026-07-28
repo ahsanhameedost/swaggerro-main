@@ -145,25 +145,39 @@ export default function DarkVeil({
 
     const start = performance.now();
     let frame = 0;
+    // This is a real-time shader (matrix math per pixel, uncapped resolution) —
+    // rendering it forever, even scrolled far off-screen, competes for the same
+    // GPU/compositor budget every other animation on the page needs (e.g. the
+    // testimonials marquee much further down). Only run the loop while the
+    // canvas is actually visible.
+    let visible = true;
 
     const loop = () => {
-      program.uniforms.uTime.value = ((performance.now() - start) / 1000) * speed;
-      program.uniforms.uHueShift.value = hueShift;
-      program.uniforms.uNoise.value = noiseIntensity;
-      program.uniforms.uScan.value = scanlineIntensity;
-      program.uniforms.uScanFreq.value = scanlineFrequency;
-      program.uniforms.uWarp.value = warpAmount;
-      program.uniforms.uTint.value = [tint.r, tint.g, tint.b];
-      program.uniforms.uTintStrength.value = tintAmount;
-      renderer.render({ scene: mesh });
+      if (visible) {
+        program.uniforms.uTime.value = ((performance.now() - start) / 1000) * speed;
+        program.uniforms.uHueShift.value = hueShift;
+        program.uniforms.uNoise.value = noiseIntensity;
+        program.uniforms.uScan.value = scanlineIntensity;
+        program.uniforms.uScanFreq.value = scanlineFrequency;
+        program.uniforms.uWarp.value = warpAmount;
+        program.uniforms.uTint.value = [tint.r, tint.g, tint.b];
+        program.uniforms.uTintStrength.value = tintAmount;
+        renderer.render({ scene: mesh });
+      }
       frame = requestAnimationFrame(loop);
     };
 
     loop();
 
+    const visibilityObserver = new IntersectionObserver(([entry]) => {
+      visible = entry.isIntersecting;
+    });
+    visibilityObserver.observe(canvas);
+
     return () => {
       cancelAnimationFrame(frame);
       window.removeEventListener('resize', resize);
+      visibilityObserver.disconnect();
     };
   }, [hueShift, noiseIntensity, scanlineIntensity, speed, scanlineFrequency, warpAmount, resolutionScale, tintColor, tintStrength]);
   return <canvas ref={ref} className="darkveil-canvas" />;

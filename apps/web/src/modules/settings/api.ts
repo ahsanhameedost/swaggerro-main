@@ -5,6 +5,7 @@ import { apiFetch } from "@/lib/api";
 export type SettingsMap = {
   sellers_can_add_products: string;
   preview_logo_gate: string;
+  shop_products_per_page: string;
 };
 
 export type SettingKey = keyof SettingsMap;
@@ -12,6 +13,7 @@ export type SettingKey = keyof SettingsMap;
 // Flags safe to read without auth (served by GET /settings/public).
 export type PublicSettingsMap = {
   preview_logo_gate: string;
+  shop_products_per_page: string;
 };
 
 export async function getSettings() {

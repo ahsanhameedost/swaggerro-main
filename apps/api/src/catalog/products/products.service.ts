@@ -21,6 +21,8 @@ const IMPORT_HEADERS = [
   "description",
   "status",
   "category",
+  "subCategory",
+  "brand",
   "collections",
   "basePrice",
   "compareAtPrice",
@@ -196,6 +198,8 @@ export class CatalogProductsService extends CatalogSharedService {
         : {}),
       ...(query.status ? { status: query.status } : {}),
       ...(query.categoryId ? { categoryId: query.categoryId } : {}),
+      ...(query.subCategoryId ? { subCategoryId: query.subCategoryId } : {}),
+      ...(query.brandId ? { brandId: query.brandId } : {}),
       ...(query.collectionId
         ? { collections: { some: { collectionId: query.collectionId } } }
         : {})
@@ -207,6 +211,8 @@ export class CatalogProductsService extends CatalogSharedService {
         where,
         include: {
           category: true,
+          subCategory: true,
+          brand: true,
           collections: { include: { collection: true } },
           images: { orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }], take: 1 },
           productCatalogVariants: {
@@ -250,6 +256,8 @@ export class CatalogProductsService extends CatalogSharedService {
     const products = await this.prisma.catalogProduct.findMany({
       include: {
         category: true,
+        subCategory: true,
+        brand: true,
         collections: { include: { collection: true } },
         images: { orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] },
         pricingOptions: {
@@ -276,6 +284,8 @@ export class CatalogProductsService extends CatalogSharedService {
       description: p.description ?? "",
       status: p.status,
       category: p.category?.name ?? "",
+      subCategory: p.subCategory?.name ?? "",
+      brand: p.brand?.name ?? "",
       collections: (p.collections ?? []).map((c: any) => c.collection?.name).filter(Boolean).join(" | "),
       basePrice: p.basePrice != null ? this.decimalToNumber(p.basePrice) : "",
       compareAtPrice: p.compareAtPrice != null ? this.decimalToNumber(p.compareAtPrice) : "",
@@ -323,6 +333,8 @@ export class CatalogProductsService extends CatalogSharedService {
         description: "Full description here",
         status: "ACTIVE",
         category: "Apparel",
+        subCategory: "T-Shirts",
+        brand: "Swaggeroo Basics",
         collections: "Best Sellers | New Arrivals",
         basePrice: "18",
         compareAtPrice: "24",
@@ -351,6 +363,36 @@ export class CatalogProductsService extends CatalogSharedService {
     if (existing) return existing.id;
     const slug = await this.ensureUniqueSlug("catalogCategory", trimmed);
     const created = await this.prisma.catalogCategory.create({
+      data: { name: trimmed, slug },
+      select: { id: true }
+    });
+    return created.id;
+  }
+
+  private async findOrCreateSubCategoryByName(name: string, categoryId: string | null): Promise<string> {
+    const trimmed = name.trim();
+    const existing = await this.prisma.catalogCategory.findFirst({
+      where: { name: { equals: trimmed, mode: "insensitive" }, parentId: categoryId },
+      select: { id: true }
+    });
+    if (existing) return existing.id;
+    const slug = await this.ensureUniqueSlug("catalogCategory", trimmed);
+    const created = await this.prisma.catalogCategory.create({
+      data: { name: trimmed, slug, parentId: categoryId },
+      select: { id: true }
+    });
+    return created.id;
+  }
+
+  private async findOrCreateBrandByName(name: string): Promise<string> {
+    const trimmed = name.trim();
+    const existing = await this.prisma.catalogBrand.findFirst({
+      where: { name: { equals: trimmed, mode: "insensitive" } },
+      select: { id: true }
+    });
+    if (existing) return existing.id;
+    const slug = await this.ensureUniqueSlug("catalogBrand", trimmed);
+    const created = await this.prisma.catalogBrand.create({
       data: { name: trimmed, slug },
       select: { id: true }
     });
@@ -407,6 +449,10 @@ export class CatalogProductsService extends CatalogSharedService {
         const categoryId = row.category?.trim()
           ? await this.findOrCreateCategoryByName(row.category)
           : null;
+        const subCategoryId = row.subCategory?.trim()
+          ? await this.findOrCreateSubCategoryByName(row.subCategory, categoryId)
+          : null;
+        const brandId = row.brand?.trim() ? await this.findOrCreateBrandByName(row.brand) : null;
         const collectionIds = await this.findOrCreateCollectionIds(splitList(row.collections));
 
         const statusRaw = (row.status ?? "").trim().toUpperCase();
@@ -425,6 +471,8 @@ export class CatalogProductsService extends CatalogSharedService {
           description: (row.description ?? "").trim() || null,
           status,
           categoryId,
+          subCategoryId,
+          brandId,
           collectionIds,
           isPackaging: parseBool(row.isPackaging),
           bulkPricingEnabled: parseBool(row.bulkPricingEnabled, true),
@@ -492,6 +540,8 @@ export class CatalogProductsService extends CatalogSharedService {
           description: this.toNullableString(input.description),
           status: input.status ?? "DRAFT",
           categoryId: input.categoryId || null,
+          subCategoryId: input.subCategoryId || null,
+          brandId: input.brandId || null,
           isPackaging: input.isPackaging === true,
           bulkPricingEnabled: input.bulkPricingEnabled ?? true,
           shippingProfileId: input.shippingProfileId || null,
@@ -550,7 +600,9 @@ export class CatalogProductsService extends CatalogSharedService {
         data.status = input.status;
       }
 
-if (input.categoryId !== undefined) data.category = input.categoryId ? { connect: { id: input.categoryId } } : { disconnect: true };
+      if (input.categoryId !== undefined) data.category = input.categoryId ? { connect: { id: input.categoryId } } : { disconnect: true };
+      if (input.subCategoryId !== undefined) data.subCategory = input.subCategoryId ? { connect: { id: input.subCategoryId } } : { disconnect: true };
+      if (input.brandId !== undefined) data.brand = input.brandId ? { connect: { id: input.brandId } } : { disconnect: true };
 
       if (input.isPackaging !== undefined) {
         data.isPackaging = input.isPackaging === true;

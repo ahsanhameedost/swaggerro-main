@@ -28,6 +28,8 @@ export abstract class CatalogSharedService {
   protected buildProductDetailInclude(): Prisma.CatalogProductInclude {
     return {
       category: true,
+      subCategory: true,
+      brand: true,
       collections: {
         include: {
           collection: true
@@ -418,6 +420,18 @@ export abstract class CatalogSharedService {
             name: product.category.name
           }
         : null,
+      subCategory: product.subCategory
+        ? {
+            id: product.subCategory.id,
+            name: product.subCategory.name
+          }
+        : null,
+      brand: product.brand
+        ? {
+            id: product.brand.id,
+            name: product.brand.name
+          }
+        : null,
       collections: (product.collections ?? []).map((entry: any) => ({
         id: entry.collection.id,
         name: entry.collection.name
@@ -485,6 +499,12 @@ export abstract class CatalogSharedService {
       shortDescription: item.shortDescription,
       category: product.category
         ? { id: product.category.id, name: product.category.name, slug: product.category.slug }
+        : null,
+      subCategory: product.subCategory
+        ? { id: product.subCategory.id, name: product.subCategory.name, slug: product.subCategory.slug }
+        : null,
+      brand: product.brand
+        ? { id: product.brand.id, name: product.brand.name, slug: product.brand.slug }
         : null,
       collections: (product.collections ?? []).map((entry: any) => ({
         id: entry.collection.id,
@@ -573,6 +593,20 @@ export abstract class CatalogSharedService {
             id: product.category.id,
             name: product.category.name,
             slug: product.category.slug
+          }
+        : null,
+      subCategory: product.subCategory
+        ? {
+            id: product.subCategory.id,
+            name: product.subCategory.name,
+            slug: product.subCategory.slug
+          }
+        : null,
+      brand: product.brand
+        ? {
+            id: product.brand.id,
+            name: product.brand.name,
+            slug: product.brand.slug
           }
         : null,
       collections: (product.collections ?? []).map((entry: any) => ({
@@ -853,7 +887,7 @@ export abstract class CatalogSharedService {
   }
 
   protected async ensureUniqueSlug(
-    model: "catalogCategory" | "catalogCollection" | "catalogProduct",
+    model: "catalogCategory" | "catalogCollection" | "catalogProduct" | "catalogBrand",
     value: string,
     excludeId?: string,
     tx?: Prisma.TransactionClient

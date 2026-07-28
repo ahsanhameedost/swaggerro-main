@@ -1,3 +1,4 @@
+import type { CatalogBrand } from "../brands/types";
 import type { CatalogCategory } from "../categories/types";
 import type { CatalogCollection } from "../collections/types";
 import type { PaginationMeta } from "../shared";
@@ -95,6 +96,8 @@ export type CatalogProductListItem = {
   shortDescription?: string | null;
   status?: "DRAFT" | "ACTIVE" | "ARCHIVED";
   category?: { id: string; name: string; slug?: string } | null;
+  subCategory?: { id: string; name: string; slug?: string } | null;
+  brand?: { id: string; name: string; slug?: string } | null;
   collections: Array<{ id: string; name: string; slug?: string }>;
   imageUrl?: string | null;
   variantCount: number;
@@ -153,6 +156,8 @@ export type CatalogProductDetail = {
   minPriceCents?: number;
   maxPrice?: number;
   category?: { id: string; name: string; slug: string } | null;
+  subCategory?: { id: string; name: string; slug: string } | null;
+  brand?: { id: string; name: string; slug: string } | null;
   collections: Array<{ id: string; name: string; slug: string }>;
   images: CatalogImage[];
   variantDefinitions: CatalogVariantGroup[];
@@ -169,6 +174,8 @@ export type ListProductsParams = {
   search?: string;
   status?: "DRAFT" | "ACTIVE" | "ARCHIVED";
   categoryId?: string;
+  subCategoryId?: string;
+  brandId?: string;
   collectionId?: string;
   page?: number;
   pageSize?: number;
@@ -177,6 +184,8 @@ export type ListProductsParams = {
 export type ListPublicProductsParams = {
   search?: string;
   category?: string;
+  subCategory?: string;
+  brand?: string;
   collection?: string;
   isPackaging?: boolean;
   shippingProfileId?: string | null;
@@ -194,6 +203,8 @@ export type CreateProductInput = {
   description?: string | null;
   status?: "DRAFT" | "ACTIVE" | "ARCHIVED";
   categoryId?: string | null;
+  subCategoryId?: string | null;
+  brandId?: string | null;
   collectionIds: string[];
   isPackaging?: boolean;
   bulkPricingEnabled?: boolean;
@@ -249,6 +260,14 @@ export type ProductResponse = {
 
 export type PublicCategoriesResponse = {
   items: CatalogCategory[];
+};
+
+export type PublicSubCategoriesResponse = {
+  items: CatalogCategory[];
+};
+
+export type PublicBrandsResponse = {
+  items: CatalogBrand[];
 };
 
 export type PublicCollectionsResponse = {

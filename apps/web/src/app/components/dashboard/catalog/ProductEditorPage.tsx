@@ -19,6 +19,7 @@ import {
   type CatalogPricingOption
 } from "@/lib/catalog";
 import {
+  useBrands,
   useCategories,
   useCollections,
   useCreateProduct,
@@ -90,7 +91,13 @@ export function ProductEditorPage({ mode }: ProductEditorPageProps) {
   const canRead = !!user?.permissions?.includes("catalog.products.read");
   const canReadShippingSettings = !!user?.permissions?.includes("shipping.settings.read");
 
-  const { data: categoriesData, isLoading: isCategoriesLoading } = useCategories({ page: 1, pageSize: 100 });
+  const { data: categoriesData, isLoading: isCategoriesLoading } = useCategories({ page: 1, pageSize: 100, parentId: "none" });
+  const { data: subCategoriesData } = useCategories({
+    page: 1,
+    pageSize: 100,
+    parentId: state.categoryId || "none-selected"
+  });
+  const { data: brandsData, isLoading: isBrandsLoading } = useBrands({ page: 1, pageSize: 100 });
   const { data: collectionsData, isLoading: isCollectionsLoading } = useCollections({ page: 1, pageSize: 100 });
   const { data: shippingProfilesData, isLoading: isShippingProfilesLoading } = useShippingProfiles(canReadShippingSettings);
   const {
@@ -125,6 +132,14 @@ export function ProductEditorPage({ mode }: ProductEditorPageProps) {
   const categories = useMemo(
     () => (categoriesData?.items ?? []).map((item) => ({ id: item.id, name: item.name })),
     [categoriesData?.items]
+  );
+  const subCategories = useMemo(
+    () => (subCategoriesData?.items ?? []).map((item) => ({ id: item.id, name: item.name })),
+    [subCategoriesData?.items]
+  );
+  const brands = useMemo(
+    () => (brandsData?.items ?? []).map((item) => ({ id: item.id, name: item.name })),
+    [brandsData?.items]
   );
   const collections = useMemo(
     () => (collectionsData?.items ?? []).map((item) => ({ id: item.id, name: item.name })),
@@ -568,6 +583,7 @@ export function ProductEditorPage({ mode }: ProductEditorPageProps) {
   if (
     isCategoriesLoading ||
     isCollectionsLoading ||
+    isBrandsLoading ||
     isShippingProfilesLoading ||
     (mode === "edit" && (isProductLoading || isProductFetching))
   ) {
@@ -608,6 +624,8 @@ export function ProductEditorPage({ mode }: ProductEditorPageProps) {
       <ProductBasicsSection
         state={state}
         categories={categories}
+        subCategories={subCategories}
+        brands={brands}
         collections={collections}
         shippingProfiles={shippingProfiles}
         uploadingImages={uploadingImages}

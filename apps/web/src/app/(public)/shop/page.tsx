@@ -1,20 +1,27 @@
 "use client";
 
-import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import {
   Check,
+  ChevronLeft,
+  ChevronRight,
   PackageOpen,
   Search,
   SlidersHorizontal,
   X,
 } from "lucide-react";
 import { usePublicCategories, usePublicProducts } from "@/lib/queries.catalog";
+import { usePublicSettings } from "@/queries/settings";
 import { ProductCard } from "@/components/shop/product-card";
 import { PageHero } from "@/components/marketing/page-hero";
 import { cn } from "@/lib/utils";
 import type { CatalogProductListItem } from "@/modules/catalog/products/types";
 
-const PAGE_SIZE = 12;
+const DEFAULT_PAGE_SIZE = 12;
+// Catalog is small — fetch this many in one shot and filter/sort/paginate
+// client-side. Comfortably covers catalog growth well past today's ~40
+// products; the server caps this query at 300 (see public.dto.ts).
+const FETCH_ALL_SIZE = 300;
 
 const SORT_OPTIONS = [
   { value: "featured", label: "Featured" },
@@ -30,10 +37,12 @@ function fromPrice(p: CatalogProductListItem) {
 }
 
 export default function ShopPage() {
-  // Catalog is small — fetch all (pageSize max 48) and filter/sort/paginate client-side.
-  const { data, isLoading } = usePublicProducts({ page: 1, pageSize: 48 });
+  const { data, isLoading } = usePublicProducts({ page: 1, pageSize: FETCH_ALL_SIZE });
   const { data: categories = [] } = usePublicCategories();
+  const { data: publicSettings } = usePublicSettings();
   const allProducts = useMemo(() => data?.items ?? [], [data]);
+  // Admin-configurable in Platform Settings ("Shop products per page").
+  const pageSize = Number(publicSettings?.settings.shop_products_per_page) || DEFAULT_PAGE_SIZE;
 
   const [search, setSearch] = useState("");
   // Seed the search box from a `?q=` param (e.g. the home page's catalog search
@@ -44,12 +53,14 @@ export default function ShopPage() {
     if (q) setSearch(q);
   }, []);
   const [category, setCategory] = useState<string | null>(null);
+  const [subCategory, setSubCategory] = useState<string | null>(null);
   const [colors, setColors] = useState<string[]>([]);
+  const [brands, setBrands] = useState<string[]>([]);
   const [minPrice, setMinPrice] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
   const [shipTime, setShipTime] = useState<"" | "fast" | "standard" | "extended">("");
   const [sort, setSort] = useState<SortValue>("featured");
-  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const [page, setPage] = useState(1);
   const deferredSearch = useDeferredValue(search);
 
   // distinct color swatches across the catalog
@@ -59,13 +70,35 @@ export default function ShopPage() {
     return [...map.entries()].map(([name, hex]) => ({ name, hex }));
   }, [allProducts]);
 
+  // distinct brands across the catalog
+  const availableBrands = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const p of allProducts) if (p.brand && !map.has(p.brand.slug ?? p.brand.name)) map.set(p.brand.slug ?? p.brand.name, p.brand.name);
+    return [...map.entries()].map(([slug, name]) => ({ slug, name }));
+  }, [allProducts]);
+
+  // sub-categories of the selected top-level category, derived from the products
+  // themselves so the list only ever shows sub-categories that actually have stock.
+  const availableSubCategories = useMemo(() => {
+    if (!category) return [];
+    const map = new Map<string, string>();
+    for (const p of allProducts) {
+      if (p.category?.slug !== category || !p.subCategory) continue;
+      const slug = p.subCategory.slug ?? p.subCategory.name;
+      if (!map.has(slug)) map.set(slug, p.subCategory.name);
+    }
+    return [...map.entries()].map(([slug, name]) => ({ slug, name }));
+  }, [allProducts, category]);
+
   const filtered = useMemo(() => {
     const q = deferredSearch.trim().toLowerCase();
     const min = minPrice ? Number(minPrice) : null;
     const max = maxPrice ? Number(maxPrice) : null;
     let list = allProducts.filter((p) => {
       if (category && p.category?.slug !== category) return false;
+      if (subCategory && p.subCategory?.slug !== subCategory) return false;
       if (colors.length && !(p.swatches ?? []).some((s) => colors.includes(s.name))) return false;
+      if (brands.length && !(p.brand && brands.includes(p.brand.slug ?? p.brand.name))) return false;
       const price = fromPrice(p);
       if (min != null && price < min) return false;
       if (max != null && price > max) return false;
@@ -85,38 +118,42 @@ export default function ShopPage() {
     else if (sort === "moq-asc") list = [...list].sort((a, b) => a.minQty - b.minQty);
     else if (sort === "newest") list = [...list].sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""));
     return list;
-  }, [allProducts, category, colors, minPrice, maxPrice, shipTime, deferredSearch, sort]);
+  }, [allProducts, category, subCategory, colors, brands, minPrice, maxPrice, shipTime, deferredSearch, sort]);
 
-  const pageItems = filtered.slice(0, visibleCount);
-  const hasMore = visibleCount < filtered.length;
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const pageItems = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
-  // auto-load the next batch as the sentinel scrolls into view
-  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  // scroll back to the top of the grid on page change so the new results are
+  // visible — skip on first mount so arriving at the page doesn't jump you.
+  const isFirstRender = useRef(true);
   useEffect(() => {
-    const el = sentinelRef.current;
-    if (!el || !hasMore) return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0]?.isIntersecting) {
-          setVisibleCount((c) => Math.min(c + PAGE_SIZE, filtered.length));
-        }
-      },
-      { rootMargin: "400px" },
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [hasMore, filtered.length]);
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+    document.getElementById("shop-results-top")?.scrollIntoView({ block: "start" });
+  }, [currentPage]);
 
-  // reset to the first batch when filters/search/sort change
-  const resetPage = () => setVisibleCount(PAGE_SIZE);
+  // reset to page 1 when filters/search/sort change
+  const resetPage = () => setPage(1);
   const toggleColor = (name: string) => {
     resetPage();
     setColors((cur) => (cur.includes(name) ? cur.filter((c) => c !== name) : [...cur, name]));
   };
-  const clearAll = () => {
-    setCategory(null); setColors([]); setMinPrice(""); setMaxPrice(""); setShipTime(""); setVisibleCount(PAGE_SIZE);
+  const toggleBrand = (slug: string) => {
+    resetPage();
+    setBrands((cur) => (cur.includes(slug) ? cur.filter((b) => b !== slug) : [...cur, slug]));
   };
-  const hasActive = category || colors.length || minPrice || maxPrice || shipTime;
+  const selectCategory = (slug: string | null) => {
+    resetPage();
+    setCategory(slug);
+    setSubCategory(null);
+  };
+  const clearAll = () => {
+    setCategory(null); setSubCategory(null); setColors([]); setBrands([]); setMinPrice(""); setMaxPrice(""); setShipTime(""); setPage(1);
+  };
+  const hasActive = category || subCategory || colors.length || brands.length || minPrice || maxPrice || shipTime;
 
   const activeCategory = categories.find((c) => c.slug === category) ?? null;
 
@@ -134,11 +171,28 @@ export default function ShopPage() {
       <div>
         <h3 className="mb-2.5 text-xs font-semibold tracking-wide text-muted-foreground uppercase">Category</h3>
         <ul className="space-y-0.5">
-          <FilterRow active={!category} onClick={() => { resetPage(); setCategory(null); }}>All products</FilterRow>
+          <FilterRow active={!category} onClick={() => selectCategory(null)}>All products</FilterRow>
           {categories.map((c) => (
-            <FilterRow key={c.id} active={category === c.slug} onClick={() => { resetPage(); setCategory(category === c.slug ? null : c.slug); }}>
-              {c.name}
-            </FilterRow>
+            <Fragment key={c.id}>
+              <FilterRow active={category === c.slug} onClick={() => selectCategory(category === c.slug ? null : c.slug)}>
+                {c.name}
+              </FilterRow>
+              {category === c.slug && availableSubCategories.length ? (
+                <li>
+                  <ul className="mt-0.5 ml-3 space-y-0.5 border-l border-border pl-2.5">
+                    {availableSubCategories.map((sc) => (
+                      <FilterRow
+                        key={sc.slug}
+                        active={subCategory === sc.slug}
+                        onClick={() => { resetPage(); setSubCategory(subCategory === sc.slug ? null : sc.slug); }}
+                      >
+                        {sc.name}
+                      </FilterRow>
+                    ))}
+                  </ul>
+                </li>
+              ) : null}
+            </Fragment>
           ))}
         </ul>
       </div>
@@ -163,6 +217,31 @@ export default function ShopPage() {
                 >
                   <span className="size-3.5 rounded-full border border-border/70" style={{ backgroundColor: s.hex ?? "transparent" }} />
                   {s.name}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
+
+      {availableBrands.length ? (
+        <div>
+          <h3 className="mb-2.5 text-xs font-semibold tracking-wide text-muted-foreground uppercase">Brand</h3>
+          <div className="flex flex-wrap gap-2">
+            {availableBrands.map((b) => {
+              const on = brands.includes(b.slug);
+              return (
+                <button
+                  key={b.slug}
+                  type="button"
+                  onClick={() => toggleBrand(b.slug)}
+                  aria-pressed={on}
+                  className={cn(
+                    "rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
+                    on ? "border-primary bg-brand-soft text-primary" : "border-border bg-background text-muted-foreground hover:border-foreground/30",
+                  )}
+                >
+                  {b.name}
                 </button>
               );
             })}
@@ -236,12 +315,16 @@ export default function ShopPage() {
 
       <div className="mx-auto mt-8 grid max-w-site gap-8 px-6 pb-20 lg:grid-cols-[16rem_1fr]">
         <aside className="hidden lg:block">
-          <div className="sticky top-24">{filters}</div>
+          {/* max-h + overflow-y-auto: with enough colors/brands the filter list can
+              exceed the viewport — without this, the sticky box pins in place and
+              anything below the fold (Price, Shipping time) is unreachable until
+              the page scrolls past the whole product grid. */}
+          <div className="sticky top-24 max-h-[calc(100vh-7rem)] overflow-y-auto pr-1">{filters}</div>
         </aside>
 
         <div>
           {/* Toolbar */}
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div id="shop-results-top" className="flex scroll-mt-24 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-3">
               <div className="relative">
                 <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-foreground/40" />
@@ -303,22 +386,89 @@ export default function ShopPage() {
             </div>
           )}
 
-          {/* Infinite scroll — auto-loads the next batch as you scroll */}
-          {hasMore ? (
-            <div ref={sentinelRef} className="mt-10 flex items-center justify-center py-6 text-sm text-muted-foreground">
-              <span className="inline-flex items-center gap-2">
-                <span className="size-4 animate-spin rounded-full border-2 border-muted-foreground/30 border-t-foreground" />
-                Loading more…
-              </span>
-            </div>
-          ) : filtered.length > PAGE_SIZE ? (
-            <p className="mt-10 text-center text-sm text-muted-foreground">
-              You&apos;ve reached the end · {filtered.length} products
-            </p>
+          {totalPages > 1 ? (
+            <ShopPagination page={currentPage} totalPages={totalPages} onPageChange={setPage} />
           ) : null}
         </div>
       </div>
     </div>
+  );
+}
+
+function ShopPagination({
+  page,
+  totalPages,
+  onPageChange,
+}: {
+  page: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
+}) {
+  // Windowed page numbers: first, last, and a small run around the current
+  // page, with "…" filling any gaps — keeps the control compact however many
+  // pages the catalog grows to.
+  const pages = useMemo(() => {
+    const spread = 1;
+    const items: (number | "ellipsis")[] = [];
+    let lastShown = 0;
+    for (let n = 1; n <= totalPages; n++) {
+      if (n === 1 || n === totalPages || Math.abs(n - page) <= spread) {
+        if (lastShown && n - lastShown > 1) items.push("ellipsis");
+        items.push(n);
+        lastShown = n;
+      }
+    }
+    return items;
+  }, [page, totalPages]);
+
+  const buttonClass = (active: boolean) =>
+    cn(
+      "flex h-9 min-w-9 items-center justify-center rounded-lg border px-2.5 text-sm font-medium transition-colors",
+      active
+        ? "border-primary bg-brand-soft text-primary"
+        : "border-input bg-background text-foreground hover:border-foreground/30",
+    );
+
+  return (
+    <nav aria-label="Pagination" className="mt-10 flex items-center justify-center gap-1.5">
+      <button
+        type="button"
+        aria-label="Previous page"
+        disabled={page <= 1}
+        onClick={() => onPageChange(page - 1)}
+        className={cn(buttonClass(false), "disabled:pointer-events-none disabled:opacity-40")}
+      >
+        <ChevronLeft className="size-4" />
+      </button>
+
+      {pages.map((p, i) =>
+        p === "ellipsis" ? (
+          <span key={`e-${i}`} className="px-1 text-sm text-muted-foreground">
+            …
+          </span>
+        ) : (
+          <button
+            key={p}
+            type="button"
+            aria-current={p === page ? "page" : undefined}
+            onClick={() => onPageChange(p)}
+            className={buttonClass(p === page)}
+          >
+            {p}
+          </button>
+        ),
+      )}
+
+      <button
+        type="button"
+        aria-label="Next page"
+        disabled={page >= totalPages}
+        onClick={() => onPageChange(page + 1)}
+        className={cn(buttonClass(false), "disabled:pointer-events-none disabled:opacity-40")}
+      >
+        <ChevronRight className="size-4" />
+      </button>
+    </nav>
   );
 }
 

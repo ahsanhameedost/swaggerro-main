@@ -31,6 +31,12 @@ const NAV_ITEMS: NavItem[] = [
         requiredPermissions: ["catalog.collections.read"]
       },
       {
+        key: "catalog-brands",
+        label: "Brands",
+        href: "/dashboard/catalog/brands",
+        requiredPermissions: ["catalog.brands.read"]
+      },
+      {
         key: "catalog-products",
         label: "Products",
         href: "/dashboard/catalog/products",

@@ -16,23 +16,23 @@ import {
   TableRow
 } from "@heroui/react";
 import { addToast } from "@heroui/toast";
-import { Plus, Search, Tags } from "lucide-react";
+import { Plus, Search, Tag } from "lucide-react";
 import { useMe } from "@/queries/auth";
 import {
   createCatalogImageUpload,
   uploadFileToPresignedUrl,
-  type CatalogCategory
+  type CatalogBrand
 } from "@/lib/catalog";
 import {
-  useCategories,
-  useCreateCategory,
-  useDeleteCategory,
-  useUpdateCategory
+  useBrands,
+  useCreateBrand,
+  useDeleteBrand,
+  useUpdateBrand
 } from "@/lib/queries.catalog";
 import {
-  CategoryFormModal,
-  type CategoryFormValues
-} from "@/app/components/dashboard/catalog/CategoryFormModal";
+  BrandFormModal,
+  type BrandFormValues
+} from "@/app/components/dashboard/catalog/BrandFormModal";
 import { DataPagination } from "@/app/components/dashboard/shared/DataPagination";
 import { DeleteConfirmDialog } from "@/app/components/dashboard/shared/DeleteConfirmDialog";
 import { RowActionsDropdown } from "@/app/components/dashboard/shared/RowActionsDropdown";
@@ -45,27 +45,27 @@ function EmptyState() {
         className="inline-flex h-14 w-14 items-center justify-center rounded-2xl text-white"
         style={{ backgroundImage: "var(--primary-gradient)" }}
       >
-        <Tags className="size-6" />
+        <Tag className="size-6" />
       </div>
       <div>
-        <div className="font-semibold">No categories yet</div>
-        <div className="text-sm text-foreground/60">Create your first catalog category.</div>
+        <div className="font-semibold">No brands yet</div>
+        <div className="text-sm text-foreground/60">Create your first catalog brand.</div>
       </div>
     </div>
   );
 }
 
-export default function CategoriesPage() {
+export default function BrandsPage() {
   const { data: user } = useMe();
-  const canRead = !!user?.permissions?.includes("catalog.categories.read");
-  const canWrite = !!user?.permissions?.includes("catalog.categories.write");
+  const canRead = !!user?.permissions?.includes("catalog.brands.read");
+  const canWrite = !!user?.permissions?.includes("catalog.brands.write");
 
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(15);
   const [formOpen, setFormOpen] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState<CatalogCategory | null>(null);
-  const [deleteTarget, setDeleteTarget] = useState<CatalogCategory | null>(null);
+  const [selectedBrand, setSelectedBrand] = useState<CatalogBrand | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<CatalogBrand | null>(null);
 
   const deferredSearch = useDeferredValue(search);
   const queryParams = useMemo(
@@ -83,9 +83,9 @@ export default function CategoriesPage() {
     isFetching,
     isError,
     error
-  } = useCategories(queryParams);
+  } = useBrands(queryParams);
 
-  const categories = data?.items ?? [];
+  const brands = data?.items ?? [];
   const pagination = data?.pagination ?? {
     page,
     pageSize,
@@ -93,23 +93,23 @@ export default function CategoriesPage() {
     totalPages: 1
   };
 
-  const createMutation = useCreateCategory();
-  const updateMutation = useUpdateCategory();
-  const deleteMutation = useDeleteCategory();
+  const createMutation = useCreateBrand();
+  const updateMutation = useUpdateBrand();
+  const deleteMutation = useDeleteBrand();
 
   const openCreate = () => {
-    setSelectedCategory(null);
+    setSelectedBrand(null);
     setFormOpen(true);
   };
 
-  const openEdit = (category: CatalogCategory) => {
-    setSelectedCategory(category);
+  const openEdit = (brand: CatalogBrand) => {
+    setSelectedBrand(brand);
     setFormOpen(true);
   };
 
   const closeForm = () => {
     setFormOpen(false);
-    setSelectedCategory(null);
+    setSelectedBrand(null);
   };
 
   const handleSave = async ({
@@ -117,7 +117,7 @@ export default function CategoriesPage() {
     file,
     removeCurrentImage
   }: {
-    values: CategoryFormValues;
+    values: BrandFormValues;
     file: File | null;
     removeCurrentImage: boolean;
   }) => {
@@ -127,16 +127,14 @@ export default function CategoriesPage() {
         description?: string | null;
         imageUrl?: string | null;
         imageKey?: string | null;
-        parentId?: string | null;
         removeImage?: boolean;
       } = {
         name: values.name.trim(),
-        description: values.description?.trim() ? values.description.trim() : null,
-        parentId: values.parentId?.trim() ? values.parentId.trim() : null
+        description: values.description?.trim() ? values.description.trim() : null
       };
 
       if (file) {
-        const upload = await createCatalogImageUpload("categories", {
+        const upload = await createCatalogImageUpload("brands", {
           filename: file.name,
           contentType: file.type as "image/jpeg" | "image/png" | "image/webp"
         });
@@ -148,21 +146,21 @@ export default function CategoriesPage() {
         payload.removeImage = true;
       }
 
-      if (selectedCategory) {
+      if (selectedBrand) {
         await updateMutation.mutateAsync({
-          id: selectedCategory.id,
+          id: selectedBrand.id,
           input: payload
         });
         addToast({
-          title: "Category updated",
-          description: "Your category changes were saved.",
+          title: "Brand updated",
+          description: "Your brand changes were saved.",
           color: "success"
         });
       } else {
         await createMutation.mutateAsync(payload);
         addToast({
-          title: "Category created",
-          description: "The new catalog category is now available.",
+          title: "Brand created",
+          description: "The new catalog brand is now available.",
           color: "success"
         });
       }
@@ -171,7 +169,7 @@ export default function CategoriesPage() {
     } catch (e: any) {
       addToast({
         title: "Save failed",
-        description: e?.message ?? "Could not save category",
+        description: e?.message ?? "Could not save brand",
         color: "danger"
       });
     }
@@ -183,7 +181,7 @@ export default function CategoriesPage() {
     try {
       await deleteMutation.mutateAsync(deleteTarget.id);
       addToast({
-        title: "Category deleted",
+        title: "Brand deleted",
         description: `${deleteTarget.name} has been removed.`,
         color: "success"
       });
@@ -191,7 +189,7 @@ export default function CategoriesPage() {
     } catch (e: any) {
       addToast({
         title: "Delete failed",
-        description: e?.message ?? "Could not delete category",
+        description: e?.message ?? "Could not delete brand",
         color: "danger"
       });
     }
@@ -200,7 +198,7 @@ export default function CategoriesPage() {
   if (!canRead) {
     return (
       <Card>
-        <CardBody>You do not have permission to view catalog categories.</CardBody>
+        <CardBody>You do not have permission to view catalog brands.</CardBody>
       </Card>
     );
   }
@@ -211,7 +209,7 @@ export default function CategoriesPage() {
         <CardBody className="flex flex-col gap-6 p-6">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div>
-              <h1 className="text-2xl font-semibold tracking-tight">Categories</h1>
+              <h1 className="text-2xl font-semibold tracking-tight">Brands</h1>
             </div>
 
             {canWrite ? (
@@ -221,7 +219,7 @@ export default function CategoriesPage() {
                 onPress={openCreate}
                 style={{ backgroundImage: "var(--primary-gradient)" }}
               >
-                Add category
+                Add brand
               </Button>
             ) : null}
           </div>
@@ -243,10 +241,9 @@ export default function CategoriesPage() {
         </CardBody>
 
         <CardBody className="p-0">
-          <Table aria-label="Catalog categories table" removeWrapper>
+          <Table aria-label="Catalog brands table" removeWrapper>
             <TableHeader>
-              <TableColumn>Category</TableColumn>
-              <TableColumn>Parent</TableColumn>
+              <TableColumn>Brand</TableColumn>
               <TableColumn>Slug</TableColumn>
               <TableColumn>Updated At</TableColumn>
               <TableColumn className="text-center">Actions</TableColumn>
@@ -254,51 +251,44 @@ export default function CategoriesPage() {
             <TableBody
               emptyContent={isLoading ? null : <EmptyState />}
               isLoading={isLoading || isFetching}
-              loadingContent={<Spinner label="Loading categories..." />}
+              loadingContent={<Spinner label="Loading brands..." />}
             >
-              {categories.map((category) => (
-                <TableRow key={category.id}>
+              {brands.map((brand) => (
+                <TableRow key={brand.id}>
                   <TableCell>
                     <div className="flex items-center gap-3">
                       <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-2xl bg-content2">
-                        {category.imageUrl ? (
+                        {brand.imageUrl ? (
                           <Image
                             removeWrapper
-                            src={category.imageUrl}
-                            alt={category.name}
+                            src={brand.imageUrl}
+                            alt={brand.name}
                             className="h-full w-full object-cover"
                           />
                         ) : (
                           <div className="text-sm font-semibold text-foreground/50">
-                            {category.name.slice(0, 2).toUpperCase()}
+                            {brand.name.slice(0, 2).toUpperCase()}
                           </div>
                         )}
                       </div>
 
                       <div className="min-w-0">
-                        <div className="font-medium">{category.name}</div>
+                        <div className="font-medium">{brand.name}</div>
                         <div className="truncate text-xs text-foreground/50">
-                          {category.description || "No description added yet."}
+                          {brand.description || "No description added yet."}
                         </div>
                       </div>
                     </div>
                   </TableCell>
 
-                  <TableCell>
-                    {category.parent ? (
-                      <span className="text-sm text-foreground/70">{category.parent.name}</span>
-                    ) : (
-                      <span className="text-sm text-foreground/40">—</span>
-                    )}
-                  </TableCell>
-                  <TableCell>{category.slug}</TableCell>
-                  <TableCell>{formatServerDateTime(category.updatedAt)}</TableCell>
+                  <TableCell>{brand.slug}</TableCell>
+                  <TableCell>{formatServerDateTime(brand.updatedAt)}</TableCell>
 
                   <TableCell className="text-center">
                     <div className="flex justify-center">
                       <RowActionsDropdown
-                        onEdit={canWrite ? () => openEdit(category) : undefined}
-                        onDelete={canWrite ? () => setDeleteTarget(category) : undefined}
+                        onEdit={canWrite ? () => openEdit(brand) : undefined}
+                        onDelete={canWrite ? () => setDeleteTarget(brand) : undefined}
                         isReadOnly={!canWrite}
                       />
                     </div>
@@ -310,7 +300,7 @@ export default function CategoriesPage() {
 
           <div className="flex items-center justify-between border-t border-divider px-6 py-4">
             <div className="text-sm text-foreground/60">
-              Showing {categories.length} of {pagination.total} categories
+              Showing {brands.length} of {pagination.total} brands
             </div>
 
             <DataPagination
@@ -328,15 +318,15 @@ export default function CategoriesPage() {
 
           {isError ? (
             <div className="border-t border-divider px-6 py-4 text-sm text-danger">
-              {error instanceof Error ? error.message : "Failed to load categories."}
+              {error instanceof Error ? error.message : "Failed to load brands."}
             </div>
           ) : null}
         </CardBody>
       </Card>
 
-      <CategoryFormModal
+      <BrandFormModal
         isOpen={formOpen}
-        category={selectedCategory}
+        brand={selectedBrand}
         onClose={closeForm}
         onSave={handleSave}
         isSubmitting={createMutation.isPending || updateMutation.isPending}
@@ -344,7 +334,7 @@ export default function CategoriesPage() {
 
       <DeleteConfirmDialog
         isOpen={!!deleteTarget}
-        title="Delete category"
+        title="Delete brand"
         message={
           deleteTarget ? (
             <>

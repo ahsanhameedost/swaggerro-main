@@ -14,7 +14,14 @@ import type {
 
 export function useCategories(params: ListCategoriesParams) {
   return useQuery({
-    queryKey: ["catalog", "categories", params.search ?? "", params.page ?? 1, params.pageSize ?? 15],
+    queryKey: [
+      "catalog",
+      "categories",
+      params.search ?? "",
+      params.parentId ?? "",
+      params.page ?? 1,
+      params.pageSize ?? 15
+    ],
     queryFn: () => listCategories(params),
     placeholderData: keepPreviousData
   });

@@ -3,10 +3,19 @@ import { z } from "zod";
 export const listPublicProductsQuerySchema = z.object({
   search: z.string().trim().max(100).optional(),
   category: z.string().trim().max(120).optional(),
+  subCategory: z.string().trim().max(120).optional(),
+  brand: z.string().trim().max(120).optional(),
   collection: z.string().trim().max(120).optional(),
   isPackaging: z.coerce.boolean().optional(),
   page: z.coerce.number().int().min(1).default(1),
-  pageSize: z.coerce.number().int().min(1).max(48).default(12)
+  // The shop page fetches the whole (small-ish) catalog in one request and
+  // paginates/filters client-side, so this ceiling needs to comfortably cover
+  // catalog growth rather than a single UI page of results.
+  pageSize: z.coerce.number().int().min(1).max(300).default(12)
+});
+
+export const listPublicSubCategoriesQuerySchema = z.object({
+  category: z.string().trim().max(120).optional()
 });
 
 const bulkOrderItemSchema = z.object({
@@ -103,5 +112,6 @@ export const createPublicOrderSchema = z
 
 export type TrackOrderQuery = z.infer<typeof trackOrderQuerySchema>;
 export type ListPublicProductsQuery = z.infer<typeof listPublicProductsQuerySchema>;
+export type ListPublicSubCategoriesQuery = z.infer<typeof listPublicSubCategoriesQuerySchema>;
 export type CreatePublicProjectUploadDto = z.infer<typeof createPublicProjectUploadSchema>;
 export type CreatePublicOrderDto = z.infer<typeof createPublicOrderSchema>;

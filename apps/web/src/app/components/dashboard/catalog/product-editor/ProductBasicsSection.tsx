@@ -37,6 +37,8 @@ type ItemOption = {
 type ProductBasicsSectionProps = {
     state: ProductEditorState;
     categories: ItemOption[];
+    subCategories: ItemOption[];
+    brands: ItemOption[];
     collections: ItemOption[];
     shippingProfiles: ItemOption[];
     uploadingImages: boolean;
@@ -57,6 +59,8 @@ const STATUS_OPTIONS = [
 export function ProductBasicsSection({
     state,
     categories,
+    subCategories,
+    brands,
     collections,
     shippingProfiles,
     uploadingImages,
@@ -359,7 +363,45 @@ export function ProductBasicsSection({
                                 const value = getSingleSelectedKey(selection as SelectKeys);
                                 onStateChange((current) => ({
                                     ...current,
-                                    categoryId: value === EMPTY_CATEGORY_KEY ? "" : value
+                                    categoryId: value === EMPTY_CATEGORY_KEY ? "" : value,
+                                    // A sub-category belongs to exactly one category — clear it
+                                    // whenever the parent category changes so it can't point
+                                    // at a sub-category from a different category.
+                                    subCategoryId: value === current.categoryId ? current.subCategoryId : ""
+                                }));
+                            }}
+                        >
+                            {(item) => <SelectItem key={item.id}>{item.name}</SelectItem>}
+                        </Select>
+
+                        <Select
+                            label="Sub-category"
+                            items={[{ id: EMPTY_CATEGORY_KEY, name: "No sub-category" }, ...subCategories]}
+                            selectedKeys={[state.subCategoryId || EMPTY_CATEGORY_KEY]}
+                            disallowEmptySelection
+                            isDisabled={!state.categoryId || !subCategories.length}
+                            description={!state.categoryId ? "Pick a category first" : undefined}
+                            onSelectionChange={(selection) => {
+                                const value = getSingleSelectedKey(selection as SelectKeys);
+                                onStateChange((current) => ({
+                                    ...current,
+                                    subCategoryId: value === EMPTY_CATEGORY_KEY ? "" : value
+                                }));
+                            }}
+                        >
+                            {(item) => <SelectItem key={item.id}>{item.name}</SelectItem>}
+                        </Select>
+
+                        <Select
+                            label="Brand"
+                            items={[{ id: EMPTY_CATEGORY_KEY, name: "No brand" }, ...brands]}
+                            selectedKeys={[state.brandId || EMPTY_CATEGORY_KEY]}
+                            disallowEmptySelection
+                            onSelectionChange={(selection) => {
+                                const value = getSingleSelectedKey(selection as SelectKeys);
+                                onStateChange((current) => ({
+                                    ...current,
+                                    brandId: value === EMPTY_CATEGORY_KEY ? "" : value
                                 }));
                             }}
                         >

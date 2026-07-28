@@ -70,6 +70,12 @@ const ScrollStack = ({
   // on resize, so we measure once and reuse.
   const cardOffsetsRef = useRef<number[]>([]);
   const endOffsetRef = useRef(0);
+  // The window-mode loop below runs every frame forever, whether or not this
+  // section is anywhere near the viewport — scrolled past it, it's still
+  // burning main-thread time competing with everything else on the page
+  // (e.g. the testimonials marquee further down). Skip the work while it's
+  // off-screen; an IntersectionObserver keeps this current.
+  const isVisibleRef = useRef(true);
 
   const calculateProgress = useCallback((scrollTop: number, start: number, end: number) => {
     if (scrollTop < start) return 0;
@@ -259,8 +265,10 @@ const ScrollStack = ({
       // (smooth) scroll — smooth, no drift, no jumps. The page keeps its native
       // scroll, so nothing else on the site is affected.
       const loop = () => {
-        smoothScrollRef.current = window.scrollY;
-        updateCardTransforms();
+        if (isVisibleRef.current) {
+          smoothScrollRef.current = window.scrollY;
+          updateCardTransforms();
+        }
         animationFrameRef.current = requestAnimationFrame(loop);
       };
       animationFrameRef.current = requestAnimationFrame(loop);
@@ -318,10 +326,16 @@ const ScrollStack = ({
     };
     window.addEventListener("resize", handleResize, { passive: true });
 
+    const visibilityObserver = new IntersectionObserver(([entry]) => {
+      isVisibleRef.current = entry.isIntersecting;
+    });
+    visibilityObserver.observe(scroller);
+
     return () => {
       if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
       if (lenisRef.current) lenisRef.current.destroy();
       window.removeEventListener("resize", handleResize);
+      visibilityObserver.disconnect();
       stackCompletedRef.current = false;
       cardsRef.current = [];
       transformsCache.clear();

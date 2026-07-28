@@ -6,6 +6,7 @@ import {
   createPublicOrderSchema,
   createPublicProjectUploadSchema,
   listPublicProductsQuerySchema,
+  listPublicSubCategoriesQuerySchema,
   trackOrderQuerySchema
 } from "../dto/public.dto";
 import { CatalogPublicService } from "./public.service";
@@ -17,6 +18,20 @@ export class CatalogPublicController {
   @Get("public/categories")
   async listPublicCategories() {
     return { items: await this.publicService.listPublicCategories() };
+  }
+
+  @Get("public/subcategories")
+  async listPublicSubCategories(@Query() query: unknown) {
+    return {
+      items: await this.publicService.listPublicSubCategories(
+        parseOrThrow(listPublicSubCategoriesQuerySchema.safeParse(query), "Invalid sub-category query")
+      )
+    };
+  }
+
+  @Get("public/brands")
+  async listPublicBrands() {
+    return { items: await this.publicService.listPublicBrands() };
   }
 
   @Get("public/collections")

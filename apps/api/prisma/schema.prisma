@@ -1,4 +1,3 @@
-
 generator client {
   provider        = "prisma-client-js"
   // relationJoins lets heavy `include`s load in ONE JOIN query instead of a
@@ -102,7 +101,6 @@ enum CatalogVariantType {
   TEXT
 }
 
-
 enum ShippingScope {
   DOMESTIC_ONLY
   DOMESTIC_AND_INTERNATIONAL
@@ -182,38 +180,38 @@ model RolePermission {
 }
 
 model User {
-  id                      String                     @id @default(cuid())
-  email                   String                     @unique
-  username                String?                    @unique
-  passwordHash            String
-  firstName               String?
-  lastName                String?
-  phone                   String?
-  avatarUrl               String?
-  avatarKey               String?
-  roleId                  String
-  role                    Role                       @relation(fields: [roleId], references: [id])
-  emailVerifiedAt         DateTime?
-  mustSetPassword         Boolean                    @default(false)
-  projects                Project[]
-  catalogOrders           CatalogOrder[]
-  assignedCatalogOrders   CatalogOrder[]             @relation("AssignedCatalogOrders")
+  id                       String                     @id @default(cuid())
+  email                    String                     @unique
+  username                 String?                    @unique
+  passwordHash             String
+  firstName                String?
+  lastName                 String?
+  phone                    String?
+  avatarUrl                String?
+  avatarKey                String?
+  roleId                   String
+  role                     Role                       @relation(fields: [roleId], references: [id])
+  emailVerifiedAt          DateTime?
+  mustSetPassword          Boolean                    @default(false)
+  projects                 Project[]
+  catalogOrders            CatalogOrder[]
+  assignedCatalogOrders    CatalogOrder[]             @relation("AssignedCatalogOrders")
   submittedDesignRevisions CatalogOrderItemRevision[]
-  recipients              Recipient[]
-  createdShipments        ShippingShipment[]         @relation("ShippingShipmentCreatedBy")
-  inventoryLedgerEntries  InventoryLedgerEntry[]      @relation("InventoryLedgerPerformedBy")
-  passwordResetCodes      PasswordResetCode[]
-  accountSetupTokens      AccountSetupToken[]
-  notifications           Notification[]
-  ownedStore              Store?                     @relation("StoreOwner")
-  createdAt               DateTime                   @default(now())
-  updatedAt               DateTime                   @updatedAt
+  recipients               Recipient[]
+  createdShipments         ShippingShipment[]         @relation("ShippingShipmentCreatedBy")
+  inventoryLedgerEntries   InventoryLedgerEntry[]     @relation("InventoryLedgerPerformedBy")
+  passwordResetCodes       PasswordResetCode[]
+  accountSetupTokens       AccountSetupToken[]
+  notifications            Notification[]
+  ownedStore               Store?                     @relation("StoreOwner")
+  createdAt                DateTime                   @default(now())
+  updatedAt                DateTime                   @updatedAt
 
   @@map("users")
 }
 
 model ContactMessage {
-  id              String   @id @default(cuid())
+  id              String                 @id @default(cuid())
   companyName     String
   contactName     String
   email           String
@@ -227,7 +225,7 @@ model ContactMessage {
   budget          String?
   artworkReady    String?
   additionalNotes String?
-  createdAt       DateTime @default(now())
+  createdAt       DateTime               @default(now())
   emailedAt       DateTime?
   emailError      String?
   products        FormRequestedProduct[]
@@ -252,14 +250,14 @@ model FormRequestedProduct {
 }
 
 model PasswordResetCode {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   userId    String
   email     String
   code      String
   expiresAt DateTime
   usedAt    DateTime?
-  createdAt DateTime @default(now())
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([email, code, expiresAt])
@@ -284,6 +282,29 @@ model AccountSetupToken {
 }
 
 model CatalogCategory {
+  id                  String            @id @default(cuid())
+  // Self-relation: parentId null = top-level category, set = a sub-category of
+  // that parent. A product's categoryId points at either level; subCategoryId
+  // (on CatalogProduct) always points at a child (parentId != null) row.
+  parentId            String?
+  parent              CatalogCategory?  @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  children            CatalogCategory[] @relation("CategoryHierarchy")
+  name                String
+  slug                String            @unique
+  description         String?
+  imageUrl            String?
+  imageKey            String?
+  products            CatalogProduct[]  @relation("ProductCategory")
+  subCategoryProducts CatalogProduct[]  @relation("ProductSubCategory")
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+
+  @@index([name])
+  @@index([parentId])
+  @@map("catalog_categories")
+}
+
+model CatalogBrand {
   id          String           @id @default(cuid())
   name        String
   slug        String           @unique
@@ -295,7 +316,7 @@ model CatalogCategory {
   updatedAt   DateTime         @updatedAt
 
   @@index([name])
-  @@map("catalog_categories")
+  @@map("catalog_brands")
 }
 
 model CatalogCollection {
@@ -316,8 +337,12 @@ model CatalogCollection {
 model CatalogProduct {
   id                     String                     @id @default(cuid())
   categoryId             String?
+  subCategoryId          String?
+  brandId                String?
   shippingProfileId      String?
-  category               CatalogCategory?           @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  category               CatalogCategory?           @relation("ProductCategory", fields: [categoryId], references: [id], onDelete: SetNull)
+  subCategory            CatalogCategory?           @relation("ProductSubCategory", fields: [subCategoryId], references: [id], onDelete: SetNull)
+  brand                  CatalogBrand?              @relation(fields: [brandId], references: [id], onDelete: SetNull)
   shippingProfile        ShippingProfile?           @relation(fields: [shippingProfileId], references: [id], onDelete: SetNull)
   slug                   String                     @unique
   name                   String
@@ -366,6 +391,8 @@ model CatalogProduct {
   updatedAt              DateTime                   @updatedAt
 
   @@index([categoryId])
+  @@index([subCategoryId])
+  @@index([brandId])
   @@index([shippingProfileId])
   @@index([status])
   @@index([name])
@@ -388,16 +415,16 @@ model CatalogProductCollection {
 }
 
 model CatalogImage {
-  id           String               @id @default(cuid())
+  id            String                @id @default(cuid())
   productId     String
-  product       CatalogProduct       @relation(fields: [productId], references: [id], onDelete: Cascade)
+  product       CatalogProduct        @relation(fields: [productId], references: [id], onDelete: Cascade)
   url           String
   key           String?
   alt           String?
-  sortOrder     Int                  @default(0)
+  sortOrder     Int                   @default(0)
   variantImages CatalogVariantImage[]
-  createdAt     DateTime             @default(now())
-  updatedAt     DateTime             @updatedAt
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
 
   @@index([productId])
   @@map("catalog_images")
@@ -419,40 +446,40 @@ model Variant {
 }
 
 model VariantOption {
-  id                      String                        @id @default(cuid())
-  variantId               String
-  variant                 Variant                       @relation(fields: [variantId], references: [id], onDelete: Cascade)
-  code                    String
-  label                   String
-  colorHex                String?
-  sortOrder               Int                           @default(0)
+  id                       String                         @id @default(cuid())
+  variantId                String
+  variant                  Variant                        @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  code                     String
+  label                    String
+  colorHex                 String?
+  sortOrder                Int                            @default(0)
   productVariantSelections CatalogVariantSelectedOption[]
-  createdAt               DateTime                      @default(now())
-  updatedAt               DateTime                      @updatedAt
+  createdAt                DateTime                       @default(now())
+  updatedAt                DateTime                       @updatedAt
 
   @@index([variantId])
   @@map("variant_options")
 }
 
 model CatalogVariant {
-  id               String                        @id @default(cuid())
-  productId        String
-  product          CatalogProduct                @relation(fields: [productId], references: [id], onDelete: Cascade)
-  title            String?
-  price            Decimal                       @db.Decimal(10, 2)
-  stock            Int                           @default(0)
-  minQty           Int                           @default(1)
-  currency         String                        @default("USD")
-  isDefault        Boolean                       @default(false)
-  sortOrder        Int                           @default(0)
-  images           CatalogVariantImage[]
-  pricingOptions   CatalogPricingOption[]
-  selectedOptions  CatalogVariantSelectedOption[]
-  projectItems     ProjectItem[]
-  orderItems       CatalogOrderItem[]
-  shipmentItems    ShippingShipmentItem[]
-  createdAt        DateTime                      @default(now())
-  updatedAt        DateTime                      @updatedAt
+  id              String                         @id @default(cuid())
+  productId       String
+  product         CatalogProduct                 @relation(fields: [productId], references: [id], onDelete: Cascade)
+  title           String?
+  price           Decimal                        @db.Decimal(10, 2)
+  stock           Int                            @default(0)
+  minQty          Int                            @default(1)
+  currency        String                         @default("USD")
+  isDefault       Boolean                        @default(false)
+  sortOrder       Int                            @default(0)
+  images          CatalogVariantImage[]
+  pricingOptions  CatalogPricingOption[]
+  selectedOptions CatalogVariantSelectedOption[]
+  projectItems    ProjectItem[]
+  orderItems      CatalogOrderItem[]
+  shipmentItems   ShippingShipmentItem[]
+  createdAt       DateTime                       @default(now())
+  updatedAt       DateTime                       @updatedAt
 
   @@index([productId])
   @@map("product_catalog_variants")
@@ -507,25 +534,25 @@ model CatalogPricingOption {
 }
 
 model Project {
-  id          String           @id @default(cuid())
-  userId      String?
-  user        User?            @relation(fields: [userId], references: [id], onDelete: SetNull)
-  type        CatalogOrderType
-  name        String
-  email       String
-  companyName String?
-  phone       String?
-  notes       String?
-  logoUrl     String?
-  logoKey     String?
-  swagPackName String?
-  budgetPerPerson Decimal?     @db.Decimal(10, 2)
-  neededByDate DateTime?
-  packQuantity Int             @default(1)
-  items       ProjectItem[]
-  orders      CatalogOrder[]
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
+  id              String           @id @default(cuid())
+  userId          String?
+  user            User?            @relation(fields: [userId], references: [id], onDelete: SetNull)
+  type            CatalogOrderType
+  name            String
+  email           String
+  companyName     String?
+  phone           String?
+  notes           String?
+  logoUrl         String?
+  logoKey         String?
+  swagPackName    String?
+  budgetPerPerson Decimal?         @db.Decimal(10, 2)
+  neededByDate    DateTime?
+  packQuantity    Int              @default(1)
+  items           ProjectItem[]
+  orders          CatalogOrder[]
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
 
   @@index([userId])
   @@index([type])
@@ -533,23 +560,23 @@ model Project {
 }
 
 model ProjectItem {
-  id                     String          @id @default(cuid())
-  projectId              String
-  productId              String
+  id                      String               @id @default(cuid())
+  projectId               String
+  productId               String
   productCatalogVariantId String?
-  project                Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  product                CatalogProduct  @relation(fields: [productId], references: [id], onDelete: Restrict)
-  productCatalogVariant  CatalogVariant? @relation(fields: [productCatalogVariantId], references: [id], onDelete: SetNull)
-  productName            String
-  variantName            String?
-  itemType               CatalogOrderItemType @default(BULK)
-  quantity               Int
-  quantityPerPack        Int?
-  unitPrice              Decimal         @db.Decimal(10, 2)
-  totalPrice             Decimal         @db.Decimal(10, 2)
-  imageUrl               String?
-  createdAt              DateTime        @default(now())
-  updatedAt              DateTime        @updatedAt
+  project                 Project              @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  product                 CatalogProduct       @relation(fields: [productId], references: [id], onDelete: Restrict)
+  productCatalogVariant   CatalogVariant?      @relation(fields: [productCatalogVariantId], references: [id], onDelete: SetNull)
+  productName             String
+  variantName             String?
+  itemType                CatalogOrderItemType @default(BULK)
+  quantity                Int
+  quantityPerPack         Int?
+  unitPrice               Decimal              @db.Decimal(10, 2)
+  totalPrice              Decimal              @db.Decimal(10, 2)
+  imageUrl                String?
+  createdAt               DateTime             @default(now())
+  updatedAt               DateTime             @updatedAt
 
   @@index([projectId])
   @@index([productId])
@@ -558,47 +585,47 @@ model ProjectItem {
 }
 
 model CatalogOrder {
-  id                 String                @id @default(cuid())
-  orderNumber        Int                   @unique @default(autoincrement())
-  userId             String?
-  projectId          String?
-  storeId            String?
-  assignedEmployeeId String?
-  user               User?                 @relation(fields: [userId], references: [id], onDelete: SetNull)
-  project            Project?              @relation(fields: [projectId], references: [id], onDelete: SetNull)
-  store              Store?                @relation(fields: [storeId], references: [id], onDelete: SetNull)
-  assignedEmployee   User?                 @relation("AssignedCatalogOrders", fields: [assignedEmployeeId], references: [id], onDelete: SetNull)
-  type               CatalogOrderType
-  status             CatalogOrderStatus    @default(PENDING_REVIEW)
-  paymentStatus      CatalogPaymentStatus  @default(UNPAID)
-  productionStage    ProductionStage       @default(NOT_STARTED)
-  email              String
-  name               String
-  companyName        String?
-  phone              String?
-  notes              String?
-  logoUrl            String?
-  logoKey            String?
-  packQuantity       Int                   @default(1)
-  totalPrice         Decimal               @db.Decimal(10, 2)
-  currency           String                @default("USD")
-  squarePaymentId    String?
-  paidAt             DateTime?
-  stockReserved      Boolean               @default(false)
+  id                     String                 @id @default(cuid())
+  orderNumber            Int                    @unique @default(autoincrement())
+  userId                 String?
+  projectId              String?
+  storeId                String?
+  assignedEmployeeId     String?
+  user                   User?                  @relation(fields: [userId], references: [id], onDelete: SetNull)
+  project                Project?               @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  store                  Store?                 @relation(fields: [storeId], references: [id], onDelete: SetNull)
+  assignedEmployee       User?                  @relation("AssignedCatalogOrders", fields: [assignedEmployeeId], references: [id], onDelete: SetNull)
+  type                   CatalogOrderType
+  status                 CatalogOrderStatus     @default(PENDING_REVIEW)
+  paymentStatus          CatalogPaymentStatus   @default(UNPAID)
+  productionStage        ProductionStage        @default(NOT_STARTED)
+  email                  String
+  name                   String
+  companyName            String?
+  phone                  String?
+  notes                  String?
+  logoUrl                String?
+  logoKey                String?
+  packQuantity           Int                    @default(1)
+  totalPrice             Decimal                @db.Decimal(10, 2)
+  currency               String                 @default("USD")
+  squarePaymentId        String?
+  paidAt                 DateTime?
+  stockReserved          Boolean                @default(false)
   // Marketplace attribution snapshot (set when a store order is paid).
-  commissionPercent  Decimal?              @db.Decimal(5, 2)
-  sellerEarningCents Int?
+  commissionPercent      Decimal?               @db.Decimal(5, 2)
+  sellerEarningCents     Int?
   // Coupon applied at checkout (optional). discountAmount is what was taken off
   // the order total; couponCode is snapshotted so the record survives coupon edits.
-  couponId           String?
-  couponCode         String?
-  discountAmount     Decimal               @default(0) @db.Decimal(10, 2)
-  items              CatalogOrderItem[]
-  shipments          ShippingShipment[]
+  couponId               String?
+  couponCode             String?
+  discountAmount         Decimal                @default(0) @db.Decimal(10, 2)
+  items                  CatalogOrderItem[]
+  shipments              ShippingShipment[]
   inventoryLedgerEntries InventoryLedgerEntry[]
-  timelineEvents     CatalogOrderEvent[]
-  createdAt          DateTime              @default(now())
-  updatedAt          DateTime              @updatedAt
+  timelineEvents         CatalogOrderEvent[]
+  createdAt              DateTime               @default(now())
+  updatedAt              DateTime               @updatedAt
 
   @@index([userId])
   @@index([projectId])
@@ -636,40 +663,40 @@ model CatalogOrderEvent {
 }
 
 model CatalogOrderItem {
-  id                      String                  @id @default(cuid())
-  orderId                 String
-  productId               String
-  productCatalogVariantId String?
-  order                   CatalogOrder            @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  product                 CatalogProduct          @relation(fields: [productId], references: [id], onDelete: Restrict)
-  productCatalogVariant   CatalogVariant?         @relation(fields: [productCatalogVariantId], references: [id], onDelete: SetNull)
-  productName             String
-  variantName             String?
-  itemType                CatalogOrderItemType    @default(BULK)
-  designPhase             CatalogOrderDesignPhase @default(MOCKUP_IN_PROGRESS)
+  id                       String                      @id @default(cuid())
+  orderId                  String
+  productId                String
+  productCatalogVariantId  String?
+  order                    CatalogOrder                @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product                  CatalogProduct              @relation(fields: [productId], references: [id], onDelete: Restrict)
+  productCatalogVariant    CatalogVariant?             @relation(fields: [productCatalogVariantId], references: [id], onDelete: SetNull)
+  productName              String
+  variantName              String?
+  itemType                 CatalogOrderItemType        @default(BULK)
+  designPhase              CatalogOrderDesignPhase     @default(MOCKUP_IN_PROGRESS)
   // Add-on requested by the customer on an in-progress order (to save shipping).
   // Excluded from totals + readiness until an admin approves it (#33/#34).
-  pendingAddOn            Boolean                 @default(false)
-  quantity                Int
-  quantityPerPack         Int?
-  unitPrice               Decimal                 @db.Decimal(10, 2)
-  totalPrice              Decimal                 @db.Decimal(10, 2)
-  imageUrl                String?
-  mockupImageUrl          String?
-  mockupImageKey          String?
-  proofImageUrl           String?
-  proofImageKey           String?
-  adminNotes              String?                 @db.Text
+  pendingAddOn             Boolean                     @default(false)
+  quantity                 Int
+  quantityPerPack          Int?
+  unitPrice                Decimal                     @db.Decimal(10, 2)
+  totalPrice               Decimal                     @db.Decimal(10, 2)
+  imageUrl                 String?
+  mockupImageUrl           String?
+  mockupImageKey           String?
+  proofImageUrl            String?
+  proofImageKey            String?
+  adminNotes               String?                     @db.Text
   customerApprovedMockupAt DateTime?
-  customerApprovedFinalAt DateTime?
-  inventoryStatus         InventoryAvailabilityStatus @default(PENDING_RECEIPT)
-  inventoryReadyAt        DateTime?
-  sortOrder               Int                     @default(0)
-  revisions               CatalogOrderItemRevision[]
-  shipmentItems           ShippingShipmentItem[]
-  inventoryLedgerEntries  InventoryLedgerEntry[]
-  createdAt               DateTime                @default(now())
-  updatedAt               DateTime                @updatedAt
+  customerApprovedFinalAt  DateTime?
+  inventoryStatus          InventoryAvailabilityStatus @default(PENDING_RECEIPT)
+  inventoryReadyAt         DateTime?
+  sortOrder                Int                         @default(0)
+  revisions                CatalogOrderItemRevision[]
+  shipmentItems            ShippingShipmentItem[]
+  inventoryLedgerEntries   InventoryLedgerEntry[]
+  createdAt                DateTime                    @default(now())
+  updatedAt                DateTime                    @updatedAt
 
   @@index([orderId])
   @@index([productId])
@@ -698,7 +725,6 @@ model CatalogOrderItemRevision {
   @@index([status])
   @@map("catalog_order_item_revisions")
 }
-
 
 model ShippingZone {
   id          String                @id @default(cuid())
@@ -849,8 +875,6 @@ model ShippingShipment {
   @@map("shipping_shipments")
 }
 
-
-
 model InventoryLedgerEntry {
   id            String                   @id @default(cuid())
   orderId       String
@@ -876,27 +900,27 @@ model InventoryLedgerEntry {
 }
 
 model Recipient {
-  id                String             @id @default(cuid())
-  userId            String
-  label             String?
-  firstName         String
-  lastName          String
-  companyName       String?
-  email             String?
-  phone             String?
-  addressLine1      String
-  addressLine2      String?
-  city              String
-  state             String?
-  postalCode        String
-  countryCode       String
-  countryName       String
-  notes             String?
-  isDefault         Boolean            @default(false)
-  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  shipments         ShippingShipment[]
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
+  id           String             @id @default(cuid())
+  userId       String
+  label        String?
+  firstName    String
+  lastName     String
+  companyName  String?
+  email        String?
+  phone        String?
+  addressLine1 String
+  addressLine2 String?
+  city         String
+  state        String?
+  postalCode   String
+  countryCode  String
+  countryName  String
+  notes        String?
+  isDefault    Boolean            @default(false)
+  user         User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  shipments    ShippingShipment[]
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
 
   @@index([userId])
   @@index([countryCode])
@@ -904,31 +928,30 @@ model Recipient {
 }
 
 model ShippingShipmentItem {
-  id                     String              @id @default(cuid())
-  shipmentId             String
-  orderItemId            String
-  productId              String
+  id                      String              @id @default(cuid())
+  shipmentId              String
+  orderItemId             String
+  productId               String
   productCatalogVariantId String?
-  productName            String
-  variantName            String?
-  quantity               Int
-  unitWeightOz           Decimal             @db.Decimal(10, 2)
-  lineWeightOz           Decimal             @db.Decimal(10, 2)
-  packageType            ShippingPackageType
-  shippingProfileName    String?
-  shipment               ShippingShipment    @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
-  orderItem              CatalogOrderItem    @relation(fields: [orderItemId], references: [id], onDelete: Restrict)
-  product                CatalogProduct      @relation(fields: [productId], references: [id], onDelete: Restrict)
-  productCatalogVariant  CatalogVariant?     @relation(fields: [productCatalogVariantId], references: [id], onDelete: SetNull)
-  createdAt              DateTime            @default(now())
-  updatedAt              DateTime            @updatedAt
+  productName             String
+  variantName             String?
+  quantity                Int
+  unitWeightOz            Decimal             @db.Decimal(10, 2)
+  lineWeightOz            Decimal             @db.Decimal(10, 2)
+  packageType             ShippingPackageType
+  shippingProfileName     String?
+  shipment                ShippingShipment    @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  orderItem               CatalogOrderItem    @relation(fields: [orderItemId], references: [id], onDelete: Restrict)
+  product                 CatalogProduct      @relation(fields: [productId], references: [id], onDelete: Restrict)
+  productCatalogVariant   CatalogVariant?     @relation(fields: [productCatalogVariantId], references: [id], onDelete: SetNull)
+  createdAt               DateTime            @default(now())
+  updatedAt               DateTime            @updatedAt
 
   @@index([shipmentId])
   @@index([orderItemId])
   @@index([productId])
   @@map("shipping_shipment_items")
 }
-
 
 enum SellerApplicationStatus {
   NEW
@@ -1108,20 +1131,20 @@ model Notification {
 }
 
 model StoreProduct {
-  id        String         @id @default(cuid())
-  storeId   String
-  productId String
-  store     Store          @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  product   CatalogProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
-  sortOrder Int            @default(0)
+  id          String         @id @default(cuid())
+  storeId     String
+  productId   String
+  store       Store          @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  product     CatalogProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
+  sortOrder   Int            @default(0)
   // Seller's chosen sale price for this product. Null => use the catalog price.
   // Must be >= the catalog base price (enforced server-side).
-  customPrice Decimal?     @db.Decimal(10, 2)
+  customPrice Decimal?       @db.Decimal(10, 2)
   // Per-seller logo branding overlaid on this product (composite-on-view).
-  logoUrl   String?
-  logoKey   String?
-  placement Json?
-  createdAt DateTime       @default(now())
+  logoUrl     String?
+  logoKey     String?
+  placement   Json?
+  createdAt   DateTime       @default(now())
 
   @@unique([storeId, productId])
   @@index([storeId])
@@ -1141,29 +1164,29 @@ enum CouponDiscountType {
 }
 
 model Coupon {
-  id             String             @id @default(cuid())
-  code           String             @unique // stored uppercased
-  description    String?
-  discountType   CouponDiscountType @default(PERCENT)
-  discountValue  Decimal            @db.Decimal(10, 2)
+  id              String             @id @default(cuid())
+  code            String             @unique // stored uppercased
+  description     String?
+  discountType    CouponDiscountType @default(PERCENT)
+  discountValue   Decimal            @db.Decimal(10, 2)
   // null => platform-wide (admin) coupon; set => scoped to this seller store.
-  storeId        String?
-  store          Store?             @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  storeId         String?
+  store           Store?             @relation(fields: [storeId], references: [id], onDelete: Cascade)
   createdByUserId String?
   // Optional: restrict redemption to a single user (admin "coupon for X").
-  assignedUserId String?
+  assignedUserId  String?
   // Optional: limit the coupon to specific products; empty => whole order.
-  productIds     String[]           @default([])
+  productIds      String[]           @default([])
   // Optional guards.
-  minSubtotal    Decimal?           @db.Decimal(10, 2)
-  maxDiscount    Decimal?           @db.Decimal(10, 2) // caps a PERCENT coupon
-  usageLimit     Int? // total redemptions allowed across everyone
-  usedCount      Int                @default(0)
-  startsAt       DateTime?
-  expiresAt      DateTime?
-  active         Boolean            @default(true)
-  createdAt      DateTime           @default(now())
-  updatedAt      DateTime           @updatedAt
+  minSubtotal     Decimal?           @db.Decimal(10, 2)
+  maxDiscount     Decimal?           @db.Decimal(10, 2) // caps a PERCENT coupon
+  usageLimit      Int? // total redemptions allowed across everyone
+  usedCount       Int                @default(0)
+  startsAt        DateTime?
+  expiresAt       DateTime?
+  active          Boolean            @default(true)
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
 
   @@index([storeId])
   @@index([assignedUserId])

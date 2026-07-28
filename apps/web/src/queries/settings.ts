@@ -33,6 +33,10 @@ export function useUpdateSetting() {
     mutationFn: ({ key, value }: { key: SettingKey; value: string }) => updateSetting(key, value),
     onSuccess: (data) => {
       queryClient.setQueryData(settingsKeys.all, data);
+      // Public flags (e.g. shop_products_per_page) are cached separately with a
+      // 5-minute staleTime — invalidate so a change is reflected immediately
+      // rather than waiting out the cache.
+      queryClient.invalidateQueries({ queryKey: settingsKeys.public });
     },
   });
 }

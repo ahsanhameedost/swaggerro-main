@@ -145,6 +145,8 @@ export function createEmptyState(): ProductEditorState {
     description: "",
     status: "DRAFT",
     categoryId: "",
+    subCategoryId: "",
+    brandId: "",
     collectionIds: [],
     isPackaging: false,
     bulkPricingEnabled: true,
@@ -531,6 +533,8 @@ export function mapProductToState(product: CatalogProductDetail): ProductEditorS
     description: readString(record.description, ""),
     status: readString(record.status, "DRAFT") as ProductStatus,
     categoryId: isRecord(record.category) ? readString((record.category as Record<string, unknown>).id, "") : "",
+    subCategoryId: isRecord(record.subCategory) ? readString((record.subCategory as Record<string, unknown>).id, "") : "",
+    brandId: isRecord(record.brand) ? readString((record.brand as Record<string, unknown>).id, "") : "",
     collectionIds: collectionsSource
       .map((item) => (isRecord(item) ? readString(item.id, "") : ""))
       .filter(Boolean),
@@ -663,6 +667,8 @@ export function buildPayload(state: ProductEditorState): BuildPayloadResult {
     description: description || null,
     status: state.status,
     categoryId: state.categoryId || null,
+    subCategoryId: state.subCategoryId || null,
+    brandId: state.brandId || null,
     collectionIds: state.collectionIds,
     isPackaging: state.isPackaging,
     bulkPricingEnabled: state.bulkPricingEnabled,

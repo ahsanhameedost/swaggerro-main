@@ -4,7 +4,12 @@ import {
   NotFoundException
 } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
-import type { CreatePublicOrderDto, ListPublicProductsQuery, TrackOrderQuery } from "../dto/public.dto";
+import type {
+  CreatePublicOrderDto,
+  ListPublicProductsQuery,
+  ListPublicSubCategoriesQuery,
+  TrackOrderQuery
+} from "../dto/public.dto";
 import { EmailService } from "../../email/email.service";
 import { PrismaService } from "../../prisma/prisma.service";
 import { StorageService } from "../../storage/storage.service";
@@ -104,6 +109,44 @@ export class CatalogPublicService extends CatalogSharedService {
   async listPublicCategories() {
     const items = await this.prisma.catalogCategory.findMany({
       where: {
+        parentId: null,
+        products: {
+          some: {
+            status: "ACTIVE",
+            isPackaging: false
+          }
+        }
+      },
+      orderBy: { name: "asc" }
+    });
+
+    return items.map((item) => this.serializeSimpleEntity(item));
+  }
+
+  // Sub-categories with at least one active product, optionally scoped to a
+  // parent category slug (the shop filter narrows this once a top-level
+  // category is picked).
+  async listPublicSubCategories(query: ListPublicSubCategoriesQuery) {
+    const items = await this.prisma.catalogCategory.findMany({
+      where: {
+        parentId: { not: null },
+        ...(query.category ? { parent: { slug: query.category } } : {}),
+        subCategoryProducts: {
+          some: {
+            status: "ACTIVE",
+            isPackaging: false
+          }
+        }
+      },
+      orderBy: { name: "asc" }
+    });
+
+    return items.map((item) => this.serializeSimpleEntity(item));
+  }
+
+  async listPublicBrands() {
+    const items = await this.prisma.catalogBrand.findMany({
+      where: {
         products: {
           some: {
             status: "ACTIVE",
@@ -148,6 +191,8 @@ export class CatalogPublicService extends CatalogSharedService {
           }
         : {}),
       ...(query.category ? { category: { slug: query.category } } : {}),
+      ...(query.subCategory ? { subCategory: { slug: query.subCategory } } : {}),
+      ...(query.brand ? { brand: { slug: query.brand } } : {}),
       ...(query.collection
         ? { collections: { some: { collection: { slug: query.collection } } } }
         : {})
@@ -162,6 +207,8 @@ export class CatalogPublicService extends CatalogSharedService {
         // are omitted here to cut Azure round-trips (they're heavy and unused by cards).
         include: {
           category: true,
+          subCategory: true,
+          brand: true,
           images: { orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }], take: 1 },
           productCatalogVariants: { orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] },
           variants: { include: { options: { orderBy: [{ sortOrder: "asc" }] } }, orderBy: [{ sortOrder: "asc" }] },

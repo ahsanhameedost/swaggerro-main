@@ -1,50 +1,43 @@
 
 import type { PaginationMeta } from "../shared";
 
-export type CatalogCategory = {
+export type CatalogBrand = {
   id: string;
   name: string;
   slug: string;
   description?: string | null;
   imageUrl?: string | null;
   imageKey?: string | null;
-  parentId?: string | null;
-  parent?: { id: string; name: string; slug: string } | null;
   createdAt: string;
   updatedAt: string;
 };
 
-export type ListCategoriesParams = {
+export type ListBrandsParams = {
   search?: string;
-  // Omit for every category. Pass a category id to list its sub-categories, or
-  // "none" to list top-level categories only.
-  parentId?: string;
   page?: number;
   pageSize?: number;
 };
 
-export type CreateCategoryInput = {
+export type CreateBrandInput = {
   name: string;
   description?: string | null;
   imageUrl?: string | null;
   imageKey?: string | null;
-  parentId?: string | null;
 };
 
-export type UpdateCategoryInput = {
+export type UpdateBrandInput = {
   name?: string;
   description?: string | null;
   imageUrl?: string | null;
   imageKey?: string | null;
-  parentId?: string | null;
   removeImage?: boolean;
 };
 
-export type ListCategoriesResponse = {
-  items: CatalogCategory[];
+export type ListBrandsResponse = {
+  items: CatalogBrand[];
   pagination: PaginationMeta;
 };
 
-export type CategoryResponse = {
-  category: CatalogCategory;
+export type BrandResponse = {
+  brand: CatalogBrand;
 };

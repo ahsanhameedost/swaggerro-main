@@ -13,6 +13,8 @@ const PERMISSIONS = [
   { key: "catalog.categories.write", description: "Manage catalog categories" },
   { key: "catalog.collections.read", description: "Read catalog collections" },
   { key: "catalog.collections.write", description: "Manage catalog collections" },
+  { key: "catalog.brands.read", description: "Read catalog brands" },
+  { key: "catalog.brands.write", description: "Manage catalog brands" },
   { key: "catalog.products.read", description: "Read catalog products" },
   { key: "catalog.products.write", description: "Manage catalog products" },
   { key: "catalog.orders.read", description: "Read all team orders" },

@@ -10,34 +10,28 @@ import {
   ModalContent,
   ModalFooter,
   ModalHeader,
-  Select,
-  SelectItem,
   Textarea
 } from "@heroui/react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ImagePlus, Trash2, UploadCloud } from "lucide-react";
-import type { CatalogCategory } from "@/lib/catalog";
-import { useCategories } from "@/lib/queries.catalog";
-
-const NO_PARENT_KEY = "__none__";
+import type { CatalogBrand } from "@/lib/catalog";
 
 const schema = z.object({
-  name: z.string().trim().min(1, "Category name is required").max(120),
-  description: z.string().trim().max(1000).optional(),
-  parentId: z.string().trim().optional()
+  name: z.string().trim().min(1, "Brand name is required").max(120),
+  description: z.string().trim().max(1000).optional()
 });
 
-export type CategoryFormValues = z.infer<typeof schema>;
+export type BrandFormValues = z.infer<typeof schema>;
 
-type CategoryFormModalProps = {
+type BrandFormModalProps = {
   isOpen: boolean;
-  category: CatalogCategory | null;
+  brand: CatalogBrand | null;
   isSubmitting: boolean;
   onClose: () => void;
   onSave: (payload: {
-    values: CategoryFormValues;
+    values: BrandFormValues;
     file: File | null;
     removeCurrentImage: boolean;
   }) => Promise<void>;
@@ -46,49 +40,36 @@ type CategoryFormModalProps = {
 const MAX_IMAGE_SIZE_MB = 5;
 const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
-export function CategoryFormModal({
+export function BrandFormModal({
   isOpen,
-  category,
+  brand,
   isSubmitting,
   onClose,
   onSave
-}: CategoryFormModalProps) {
-  const isEdit = !!category;
+}: BrandFormModalProps) {
+  const isEdit = !!brand;
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [removeCurrentImage, setRemoveCurrentImage] = useState(false);
   const [fileError, setFileError] = useState("");
 
-  const defaultValues = useMemo<CategoryFormValues>(
+  const defaultValues = useMemo<BrandFormValues>(
     () => ({
-      name: category?.name ?? "",
-      description: category?.description ?? "",
-      parentId: category?.parentId ?? ""
+      name: brand?.name ?? "",
+      description: brand?.description ?? ""
     }),
-    [category]
-  );
-
-  // Only top-level categories can be a parent — a sub-category can't itself
-  // have children, so exclude the category being edited too.
-  const { data: topLevelCategories } = useCategories({ page: 1, pageSize: 100, parentId: "none" });
-  const parentOptions = useMemo(
-    () => (topLevelCategories?.items ?? []).filter((item) => item.id !== category?.id),
-    [topLevelCategories?.items, category?.id]
+    [brand]
   );
 
   const {
     register,
     handleSubmit,
     reset,
-    watch,
-    setValue,
     formState: { errors }
-  } = useForm<CategoryFormValues>({
+  } = useForm<BrandFormValues>({
     resolver: zodResolver(schema),
     defaultValues
   });
-
-  const parentId = watch("parentId");
 
   useEffect(() => {
     if (!isOpen) return;
@@ -102,8 +83,8 @@ export function CategoryFormModal({
   const previewUrl = useMemo(() => {
     if (selectedFile) return URL.createObjectURL(selectedFile);
     if (removeCurrentImage) return null;
-    return category?.imageUrl ?? null;
-  }, [category?.imageUrl, removeCurrentImage, selectedFile]);
+    return brand?.imageUrl ?? null;
+  }, [brand?.imageUrl, removeCurrentImage, selectedFile]);
 
   useEffect(() => {
     return () => {
@@ -149,15 +130,15 @@ export function CategoryFormModal({
           <>
             <ModalHeader className="flex flex-col gap-1">
               <span className="text-xl font-semibold">
-                {isEdit ? "Edit category" : "Create category"}
+                {isEdit ? "Edit brand" : "Create brand"}
               </span>
             </ModalHeader>
 
             <ModalBody>
-              <form id="category-form" className="flex flex-col gap-5" onSubmit={submit}>
+              <form id="brand-form" className="flex flex-col gap-5" onSubmit={submit}>
                 <Input
-                  label="Category name"
-                  placeholder="Apparel"
+                  label="Brand name"
+                  placeholder="Swaggeroo Apparel Co."
                   isRequired
                   isInvalid={!!errors.name}
                   errorMessage={errors.name?.message}
@@ -166,31 +147,17 @@ export function CategoryFormModal({
 
                 <Textarea
                   label="Description"
-                  placeholder="Short description for this category"
+                  placeholder="Short description for this brand"
                   minRows={4}
                   isInvalid={!!errors.description}
                   errorMessage={errors.description?.message}
                   {...register("description")}
                 />
 
-                <Select
-                  label="Parent category"
-                  description="Set to make this a sub-category of another category."
-                  items={[{ id: NO_PARENT_KEY, name: "None (top-level category)" }, ...parentOptions]}
-                  selectedKeys={[parentId || NO_PARENT_KEY]}
-                  disallowEmptySelection
-                  onSelectionChange={(selection) => {
-                    const value = Array.from(selection as Set<string>)[0] ?? NO_PARENT_KEY;
-                    setValue("parentId", value === NO_PARENT_KEY ? "" : value);
-                  }}
-                >
-                  {(item) => <SelectItem key={item.id}>{item.name}</SelectItem>}
-                </Select>
-
                 <div className="rounded-2xl border border-divider bg-content1 p-4">
                   <div className="mb-3 flex items-center justify-between gap-3">
                     <div>
-                      <div className="text-sm font-semibold">Category image</div>
+                      <div className="text-sm font-semibold">Brand logo</div>
                       <div className="text-xs text-foreground/60">
                         Optional. Use JPG, PNG, or WEBP up to {MAX_IMAGE_SIZE_MB}MB.
                       </div>
@@ -213,7 +180,7 @@ export function CategoryFormModal({
                         {selectedFile ? "Change image" : "Upload image"}
                       </Button>
 
-                      {(category?.imageUrl || selectedFile) ? (
+                      {(brand?.imageUrl || selectedFile) ? (
                         <Button
                           variant="light"
                           color="danger"
@@ -237,7 +204,7 @@ export function CategoryFormModal({
                         <Image
                           removeWrapper
                           src={previewUrl}
-                          alt={category?.name || "Category image preview"}
+                          alt={brand?.name || "Brand logo preview"}
                           className="h-full w-full object-cover"
                         />
                       ) : (
@@ -252,7 +219,7 @@ export function CategoryFormModal({
                       <p>
                         {selectedFile
                           ? `Selected file: ${selectedFile.name}`
-                          : category?.imageUrl && !removeCurrentImage
+                          : brand?.imageUrl && !removeCurrentImage
                             ? "Current image will stay unless you replace or remove it."
                             : "Upload an image now or skip it for later."}
                       </p>
@@ -270,11 +237,11 @@ export function CategoryFormModal({
               <Button
                 color="primary"
                 type="submit"
-                form="category-form"
+                form="brand-form"
                 isLoading={isSubmitting}
                 style={{ backgroundImage: "var(--primary-gradient)", color: "#fff" }}
               >
-                {isEdit ? "Save changes" : "Create category"}
+                {isEdit ? "Save changes" : "Create brand"}
               </Button>
             </ModalFooter>
           </>

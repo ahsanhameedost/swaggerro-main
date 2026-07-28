@@ -55,6 +55,8 @@ export type ProductEditorState = {
   description: string;
   status: ProductStatus;
   categoryId: string;
+  subCategoryId: string;
+  brandId: string;
   collectionIds: string[];
   isPackaging: boolean;
   bulkPricingEnabled: boolean;

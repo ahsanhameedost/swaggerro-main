@@ -3,6 +3,9 @@ import { z } from "zod";
 
 export const listCategoriesQuerySchema = z.object({
   search: z.string().trim().max(100).optional(),
+  // Omit to list every category (top-level + sub-categories). Pass a category id
+  // to list that category's sub-categories, or "none" to list top-level only.
+  parentId: z.string().trim().optional(),
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(15)
 });
@@ -11,7 +14,9 @@ export const createCategorySchema = z.object({
   name: z.string().trim().min(1, "Category name is required").max(120),
   description: z.string().trim().max(1000).optional().nullable(),
   imageUrl: z.string().url().max(2048).optional().nullable(),
-  imageKey: z.string().max(500).optional().nullable()
+  imageKey: z.string().max(500).optional().nullable(),
+  // Set to make this a sub-category of another (top-level) category.
+  parentId: z.string().trim().optional().nullable()
 });
 
 export const updateCategorySchema = createCategorySchema.partial().extend({

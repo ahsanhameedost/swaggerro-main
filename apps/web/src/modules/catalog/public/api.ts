@@ -1,5 +1,6 @@
 import { apiFetch } from "@/lib/api";
 import { buildQuery } from "../shared";
+import type { CatalogBrand } from "../brands/types";
 import type { CatalogCategory } from "../categories/types";
 import type { CatalogCollection } from "../collections/types";
 import type {
@@ -13,6 +14,17 @@ import type { PublicCatalogCheckoutInput } from "./types";
 
 export async function listPublicCategories() {
   return apiFetch<{ items: CatalogCategory[] }>(`/catalog/public/categories`, { method: "GET" });
+}
+
+export async function listPublicSubCategories(category?: string) {
+  return apiFetch<{ items: CatalogCategory[] }>(
+    `/catalog/public/subcategories${buildQuery(category ? { category } : {})}`,
+    { method: "GET" }
+  );
+}
+
+export async function listPublicBrands() {
+  return apiFetch<{ items: CatalogBrand[] }>(`/catalog/public/brands`, { method: "GET" });
 }
 
 export async function listPublicCollections() {
@@ -33,7 +45,7 @@ export async function getPublicProduct(slug: string) {
 }
 
 export async function createCatalogImageUpload(
-  path: "categories" | "collections" | "products" | "projects",
+  path: "categories" | "collections" | "brands" | "products" | "projects",
   input: {
     filename: string;
     contentType: "image/jpeg" | "image/png" | "image/webp";

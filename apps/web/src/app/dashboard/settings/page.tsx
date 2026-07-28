@@ -1,10 +1,13 @@
 "use client";
 
-import { Card, CardBody, Spinner, Switch } from "@heroui/react";
+import { useEffect, useState } from "react";
+import { Button, Card, CardBody, Input, Spinner, Switch } from "@heroui/react";
 import { addToast } from "@heroui/toast";
 import { Settings2 } from "lucide-react";
 import { useMe } from "@/queries/auth";
 import { useSettings, useUpdateSetting } from "@/queries/settings";
+
+const DEFAULT_SHOP_PRODUCTS_PER_PAGE = 12;
 
 export default function PlatformSettingsPage() {
   const { data: me } = useMe();
@@ -13,6 +16,14 @@ export default function PlatformSettingsPage() {
 
   const { data, isLoading } = useSettings();
   const updateSetting = useUpdateSetting();
+
+  const savedProductsPerPage =
+    Number(data?.settings.shop_products_per_page) || DEFAULT_SHOP_PRODUCTS_PER_PAGE;
+
+  const [productsPerPageInput, setProductsPerPageInput] = useState(String(savedProductsPerPage));
+  useEffect(() => {
+    setProductsPerPageInput(String(savedProductsPerPage));
+  }, [savedProductsPerPage]);
 
   if (!canRead) {
     return (
@@ -26,6 +37,10 @@ export default function PlatformSettingsPage() {
   // Default ON when unset so the B2C gate is active out of the box.
   const previewLogoGate = data?.settings.preview_logo_gate !== "false";
 
+  const productsPerPageValue = Number(productsPerPageInput);
+  const productsPerPageValid =
+    Number.isInteger(productsPerPageValue) && productsPerPageValue >= 1 && productsPerPageValue <= 200;
+
   const toggleSellersCanAdd = async (next: boolean) => {
     try {
       await updateSetting.mutateAsync({
@@ -34,6 +49,23 @@ export default function PlatformSettingsPage() {
       });
       addToast({
         title: next ? "Sellers can now add products" : "Seller product-adding disabled",
+        color: "success",
+      });
+    } catch (err: any) {
+      addToast({ title: "Couldn't save setting", description: err?.message ?? "", color: "danger" });
+    }
+  };
+
+  const saveProductsPerPage = async () => {
+    if (!productsPerPageValid) return;
+
+    try {
+      await updateSetting.mutateAsync({
+        key: "shop_products_per_page",
+        value: String(productsPerPageValue),
+      });
+      addToast({
+        title: `Shop now shows ${productsPerPageValue} products per page`,
         color: "success",
       });
     } catch (err: any) {
@@ -98,6 +130,52 @@ export default function PlatformSettingsPage() {
                 onValueChange={toggleSellersCanAdd}
                 aria-label="Let sellers add their own products"
               />
+            </div>
+          )}
+        </CardBody>
+      </Card>
+
+      <Card className="border border-divider shadow-sm">
+        <CardBody className="p-6">
+          {isLoading ? (
+            <div className="flex justify-center py-10">
+              <Spinner size="sm" />
+            </div>
+          ) : (
+            <div className="flex items-start justify-between gap-6">
+              <div className="max-w-2xl">
+                <h2 className="text-base font-semibold">Shop products per page</h2>
+                <p className="mt-1 text-sm text-foreground/60">
+                  How many products the public shop page shows on each page before a shopper has to
+                  page forward. Applies to /shop immediately.
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Input
+                  type="number"
+                  min={1}
+                  max={200}
+                  className="w-28"
+                  value={productsPerPageInput}
+                  isInvalid={!productsPerPageValid}
+                  isDisabled={!canWrite}
+                  onValueChange={setProductsPerPageInput}
+                  aria-label="Shop products per page"
+                />
+                <Button
+                  color="primary"
+                  isDisabled={
+                    !canWrite ||
+                    !productsPerPageValid ||
+                    productsPerPageValue === savedProductsPerPage
+                  }
+                  isLoading={updateSetting.isPending}
+                  onPress={saveProductsPerPage}
+                  style={{ backgroundImage: "var(--primary-gradient)", color: "#fff" }}
+                >
+                  Save
+                </Button>
+              </div>
             </div>
           )}
         </CardBody>

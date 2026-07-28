@@ -161,6 +161,8 @@ export const listProductsQuerySchema = z.object({
   search: z.string().trim().max(100).optional(),
   status: productStatusSchema.optional(),
   categoryId: z.string().trim().optional(),
+  subCategoryId: z.string().trim().optional(),
+  brandId: z.string().trim().optional(),
   collectionId: z.string().trim().optional(),
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(15)
@@ -172,6 +174,8 @@ const productSchemaBase = z.object({
   description: z.string().trim().max(40000).optional().nullable(),
   status: productStatusSchema.default("DRAFT"),
   categoryId: z.string().trim().optional().nullable(),
+  subCategoryId: z.string().trim().optional().nullable(),
+  brandId: z.string().trim().optional().nullable(),
   collectionIds: z.array(z.string().trim()).default([]),
   isPackaging: z.boolean().default(false),
   bulkPricingEnabled: z.boolean().default(true),

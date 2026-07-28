@@ -9,6 +9,8 @@ export const PERMISSION_LABELS: Record<string, string> = {
   "catalog.categories.write": "Manage Categories",
   "catalog.collections.read": "View Collections",
   "catalog.collections.write": "Manage Collections",
+  "catalog.brands.read": "View Brands",
+  "catalog.brands.write": "Manage Brands",
   "catalog.products.read": "View Products",
   "catalog.products.write": "Manage Products",
   "catalog.orders.read": "View Orders",

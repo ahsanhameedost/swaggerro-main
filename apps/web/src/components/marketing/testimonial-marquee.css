@@ -1,10 +1,12 @@
 /*
- * The scroll is a CSS keyframe animation, NOT a JS rAF loop. This is deliberate:
- * a CSS transform animation runs on the compositor thread, so it stays perfectly
- * smooth even when the main thread is busy with the page's other animations
- * (the ScrollStack loop, ambient background, etc.). A main-thread rAF marquee got
- * starved by that work and stuttered ("scrolled and stopped"). The trade-off is
- * that the hover pause is instant rather than eased.
+ * The scroll is a Web Animations API loop on the track (see TestimonialCarousel),
+ * not a CSS `animation`. WAAPI transform animations are compositor-accelerated
+ * the same way CSS ones are, so this stays smooth regardless of what else the
+ * page's main thread is doing (the ScrollStack loop, ambient background, etc.).
+ * There is deliberately no hover/focus pause: pointerenter/pointerleave fire
+ * from page scroll re-running hit testing, not just mouse movement, so any
+ * hover-driven speed change (instant OR eased) looked like it kept stopping
+ * and starting as this section scrolled under a resting cursor.
  */
 .tm-marquee {
   /* Edge fade via cheap gradient overlays (not mask-image, which re-rasterized
@@ -34,39 +36,10 @@
   background: linear-gradient(to left, var(--tm-edge), transparent);
 }
 
-@keyframes tm-scroll {
-  from {
-    transform: translate3d(0, 0, 0);
-  }
-  to {
-    /* Two identical copies; -50% == exactly one copy → seamless loop. */
-    transform: translate3d(-50%, 0, 0);
-  }
-}
-
 .tm-track {
-  animation: tm-scroll var(--tm-duration, 60s) linear infinite;
   /* Keep the track on its own GPU layer and avoid sub-pixel jitter. */
   will-change: transform;
   backface-visibility: hidden;
   transform: translate3d(0, 0, 0);
   contain: layout paint;
-}
-
-/*
- * Pause on hover/focus so a reader can finish a quote. Declared here (unlayered)
- * on purpose: Tailwind utilities live in @layer utilities, and unlayered rules
- * beat layered ones regardless of specificity — plus the `animation` shorthand
- * above implicitly resets play-state to running, so the pause only reliably wins
- * when it's declared alongside it.
- */
-.tm-marquee:hover .tm-track,
-.tm-marquee:focus-within .tm-track {
-  animation-play-state: paused;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .tm-track {
-    animation: none;
-  }
 }

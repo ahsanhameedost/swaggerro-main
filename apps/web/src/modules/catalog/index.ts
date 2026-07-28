@@ -4,6 +4,8 @@ export * from "./categories/types";
 export * from "./categories/api";
 export * from "./collections/types";
 export * from "./collections/api";
+export * from "./brands/types";
+export * from "./brands/api";
 export * from "./products/types";
 export * from "./products/api";
 export * from "./orders/types";

@@ -114,7 +114,7 @@ export default function ProductsPage() {
       setExporting(false);
     }
   };
-  const { data: categoriesData } = useCategories({ page: 1, pageSize: 100 });
+  const { data: categoriesData } = useCategories({ page: 1, pageSize: 100, parentId: "none" });
   const { data: collectionsData } = useCollections({ page: 1, pageSize: 100 });
   const deleteMutation = useDeleteProduct();
 
