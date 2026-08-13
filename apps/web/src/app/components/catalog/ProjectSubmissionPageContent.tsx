@@ -114,7 +114,7 @@ export function ProjectSubmissionPageContent() {
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [logoKey, setLogoKey] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
-  const [touched, setTouched] = useState<{ name?: boolean; email?: boolean }>({});
+  const [touched, setTouched] = useState<{ name?: boolean; email?: boolean; neededByDate?: boolean }>({});
 
   useEffect(() => {
     if (!user) {
@@ -158,6 +158,9 @@ export function ProjectSubmissionPageContent() {
   }
   if (!emailIsValid) {
     missingRequirements.push("a valid email");
+  }
+  if (!neededByDate) {
+    missingRequirements.push("a delivery date");
   }
 
   const isBusy = submitMutation.isPending || uploading;
@@ -249,7 +252,7 @@ export function ProjectSubmissionPageContent() {
     }
 
     // Surface inline field errors if anything required is missing.
-    setTouched({ name: true, email: true });
+    setTouched({ name: true, email: true, neededByDate: true });
 
     if (!trimmedName || !emailIsValid) {
       addToast({
@@ -260,8 +263,17 @@ export function ProjectSubmissionPageContent() {
       return;
     }
 
-    // The date is optional, but if given it must be at least the lead time out
-    // (guards against a manually-typed value the native picker's min wouldn't).
+    if (!neededByDate) {
+      addToast({
+        title: "Delivery date required",
+        description: "Please select the date you need these by.",
+        color: "warning"
+      });
+      return;
+    }
+
+    // The date must be at least the lead time out (guards against a
+    // manually-typed value the native picker's min wouldn't).
     if (neededByDateInvalid) {
       addToast({
         title: "Choose a later date",
@@ -451,12 +463,16 @@ export function ProjectSubmissionPageContent() {
                   value={neededByDate}
                   onValueChange={setNeededByDate}
                   min={minNeededByDate || undefined}
-                  isInvalid={neededByDateInvalid}
+                  isRequired
+                  onBlur={() => setTouched((current) => ({ ...current, neededByDate: true }))}
+                  isInvalid={neededByDateInvalid || (Boolean(touched.neededByDate) && !neededByDate)}
                   description="We need a few days to proof and produce your order, so the earliest date is 6 days out."
                   errorMessage={
                     neededByDateInvalid
                       ? "Please pick a date at least 6 days from today."
-                      : undefined
+                      : touched.neededByDate && !neededByDate
+                        ? "Please select a delivery date."
+                        : undefined
                   }
                 />
 
